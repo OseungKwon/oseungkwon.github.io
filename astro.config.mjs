@@ -10,7 +10,7 @@ export default defineConfig({
   // 예: 리포지토리가 username.github.io면 site: 'https://username.github.io', base: '/'
   // 예: 리포지토리가 blog면 site: 'https://username.github.io', base: '/blog/'
   site: 'https://oseungkwon.github.io',
-  base: '/blog/',
+  base: '/',
   vite: {
     plugins: [tailwindcss()],
   },
