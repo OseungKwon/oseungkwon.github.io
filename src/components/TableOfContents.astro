@@ -120,8 +120,8 @@
           ) as HTMLElement | null;
           if (activeLink) {
             activeLink.classList.add('active');
-            // 라이트/다크 모드 모두 동일한 파란색 사용
-            activeLink.style.color = '#2563eb';
+            // 활성 섹션은 시그니처 자몽 액센트로 표시
+            activeLink.style.color = 'var(--color-accent)';
           }
         }
       }
@@ -169,8 +169,8 @@
     background: var(--color-text-tertiary);
   }
 
-  /* 다크 모드에서도 동일한 파란색 사용 */
+  /* 활성 항목은 자몽 액센트 */
   :global(.dark) .toc-link.active {
-    color: #2563eb !important;
+    color: var(--color-accent) !important;
   }
 </style>

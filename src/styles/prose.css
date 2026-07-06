@@ -8,6 +8,9 @@
   .prose {
     @apply max-w-none;
     color: var(--color-text-secondary) !important;
+    /* 긴 영어 토큰(식별자·URL)이 모바일에서 넘치지 않도록 강제 줄바꿈.
+       overflow-wrap은 상속되므로 소제목·인라인코드·링크까지 함께 적용된다. */
+    overflow-wrap: break-word;
   }
 
   /* 제목 스타일 */
@@ -86,9 +89,9 @@
     content: '' !important;
   }
 
-  /* 코드 블록 스타일 */
+  /* 코드 블록 스타일 — 긴 코드는 가로 스크롤(모바일에서 잘림 방지) */
   .prose pre {
-    @apply my-8 overflow-hidden rounded-3xl p-5 shadow-sm;
+    @apply my-8 overflow-x-auto rounded-3xl p-5 shadow-sm;
     border: 1px solid var(--color-border-primary) !important;
     background-color: var(--color-bg-code-block) !important;
   }

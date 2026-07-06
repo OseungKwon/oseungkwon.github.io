@@ -1,0 +1,160 @@
+---
+/**
+ * Embed — 자체 완결 HTML(주로 AI가 생성한 시각화)을 iframe으로 격리해 삽입한다.
+ *
+ * 왜 iframe인가: AI가 만든 HTML은 자체 <style>/<script>를 가진 완결 문서라
+ * 본문에 인라인하면 블로그 전역 스타일(prose/tailwind)과 충돌한다. iframe은
+ * 스타일·스크립트를 완전히 격리하므로 AI 결과물을 손대지 않고 그대로 쓸 수 있다.
+ *
+ * 사용법 (.mdx 본문에서):
+ *   import Embed from '@components/Embed.astro';
+ *   <Embed src="/embeds/zustand-flow.html" title="Zustand 상태 흐름" />
+ *
+ * public/embeds/ 에 저장한 파일은 사이트 루트(/embeds/...)로 서빙된다.
+ */
+interface Props {
+  /** public/ 기준 경로. 예: "/embeds/foo.html" */
+  src: string;
+  /** 캡션 겸 iframe 접근성 제목 */
+  title?: string;
+  /** aspect 미지정 시 초기/고정 높이(px). auto=false면 이 높이로 고정 */
+  height?: number;
+  /** "16/9" 같은 종횡비. 지정하면 높이 자동조절 대신 비율 고정 */
+  aspect?: string;
+  /** 본문 폭을 넘어 넓게 표시 */
+  wide?: boolean;
+  /** 콘텐츠 높이에 맞춰 자동 리사이즈 (aspect 미지정 시 기본 true) */
+  auto?: boolean;
+}
+
+const {
+  src,
+  title,
+  height = 460,
+  aspect,
+  wide = false,
+  auto = aspect ? false : true,
+} = Astro.props;
+---
+
+<figure class:list={['grape-embed not-prose', { 'grape-embed--wide': wide }]}>
+  <div
+    class="grape-embed__frame"
+    style={aspect ? `aspect-ratio:${aspect}` : `height:${height}px`}
+  >
+    <iframe
+      src={src}
+      title={title ?? '임베드 시각화'}
+      loading="lazy"
+      data-auto={auto ? 'true' : 'false'}
+      referrerpolicy="no-referrer"
+      sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+  </div>
+  {title && <figcaption class="grape-embed__caption">{title}</figcaption>}
+</figure>
+
+<style>
+  .grape-embed {
+    margin: 2.5rem 0;
+  }
+
+  .grape-embed--wide {
+    width: min(60rem, calc(100vw - 2rem));
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .grape-embed__frame {
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid var(--color-border-primary);
+    background-color: var(--color-bg-secondary);
+    transition: height 0.15s ease-out;
+  }
+
+  .grape-embed__frame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .grape-embed__caption {
+    margin-top: 0.75rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+    color: var(--color-text-tertiary);
+  }
+</style>
+
+<script>
+  // 같은 오리진(자체 사이트)에서 서빙되므로 iframe.contentDocument에 접근 가능.
+  // → AI가 만든 HTML을 수정하지 않고도 높이 자동조절 + 다크모드 동기화가 된다.
+  function initEmbeds() {
+    const frames = document.querySelectorAll<HTMLIFrameElement>(
+      '.grape-embed__frame iframe[data-auto="true"]',
+    );
+
+    const syncTheme = (iframe: HTMLIFrameElement) => {
+      try {
+        const idoc = iframe.contentDocument;
+        if (!idoc) return;
+        const dark = document.documentElement.classList.contains('dark');
+        idoc.documentElement.classList.toggle('dark', dark);
+      } catch {
+        /* 크로스 오리진 등 접근 불가 시 무시 */
+      }
+    };
+
+    frames.forEach((iframe) => {
+      const frame = iframe.parentElement as HTMLElement;
+
+      const resize = () => {
+        try {
+          const idoc = iframe.contentDocument;
+          if (!idoc) return;
+          const h =
+            idoc.documentElement.scrollHeight || idoc.body?.scrollHeight || 0;
+          if (h) frame.style.height = h + 'px';
+        } catch {
+          /* 접근 불가 시 초기 높이 유지 */
+        }
+      };
+
+      iframe.addEventListener('load', () => {
+        resize();
+        syncTheme(iframe);
+        try {
+          const idoc = iframe.contentDocument;
+          if (idoc && 'ResizeObserver' in window) {
+            const ro = new ResizeObserver(() => resize());
+            ro.observe(idoc.documentElement);
+          }
+        } catch {
+          /* noop */
+        }
+      });
+
+      window.addEventListener('resize', resize);
+    });
+
+    // 부모 문서의 다크모드 토글을 감지해 모든 임베드에 반영
+    const allFrames = document.querySelectorAll<HTMLIFrameElement>(
+      '.grape-embed__frame iframe',
+    );
+    const themeObserver = new MutationObserver(() => {
+      allFrames.forEach(syncTheme);
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initEmbeds);
+  } else {
+    initEmbeds();
+  }
+</script>

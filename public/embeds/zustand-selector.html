@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zustand 선택자 리렌더 데모</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --panel: #f7f7f8;
+        --border: #e5e7eb;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --accent: #e64a5f;
+        --accent-soft: #fcebee;
+        --flash: rgba(230, 74, 95, 0.22);
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+      .dark {
+        --bg: #1e1e1e;
+        --panel: #252526;
+        --border: #3e3e42;
+        --text: #f5f5f5;
+        --muted: #b3b3b3;
+        --accent: #ee6a7e;
+        --accent-soft: rgba(230, 74, 95, 0.16);
+        --flash: rgba(238, 106, 126, 0.28);
+        --shadow: none;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 22px;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      .wrap {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      .lead {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 0 0 18px;
+        line-height: 1.6;
+      }
+      .lead b {
+        color: var(--accent);
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+      }
+      button {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        padding: 9px 14px;
+        border-radius: 10px;
+        transition:
+          transform 0.08s,
+          border-color 0.15s;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      @media (max-width: 460px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--panel);
+        padding: 16px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+      .card.flash::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: var(--flash);
+        animation: flash 0.6s ease-out;
+      }
+      @keyframes flash {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+      .card h3 {
+        margin: 0 0 4px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .card code {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      }
+      .value {
+        margin-top: 12px;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .renders {
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .renders b {
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="lead">
+        Zustand는 <b>선택자(selector)</b>로 구독한 슬라이스가 바뀔 때만 해당
+        컴포넌트를 리렌더합니다. 버튼을 눌러 각 슬라이스를 변경하면, 그 슬라이스를
+        구독한 카드만 리렌더됩니다.
+      </p>
+      <div class="controls">
+        <button id="incCount">count + 1</button>
+        <button id="changeText">text 변경</button>
+      </div>
+      <div class="grid">
+        <div class="card" id="cardCount">
+          <h3>&lt;CountView /&gt;</h3>
+          <code>useStore(s =&gt; s.count)</code>
+          <div class="value" id="countVal">0</div>
+          <div class="renders">리렌더 <b id="countR">1</b>회</div>
+        </div>
+        <div class="card" id="cardText">
+          <h3>&lt;TextView /&gt;</h3>
+          <code>useStore(s =&gt; s.text)</code>
+          <div class="value" id="textVal">hi</div>
+          <div class="renders">리렌더 <b id="textR">1</b>회</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 아주 작은 zustand 유사 스토어 (선택자 구독)
+      function createStore(initial) {
+        let state = initial;
+        const subs = new Set();
+        return {
+          getState: () => state,
+          setState: (partial) => {
+            state = { ...state, ...partial };
+            subs.forEach((fn) => fn());
+          },
+          subscribe: (selector, onChange) => {
+            let prev = selector(state);
+            const listener = () => {
+              const next = selector(state);
+              if (!Object.is(prev, next)) {
+                prev = next;
+                onChange(next);
+              }
+            };
+            subs.add(listener);
+            return () => subs.delete(listener);
+          },
+        };
+      }
+
+      const store = createStore({ count: 0, text: 'hi' });
+      const texts = ['hi', 'zustand', 'react', 'store', 'hello'];
+      let ti = 0;
+
+      function bind(cardId, valId, rId, selector, format) {
+        let renders = 1;
+        store.subscribe(selector, (next) => {
+          renders++;
+          document.getElementById(valId).textContent = format(next);
+          document.getElementById(rId).textContent = renders;
+          const card = document.getElementById(cardId);
+          card.classList.remove('flash');
+          void card.offsetWidth; // 리플로우로 애니메이션 재시작
+          card.classList.add('flash');
+        });
+      }
+
+      bind('cardCount', 'countVal', 'countR', (s) => s.count, String);
+      bind('cardText', 'textVal', 'textR', (s) => s.text, String);
+
+      document.getElementById('incCount').addEventListener('click', () => {
+        store.setState({ count: store.getState().count + 1 });
+      });
+      document.getElementById('changeText').addEventListener('click', () => {
+        ti = (ti + 1) % texts.length;
+        store.setState({ text: texts[ti] });
+      });
+    </script>
+  </body>
+</html>

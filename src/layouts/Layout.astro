@@ -4,19 +4,46 @@ import Header from '../components/Header.astro';
 
 interface Props {
   title?: string;
+  description?: string;
+  image?: string;
+  article?: boolean;
 }
 
-const { title = '자몽의 기술블로그' } = Astro.props;
+const SITE_NAME = '자몽의 기술블로그';
+const {
+  title = SITE_NAME,
+  description = '프론트엔드 개발 경험과 라이브러리 코드 분석을 기록하는 자몽의 기술블로그.',
+  image,
+  article = false,
+} = Astro.props;
+
+const pageTitle = title === SITE_NAME ? title : `${title} · ${SITE_NAME}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = image ? new URL(image, Astro.site).href : undefined;
 ---
 
 <!doctype html>
 <html lang="ko" class="">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <title>{title}</title>
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <!-- Open Graph / 소셜 공유 -->
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta
+      name="twitter:card"
+      content={ogImage ? 'summary_large_image' : 'summary'}
+    />
     <script is:inline>
       // 다크모드 초기화 스크립트 (플래시 방지)
       (function () {

@@ -33,8 +33,19 @@
   --color-dark-gray-800: #252526;
   --color-dark-gray-900: #1e1e1e;
 
+  /* 자몽(Grapefruit) 스케일 — 블로그 시그니처 액센트.
+     이름 "자몽"의 속살 코랄에서 도출. 텍스트/배지엔 대비를 위해 600을,
+     마크/구분선 등 장식엔 시그니처 500을 사용한다. */
+  --color-grapefruit-50: #fcebee;
+  --color-grapefruit-100: #f9d2d9;
+  --color-grapefruit-300: #f4a6b3;
+  --color-grapefruit-400: #ee6a7e;
+  --color-grapefruit-500: #e64a5f;
+  --color-grapefruit-600: #c9384f;
+  --color-grapefruit-700: #a62b41;
+
   /* 배경색 토큰 */
-  --color-bg-primary: var(--color-gray-50);
+  --color-bg-primary: #fcfbfa;
   --color-bg-secondary: var(--color-white);
   --color-bg-tertiary: var(--color-gray-100);
   --color-bg-code: var(--color-gray-100);
@@ -59,16 +70,20 @@
   --color-border-tertiary: rgba(229, 231, 235, 0.3);
   --color-border-hover: rgba(209, 213, 219, 0.5);
 
-  /* 링크 색상 토큰 */
-  --color-link: #2563eb;
-  --color-link-hover: #1d4ed8;
+  /* 링크 색상 토큰 — 자몽 코랄 (대비 위해 600/700) */
+  --color-link: var(--color-grapefruit-600);
+  --color-link-hover: var(--color-grapefruit-700);
+
+  /* 시그니처 액센트 (텍스트 대비 무관한 마크/구분선/포인트) */
+  --color-accent: var(--color-grapefruit-500);
+  --color-accent-soft: var(--color-grapefruit-50);
 
   /* 선택 영역 색상 토큰 */
-  --color-selection-bg: rgba(37, 99, 235, 0.2);
-  --color-selection-text: #1e3a8a;
+  --color-selection-bg: rgba(230, 74, 95, 0.18);
+  --color-selection-text: var(--color-grapefruit-700);
 
   /* 카테고리 배지 색상 토큰 */
-  --color-bg-category: var(--color-gray-700);
+  --color-bg-category: var(--color-grapefruit-600);
   --color-text-category: var(--color-white);
 }
 
@@ -100,15 +115,19 @@
   --color-border-tertiary: rgba(62, 62, 66, 0.6);
   --color-border-hover: rgba(80, 80, 80, 1);
 
-  /* 링크 색상 토큰 */
-  --color-link: var(--color-dark-gray-200);
-  --color-link-hover: var(--color-white);
+  /* 링크 색상 토큰 — 다크에선 밝은 자몽으로 대비 확보 */
+  --color-link: var(--color-grapefruit-400);
+  --color-link-hover: var(--color-grapefruit-300);
+
+  /* 시그니처 액센트 */
+  --color-accent: var(--color-grapefruit-400);
+  --color-accent-soft: rgba(230, 74, 95, 0.14);
 
   /* 선택 영역 색상 토큰 */
-  --color-selection-bg: rgba(158, 158, 158, 0.4);
-  --color-selection-text: var(--color-dark-gray-200);
+  --color-selection-bg: rgba(238, 106, 126, 0.28);
+  --color-selection-text: var(--color-grapefruit-300);
 
   /* 카테고리 배지 색상 토큰 */
-  --color-bg-category: var(--color-dark-gray-200);
-  --color-text-category: var(--color-dark-gray-900);
+  --color-bg-category: var(--color-grapefruit-500);
+  --color-text-category: var(--color-white);
 }

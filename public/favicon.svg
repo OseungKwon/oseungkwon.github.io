@@ -1,10 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 128 128">
-    <rect width="128" height="128" rx="24" fill="#1a1a1a"/>
-    <text x="64" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="bold" text-anchor="middle" fill="#ffffff">B</text>
-    <style>
-        @media (prefers-color-scheme: light) {
-            rect { fill: #f5f5f5; }
-            text { fill: #1a1a1a; }
-        }
-    </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="28" fill="#1a1a1a" />
+  <!-- 자몽 단면: 껍질(pith) → 속살(flesh) → 방사형 속막 -->
+  <circle cx="64" cy="64" r="46" fill="#f9d2d9" />
+  <circle cx="64" cy="64" r="39" fill="#e64a5f" />
+  <g stroke="#fdecef" stroke-width="2.6" stroke-linecap="round">
+    <line x1="64" y1="64" x2="103" y2="64" />
+    <line x1="64" y1="64" x2="91.6" y2="91.6" />
+    <line x1="64" y1="64" x2="64" y2="103" />
+    <line x1="64" y1="64" x2="36.4" y2="91.6" />
+    <line x1="64" y1="64" x2="25" y2="64" />
+    <line x1="64" y1="64" x2="36.4" y2="36.4" />
+    <line x1="64" y1="64" x2="64" y2="25" />
+    <line x1="64" y1="64" x2="91.6" y2="36.4" />
+  </g>
+  <circle cx="64" cy="64" r="6" fill="#fdecef" />
+  <style>
+    @media (prefers-color-scheme: light) {
+      rect { fill: #fcfbfa; }
+    }
+  </style>
 </svg>

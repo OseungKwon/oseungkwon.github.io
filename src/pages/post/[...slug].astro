@@ -16,7 +16,12 @@ const post = Astro.props;
 const { Content } = await post.render();
 ---
 
-<Layout>
+<Layout
+  title={post.data.title}
+  description={post.data.description}
+  image={post.data.heroImage?.src}
+  article={true}
+>
   <div class="relative">
     <article class="mx-auto max-w-3xl">
       <div class="mb-12 text-center">
@@ -32,12 +37,14 @@ const { Content } = await post.render();
           }
         </div>
         <h1
-          class="mb-6 text-4xl font-bold tracking-tight text-token-primary sm:text-5xl break-keep"
+          class="mb-6 text-4xl font-bold tracking-tight text-token-primary sm:text-5xl break-keep break-words"
           style="scroll-margin-top: 4rem;"
         >
           {post.data.title}
         </h1>
-        <hr class="mx-auto my-8 h-px w-24 border-0 border-token-primary" />
+        <hr
+          class="mx-auto my-8 h-1 w-16 rounded-full border-0 bg-token-accent"
+        />
       </div>
 
       {
