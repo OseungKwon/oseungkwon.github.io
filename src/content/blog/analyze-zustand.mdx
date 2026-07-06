@@ -7,8 +7,6 @@ category: 'tech'
 tags: ['Zustand', '상태 관리 라이브러리', 'React', 'useSyncExternalStore']
 ---
 
-import Embed from '@components/Embed.astro';
-
 `Zustand`는 작고 빠르며 확장 가능한 React 프로젝트에서 사용하는 상태 관리 라이브러리입니다.
 
 이전에 `redux`, `recoil` 등등의 상태 관리 라이브러리를 써왔지만, `redux`의 경우 보일러 플레이트가 많고 복잡하다는 단점이 있고, `recoil`은 더 이상 라이브러리의 업데이트가 이뤄지지 않는다는 단점이 있었습니다.
@@ -276,13 +274,6 @@ const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?
 ```
 
 따라서 외부 스토어를 구독해 스토어에 있는 데이터의 스냅샷을 반환하며, React는 컴포넌트가 스토어를 구독한 상태로 유지하고 변경 사항이 있을 때 다시 렌더링합니다.
-
-선택자로 구독한 슬라이스가 바뀔 때만 컴포넌트가 리렌더되는 동작을 아래에서 직접 확인할 수 있습니다. 각 버튼은 서로 다른 슬라이스를 변경하며, 그 슬라이스를 구독한 컴포넌트만 리렌더됩니다.
-
-<Embed
-  src="/embeds/zustand-selector.html"
-  title="선택자로 구독한 슬라이스가 바뀐 컴포넌트만 리렌더되는 모습"
-/>
 
 ## 참고
 
