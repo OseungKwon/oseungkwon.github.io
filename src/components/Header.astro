@@ -13,6 +13,39 @@
       href="/"
       class="flex items-center gap-2 group rounded-lg px-3 py-1.5 -mx-3 -my-1.5 transition-all duration-200 group-hover:bg-token-hover"
     >
+      <svg
+        id="grapefruit-progress"
+        class="h-6 w-6 shrink-0"
+        viewBox="0 0 128 128"
+        aria-hidden="true"
+        role="img"
+      >
+        <!-- 8조각 부채꼴: 스크롤 진행도에 따라 12시부터 시계방향으로 채워진다 -->
+        <g
+          stroke="var(--color-grapefruit-300)"
+          stroke-width="2.4"
+          stroke-linejoin="round"
+        >
+          <path class="gf-wedge" d="M64 64 L64 19 A45 45 0 0 1 95.82 32.18 Z"
+          ></path>
+          <path class="gf-wedge" d="M64 64 L95.82 32.18 A45 45 0 0 1 109 64 Z"
+          ></path>
+          <path class="gf-wedge" d="M64 64 L109 64 A45 45 0 0 1 95.82 95.82 Z"
+          ></path>
+          <path class="gf-wedge" d="M64 64 L95.82 95.82 A45 45 0 0 1 64 109 Z"
+          ></path>
+          <path class="gf-wedge" d="M64 64 L64 109 A45 45 0 0 1 32.18 95.82 Z"
+          ></path>
+          <path class="gf-wedge" d="M64 64 L32.18 95.82 A45 45 0 0 1 19 64 Z"
+          ></path>
+          <path class="gf-wedge" d="M64 64 L19 64 A45 45 0 0 1 32.18 32.18 Z"
+          ></path>
+          <path class="gf-wedge" d="M64 64 L32.18 32.18 A45 45 0 0 1 64 19 Z"
+          ></path>
+        </g>
+        <circle cx="64" cy="64" r="5" fill="var(--color-grapefruit-300)"
+        ></circle>
+      </svg>
       <span
         class="text-xl font-bold tracking-tight text-token-primary transition-all duration-300 group-hover:text-token-secondary"
         >자몽의 기술블로그</span
@@ -62,3 +95,83 @@
     </nav>
   </div>
 </header>
+
+<style>
+  /* 부채꼴은 기본적으로 비어 있고(아웃라인만), 채워지면 부드러운 코랄로 */
+  .gf-wedge {
+    fill: transparent;
+  }
+  .gf-wedge.is-filled {
+    fill: var(--color-grapefruit-400);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .gf-wedge {
+      transition: fill 0.4s ease;
+    }
+  }
+</style>
+
+<script>
+  // 페이지 스크롤 진행도를 자몽 아이콘 8조각으로 시각화한다.
+  function initGrapefruitProgress() {
+    const wedges = document.querySelectorAll<SVGPathElement>(
+      '#grapefruit-progress .gf-wedge',
+    );
+    if (!wedges.length) return;
+    const total = wedges.length;
+
+    // maxScroll은 레이아웃을 읽어야 하므로 스크롤마다 계산하지 않고 캐싱한다.
+    // 스크롤 프레임에서는 window.scrollY만 읽어 리플로우를 피한다.
+    let maxScroll = 0;
+    let lastFilled = -1;
+    let ticking = false;
+
+    function measure() {
+      const doc = document.documentElement;
+      maxScroll = doc.scrollHeight - doc.clientHeight;
+    }
+
+    function render() {
+      ticking = false;
+      const progress = maxScroll > 0 ? window.scrollY / maxScroll : 0;
+      const filled = Math.min(total, Math.max(0, Math.round(progress * total)));
+      if (filled === lastFilled) return; // 조각 수가 그대로면 DOM을 건드리지 않는다
+
+      // 처음엔 전체를, 이후엔 바뀐 구간의 조각만 토글한다.
+      const start = lastFilled < 0 ? 0 : Math.min(filled, lastFilled);
+      const end = lastFilled < 0 ? total : Math.max(filled, lastFilled);
+      for (let i = start; i < end; i++) {
+        wedges[i].classList.toggle('is-filled', i < filled);
+      }
+      lastFilled = filled;
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(render);
+      }
+    }
+
+    function onResize() {
+      measure();
+      render();
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
+    // 이미지 로딩 등으로 문서 높이가 바뀌면 기준값을 다시 잡는다.
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(onResize).observe(document.body);
+    }
+
+    measure();
+    render();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGrapefruitProgress);
+  } else {
+    initGrapefruitProgress();
+  }
+</script>

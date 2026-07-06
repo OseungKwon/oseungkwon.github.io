@@ -11,40 +11,6 @@ const posts = (await getCollection('blog')).sort(
 <Layout>
   <!-- 히어로: 자몽 정체성 + 콘텐츠 thesis -->
   <section class="pt-6 pb-2 sm:pt-10">
-    <div class="mb-6 flex items-center gap-3">
-      <svg
-        class="h-11 w-11 shrink-0"
-        viewBox="0 0 128 128"
-        aria-hidden="true"
-        role="img"
-      >
-        <circle cx="64" cy="64" r="46" fill="var(--color-grapefruit-100)"
-        ></circle>
-        <circle cx="64" cy="64" r="39" fill="var(--color-accent)"></circle>
-        <g
-          stroke="var(--color-grapefruit-50)"
-          stroke-width="2.6"
-          stroke-linecap="round"
-        >
-          <line x1="64" y1="64" x2="103" y2="64"></line>
-          <line x1="64" y1="64" x2="91.6" y2="91.6"></line>
-          <line x1="64" y1="64" x2="64" y2="103"></line>
-          <line x1="64" y1="64" x2="36.4" y2="91.6"></line>
-          <line x1="64" y1="64" x2="25" y2="64"></line>
-          <line x1="64" y1="64" x2="36.4" y2="36.4"></line>
-          <line x1="64" y1="64" x2="64" y2="25"></line>
-          <line x1="64" y1="64" x2="91.6" y2="36.4"></line>
-        </g>
-        <circle cx="64" cy="64" r="6" fill="var(--color-grapefruit-50)"
-        ></circle>
-      </svg>
-      <span
-        class="text-sm font-bold uppercase tracking-[0.18em] text-token-accent"
-      >
-        자몽의 기술블로그
-      </span>
-    </div>
-
     <h1
       class="max-w-2xl text-4xl font-bold leading-[1.15] tracking-tight text-token-primary break-keep sm:text-5xl"
     >
@@ -58,10 +24,10 @@ const posts = (await getCollection('blog')).sort(
     </p>
   </section>
 
-  <div class="mt-14 space-y-4">
+  <div class="mt-20 border-t-[0.5px] border-token-primary pt-6">
     <div class="flex items-baseline gap-3">
       <h2
-        class="text-xs font-bold uppercase tracking-[0.18em] text-token-tertiary"
+        class="text-xs font-bold uppercase tracking-[0.18em] text-token-secondary"
       >
         최근 글
       </h2>

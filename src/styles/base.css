@@ -11,6 +11,7 @@ html {
   /* CSS 변수 변경 시 즉시 반영되도록 transition 제거 */
   transition: none;
   color-scheme: light;
+  overscroll-behavior-y: none;
 }
 
 html.dark {

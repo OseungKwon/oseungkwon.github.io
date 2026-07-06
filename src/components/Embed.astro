@@ -2,7 +2,7 @@
 /**
  * Embed — 자체 완결 HTML(주로 AI가 생성한 시각화)을 iframe으로 격리해 삽입한다.
  *
- * 왜 iframe인가: AI가 만든 HTML은 자체 <style>/<script>를 가진 완결 문서라
+ * 왜 iframe인가: AI가 만든 HTML은 자체 style/script 태그를 가진 완결 문서라
  * 본문에 인라인하면 블로그 전역 스타일(prose/tailwind)과 충돌한다. iframe은
  * 스타일·스크립트를 완전히 격리하므로 AI 결과물을 손대지 않고 그대로 쓸 수 있다.
  *
