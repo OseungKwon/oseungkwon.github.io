@@ -1,148 +1,92 @@
 ---
-// TableOfContents component - Notion-style TOC for blog posts
+// TableOfContents component - 본문 헤딩 기반 목차 (우측 고정)
 ---
 
 <aside
   id="table-of-contents"
-  class="fixed top-[120px] right-[max(0px,calc((100vw-1280px)/2))] w-60 max-h-[calc(100vh-160px)] overflow-y-auto px-6 hidden xl:block toc-scrollbar"
+  class="fixed top-[120px] right-[max(0px,calc((100vw-1280px)/2))] hidden max-h-[calc(100vh-160px)] w-60 overflow-y-auto px-6 toc-scrollbar xl:block"
 >
-  <nav class="sticky top-0">
-    <ul id="toc-list" class="list-none p-0 m-0"></ul>
+  <nav>
+    <p class="toc-label">목차</p>
+    <ul id="toc-list" class="toc-rail"></ul>
   </nav>
 </aside>
 
 <script>
-  // TOC 생성 및 관리
   function initTableOfContents() {
-    const article = document.querySelector('article');
+    const toc = document.getElementById('table-of-contents');
     const tocList = document.getElementById('toc-list');
+    // 페이지 제목(article 직속 h1)은 제외하고 본문(.prose) 헤딩만 대상으로 한다.
+    const content = document.querySelector('article .prose');
 
-    if (!article || !tocList) return;
+    if (!toc || !tocList || !content) return;
 
-    // h1, h2, h3 헤딩 요소 찾기
-    const headings = article.querySelectorAll(
-      'h1, h2, h3',
-    ) as NodeListOf<HTMLElement>;
+    const headings = Array.from(
+      content.querySelectorAll('h1, h2, h3'),
+    ) as HTMLElement[];
 
     if (headings.length === 0) {
-      // 헤딩이 없으면 TOC 숨기기
-      const tocContainer = document.getElementById('table-of-contents');
-      if (tocContainer) tocContainer.style.display = 'none';
+      toc.style.display = 'none';
       return;
     }
 
-    // TOC 아이템 생성
+    // 글마다 최상위 헤딩 레벨이 다르므로(h1 또는 h2), 문서 내 최소 레벨을
+    // 기준으로 상대 깊이를 계산해 들여쓰기를 정규화한다.
+    const levelOf = (el: HTMLElement) => Number(el.tagName[1]);
+    const minLevel = Math.min(...headings.map(levelOf));
+
+    const links: HTMLAnchorElement[] = [];
+
     headings.forEach((heading, index) => {
-      const headingElement = heading as HTMLElement;
+      if (!heading.id) heading.id = `heading-${index}`;
 
-      // 헤딩에 ID 추가 (없는 경우)
-      if (!headingElement.id) {
-        headingElement.id = `heading-${index}`;
-      }
-
-      const level = headingElement.tagName.toLowerCase();
-      const text = headingElement.textContent || '';
+      const depth = Math.min(levelOf(heading) - minLevel, 2);
 
       const li = document.createElement('li');
-      li.className = `toc-item toc-${level}`;
-
       const a = document.createElement('a');
-      a.href = `#${headingElement.id}`;
-      a.textContent = text;
+      a.href = `#${heading.id}`;
+      a.textContent = heading.textContent || '';
+      a.className = `toc-link toc-depth-${depth}`;
 
-      // Tailwind 클래스 설정 (디자인 토큰 사용)
-      const baseClasses =
-        'block py-0 pl-4 text-sm leading-6 no-underline transition-colors duration-150';
-      const levelClasses = {
-        h1: 'font-semibold pl-4',
-        h2: 'pl-6',
-        h3: 'pl-8 text-[0.8125rem]',
-      };
-
-      // 기본 스타일 적용
-      a.style.color = 'var(--color-text-secondary)';
-      a.className = `${baseClasses} ${levelClasses[level as keyof typeof levelClasses] || ''}`;
-
-      // 호버 시 색상만 진하게 (active 상태가 아닐 때만)
-      a.addEventListener('mouseenter', () => {
-        if (!a.classList.contains('active')) {
-          a.style.color = 'var(--color-text-primary)';
-        }
-      });
-      a.addEventListener('mouseleave', () => {
-        if (!a.classList.contains('active')) {
-          a.style.color = 'var(--color-text-secondary)';
-        }
-      });
-
-      // 클릭 시 바로 이동
       a.addEventListener('click', (e) => {
         e.preventDefault();
-        headingElement.scrollIntoView({ behavior: 'auto', block: 'start' });
-
-        // URL 업데이트
-        history.pushState(null, '', `#${headingElement.id}`);
+        heading.scrollIntoView({ behavior: 'auto', block: 'start' });
+        history.pushState(null, '', `#${heading.id}`);
       });
 
       li.appendChild(a);
       tocList.appendChild(li);
+      links.push(a);
     });
 
     // 스크롤 시 활성 섹션 하이라이트
     let ticking = false;
 
     function updateActiveSection() {
-      const scrollPosition = window.scrollY + 100; // 오프셋
+      const scrollPosition = window.scrollY + 120;
 
-      let currentHeading: HTMLElement | null = null;
-      Array.from(headings).forEach((heading) => {
-        const headingElement = heading as HTMLElement;
-        const top = headingElement.offsetTop;
-        if (scrollPosition >= top) {
-          currentHeading = headingElement;
-        }
+      let activeIndex = 0;
+      headings.forEach((heading, i) => {
+        if (scrollPosition >= heading.offsetTop) activeIndex = i;
       });
 
-      // 모든 링크에서 active 클래스 제거 및 기본 색상 복원
-      document.querySelectorAll('a[href^="#"]').forEach((link) => {
-        if (link instanceof HTMLElement) {
-          link.classList.remove('active');
-          link.style.color = 'var(--color-text-secondary)';
-        }
+      links.forEach((link, i) => {
+        link.classList.toggle('active', i === activeIndex);
       });
-
-      // 현재 섹션 링크에 active 클래스 추가 (색상만 변경, 크기 변경 없음)
-      if (currentHeading) {
-        const headingId = (currentHeading as HTMLElement).id;
-        if (headingId) {
-          const activeLink = document.querySelector(
-            `a[href="#${headingId}"]`,
-          ) as HTMLElement | null;
-          if (activeLink) {
-            activeLink.classList.add('active');
-            // 활성 섹션은 시그니처 자몽 액센트로 표시
-            activeLink.style.color = 'var(--color-accent)';
-          }
-        }
-      }
 
       ticking = false;
     }
 
     window.addEventListener('scroll', () => {
       if (!ticking) {
-        window.requestAnimationFrame(() => {
-          updateActiveSection();
-        });
+        window.requestAnimationFrame(updateActiveSection);
         ticking = true;
       }
     });
 
-    // 초기 활성 섹션 설정
     updateActiveSection();
   }
 
-  // DOM 로드 후 초기화
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initTableOfContents);
   } else {
@@ -150,27 +94,76 @@
   }
 </script>
 
-<style>
-  /* 스크롤바 스타일링 (디자인 토큰 사용) */
+<style is:global>
+  /* 목차 레이블 — 홈의 "최근 글" 라벨과 동일한 트래킹 스타일로 통일 */
+  #table-of-contents .toc-label {
+    margin: 0 0 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-tertiary);
+  }
+
+  /* 왼쪽 헤어라인 레일 */
+  #table-of-contents .toc-rail {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--color-border-primary);
+  }
+
+  #table-of-contents .toc-link {
+    display: block;
+    margin-left: -1px; /* active 보더가 레일 위에 겹치도록 */
+    border-left: 2px solid transparent;
+    padding: 0.375rem 0.5rem 0.375rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  /* 깊이별 들여쓰기 (레일 기준 상대 정규화) */
+  #table-of-contents .toc-depth-0 {
+    padding-left: 1rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  #table-of-contents .toc-depth-1 {
+    padding-left: 1.75rem;
+  }
+  #table-of-contents .toc-depth-2 {
+    padding-left: 2.5rem;
+    font-size: 0.75rem;
+  }
+
+  #table-of-contents .toc-link:hover {
+    color: var(--color-text-primary);
+  }
+
+  /* 활성 항목 — 시그니처 자몽 액센트 (텍스트 + 레일 마커) */
+  #table-of-contents .toc-link.active {
+    color: var(--color-accent);
+    border-left-color: var(--color-accent);
+    font-weight: 600;
+  }
+
+  /* 스크롤바 (디자인 토큰) */
   .toc-scrollbar::-webkit-scrollbar {
     width: 4px;
   }
-
   .toc-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
-
   .toc-scrollbar::-webkit-scrollbar-thumb {
     background: var(--color-border-primary);
     border-radius: 2px;
   }
-
   .toc-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-tertiary);
-  }
-
-  /* 활성 항목은 자몽 액센트 */
-  :global(.dark) .toc-link.active {
-    color: var(--color-accent) !important;
   }
 </style>
