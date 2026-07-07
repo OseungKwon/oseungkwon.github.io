@@ -6,20 +6,57 @@ interface Props {
   title?: string;
   description?: string;
   image?: string;
+  imageWidth?: number;
+  imageHeight?: number;
   article?: boolean;
+  publishedTime?: string;
+  modifiedTime?: string;
+  tags?: string[];
 }
 
 const SITE_NAME = '자몽의 기술블로그';
+const AUTHOR = '자몽';
 const {
   title = SITE_NAME,
   description = '프론트엔드 개발 경험과 라이브러리 코드 분석을 기록하는 자몽의 기술블로그.',
   image,
+  imageWidth,
+  imageHeight,
   article = false,
+  publishedTime,
+  modifiedTime,
+  tags = [],
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? title : `${title} · ${SITE_NAME}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = image ? new URL(image, Astro.site).href : undefined;
+
+// JSON-LD 구조화 데이터
+const jsonLd =
+  article
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: title,
+        description,
+        ...(ogImage ? { image: ogImage } : {}),
+        ...(publishedTime ? { datePublished: publishedTime } : {}),
+        dateModified: modifiedTime ?? publishedTime,
+        author: { '@type': 'Person', name: AUTHOR, url: Astro.site?.href },
+        publisher: { '@type': 'Organization', name: SITE_NAME },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': canonical.href },
+        ...(tags.length ? { keywords: tags.join(', ') } : {}),
+        inLanguage: 'ko',
+      }
+    : {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: SITE_NAME,
+        url: Astro.site?.href,
+        description,
+        inLanguage: 'ko',
+      };
 ---
 
 <!doctype html>
@@ -29,9 +66,17 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#fbfcfe" />
+    <meta name="author" content={AUTHOR} />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={SITE_NAME}
+      href={new URL('rss.xml', Astro.site)}
+    />
 
     <!-- Open Graph / 소셜 공유 -->
     <meta property="og:type" content={article ? 'article' : 'website'} />
@@ -39,10 +84,43 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content="ko_KR" />
     {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogImage && <meta property="og:image:alt" content={title} />}
+    {imageWidth && <meta property="og:image:width" content={String(imageWidth)} />}
+    {imageHeight && <meta property="og:image:height" content={String(imageHeight)} />}
+    {
+      article && publishedTime && (
+        <meta property="article:published_time" content={publishedTime} />
+      )
+    }
+    {
+      article && (modifiedTime || publishedTime) && (
+        <meta
+          property="article:modified_time"
+          content={modifiedTime ?? publishedTime}
+        />
+      )
+    }
+    {article && <meta property="article:author" content={AUTHOR} />}
+    {
+      article &&
+        tags.map((tag) => <meta property="article:tag" content={tag} />)
+    }
+
+    <!-- Twitter -->
     <meta
       name="twitter:card"
       content={ogImage ? 'summary_large_image' : 'summary'}
+    />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+
+    <!-- 구조화 데이터 (JSON-LD) -->
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify(jsonLd)}
     />
     <script is:inline>
       // 다크모드 초기화 스크립트 (플래시 방지)

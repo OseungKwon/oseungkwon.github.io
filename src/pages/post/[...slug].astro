@@ -20,7 +20,12 @@ const { Content } = await post.render();
   title={post.data.title}
   description={post.data.description}
   image={post.data.heroImage?.src}
+  imageWidth={post.data.heroImage?.width}
+  imageHeight={post.data.heroImage?.height}
   article={true}
+  publishedTime={post.data.pubDate.toISOString()}
+  modifiedTime={post.data.updatedDate?.toISOString()}
+  tags={post.data.tags}
 >
   <div class="relative">
     <article class="mx-auto max-w-3xl">
@@ -54,7 +59,7 @@ const { Content } = await post.render();
               width={1020}
               height={510}
               src={post.data.heroImage.src}
-              alt=""
+              alt={post.data.title}
               class="w-full object-cover"
             />
           </div>
