@@ -1,9 +1,12 @@
 ---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
 interface Props {
   title: string;
   description: string;
   date: string;
-  image: string;
+  image?: ImageMetadata;
   href: string;
   category: 'book' | 'tech';
   tags: string[];
@@ -24,11 +27,21 @@ const categoryLabels = {
   <div
     class="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-token-image border border-token-secondary transition-all duration-200 group-hover:border-token-hover order-first sm:order-last sm:aspect-auto sm:h-40 sm:w-64 sm:rounded-3xl"
   >
-    <img
-      src={image}
-      alt={title}
-      class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-    />
+    {
+      image && (
+        <Image
+          src={image}
+          alt={title}
+          widths={[256, 384, 512, 768]}
+          sizes="(min-width: 640px) 256px, 100vw"
+          format="webp"
+          quality={80}
+          loading="lazy"
+          decoding="async"
+          class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+      )
+    }
   </div>
   <div class="flex flex-1 flex-col gap-4 pr-8">
     <div class="flex items-center gap-3 flex-wrap">

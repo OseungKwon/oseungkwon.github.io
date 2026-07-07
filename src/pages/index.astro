@@ -44,7 +44,7 @@ const posts = (await getCollection('blog')).sort(
               month: 'short',
               day: 'numeric',
             })}
-            image={post.data.heroImage?.src ?? ''}
+            image={post.data.heroImage}
             href={`${import.meta.env.BASE_URL}post/${post.slug}/`}
             category={post.data.category}
             tags={post.data.tags}

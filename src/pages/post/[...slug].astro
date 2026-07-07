@@ -1,5 +1,6 @@
 ---
 import { type CollectionEntry, getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 
@@ -55,11 +56,15 @@ const { Content } = await post.render();
       {
         post.data.heroImage && (
           <div class="mb-12 overflow-hidden rounded-3xl shadow-sm">
-            <img
-              width={1020}
-              height={510}
-              src={post.data.heroImage.src}
+            <Image
+              src={post.data.heroImage}
               alt={post.data.title}
+              widths={[768, 1152, 1536]}
+              sizes="(min-width: 768px) 768px, 100vw"
+              format="webp"
+              quality={80}
+              loading="eager"
+              fetchpriority="high"
               class="w-full object-cover"
             />
           </div>
