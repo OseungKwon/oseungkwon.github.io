@@ -102,6 +102,42 @@
     color: var(--color-text-code-block) !important;
   }
 
+  /* 표 스타일 — 화면 폭을 넘기면 페이지가 아니라 표 자체가 가로 스크롤된다 */
+  .prose .table-wrapper {
+    @apply my-8 overflow-x-auto rounded-2xl;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 좁은 표는 컨테이너를 꽉 채우고, 넓은 표는 내용 폭만큼 늘어나 래퍼 안에서 스크롤된다 */
+  .prose .table-wrapper table {
+    @apply my-0 w-max min-w-full border-collapse text-[15px];
+  }
+
+  /* 셀 공통: 한글은 글자 단위가 아니라 단어 단위로 줄바꿈해 가독성을 확보한다 */
+  .prose .table-wrapper th,
+  .prose .table-wrapper td {
+    @apply px-4 py-3 text-left align-top;
+    word-break: keep-all;
+    overflow-wrap: normal;
+    border-bottom: 1px solid var(--color-border-primary) !important;
+  }
+
+  /* 헤더: 흐린 기본색 대신 기본 텍스트색 + 옅은 배경으로 대비를 준다. 짧은 라벨은 줄바꿈하지 않는다 */
+  .prose .table-wrapper th {
+    @apply font-semibold whitespace-nowrap;
+    color: var(--color-text-primary) !important;
+    background-color: var(--color-bg-tertiary) !important;
+  }
+
+  .prose .table-wrapper td {
+    color: var(--color-text-secondary) !important;
+  }
+
+  /* 마지막 행의 아래 구분선 제거 */
+  .prose .table-wrapper tr:last-child td {
+    border-bottom: 0 !important;
+  }
+
   /* 이미지 스타일 */
   .prose img {
     @apply my-12 rounded-3xl shadow-sm;
