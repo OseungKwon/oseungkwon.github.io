@@ -2,6 +2,7 @@
 title: 'Figma MCP가 준 코드, 정말 디자인 시스템을 쓰고 있나요?'
 description: 'Figma MCP가 공통 컴포넌트를 div로 떨어뜨려 토큰이 낭비되던 문제를, API로 속성을 되찾아 정리하는 훅으로 해결한 과정.'
 pubDate: '2026.07.08'
+heroImage: '@assets/post/figma-mcp-design-system-hook.png'
 category: 'tech'
 tags: ['Figma MCP', 'MCP', '디자인 시스템', 'AI', 'Claude Code', '프론트엔드']
 ---
