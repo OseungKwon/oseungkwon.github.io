@@ -104,8 +104,10 @@
   .gf-wedge.is-filled {
     fill: var(--color-grapefruit-400);
   }
+  /* 전환은 초기화가 끝난(data-ready) 뒤에만 건다.
+     페이지 진입 시 초기 채움이 애니메이션으로 쓸려 보이는 것을 막는다. */
   @media (prefers-reduced-motion: no-preference) {
-    .gf-wedge {
+    #grapefruit-progress[data-ready] .gf-wedge {
       transition: fill 0.4s ease;
     }
   }
@@ -114,10 +116,11 @@
 <script>
   // 페이지 스크롤 진행도를 자몽 아이콘 8조각으로 시각화한다.
   function initGrapefruitProgress() {
-    const wedges = document.querySelectorAll<SVGPathElement>(
-      '#grapefruit-progress .gf-wedge',
-    );
-    if (!wedges.length) return;
+    const svg = document.getElementById('grapefruit-progress');
+    const wedges = svg
+      ? svg.querySelectorAll<SVGPathElement>('.gf-wedge')
+      : null;
+    if (!svg || !wedges || !wedges.length) return;
     const total = wedges.length;
 
     // maxScroll은 레이아웃을 읽어야 하므로 스크롤마다 계산하지 않고 캐싱한다.
@@ -146,27 +149,34 @@
       lastFilled = filled;
     }
 
-    function onScroll() {
+    function schedule() {
       if (!ticking) {
         ticking = true;
         window.requestAnimationFrame(render);
       }
     }
 
-    function onResize() {
+    // 레이아웃을 다시 재는 작업(measure)은 리플로우를 유발하므로 rAF로 묶는다.
+    function remeasure() {
+      measure();
+      schedule();
+    }
+
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', remeasure, { passive: true });
+    // 폰트·이미지 로딩으로 문서 높이가 확정되면 한 번 더 잰다.
+    // body에 붙던 ResizeObserver는 진입 시 반복 발화하며 레이아웃 스래싱을 일으켜 걷어냈다.
+    window.addEventListener('load', remeasure, { passive: true });
+
+    // 최초 계산과 렌더는 첫 페인트 이후로 미뤄 페이지 진입 렌더와 경쟁하지 않게 한다.
+    window.requestAnimationFrame(() => {
       measure();
       render();
-    }
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize, { passive: true });
-    // 이미지 로딩 등으로 문서 높이가 바뀌면 기준값을 다시 잡는다.
-    if ('ResizeObserver' in window) {
-      new ResizeObserver(onResize).observe(document.body);
-    }
-
-    measure();
-    render();
+      // 초기 채움을 전환 없이 그린 뒤, 다음 프레임부터 전환을 허용한다.
+      window.requestAnimationFrame(() => {
+        svg.dataset.ready = 'true';
+      });
+    });
   }
 
   if (document.readyState === 'loading') {
