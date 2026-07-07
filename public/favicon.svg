@@ -1,19 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <rect width="128" height="128" rx="28" fill="#1a1a1a" />
-  <!-- 자몽 단면: 껍질(pith) → 속살(flesh) → 방사형 속막 -->
-  <circle cx="64" cy="64" r="46" fill="#f9d2d9" />
-  <circle cx="64" cy="64" r="39" fill="#e64a5f" />
-  <g stroke="#fdecef" stroke-width="2.6" stroke-linecap="round">
-    <line x1="64" y1="64" x2="103" y2="64" />
-    <line x1="64" y1="64" x2="91.6" y2="91.6" />
-    <line x1="64" y1="64" x2="64" y2="103" />
-    <line x1="64" y1="64" x2="36.4" y2="91.6" />
-    <line x1="64" y1="64" x2="25" y2="64" />
-    <line x1="64" y1="64" x2="36.4" y2="36.4" />
-    <line x1="64" y1="64" x2="64" y2="25" />
-    <line x1="64" y1="64" x2="91.6" y2="36.4" />
+  <!-- 헤더 로고와 같은 8조각 부채꼴 자몽. 아이콘에 꽉 차도록 반지름을 키우고 전부 채운다 -->
+  <g fill="#ee6a7e" stroke="#f4a6b3" stroke-width="3" stroke-linejoin="round">
+    <path d="M64 64 L64 0 A64 64 0 0 1 109.26 18.74 Z" />
+    <path d="M64 64 L109.26 18.74 A64 64 0 0 1 128 64 Z" />
+    <path d="M64 64 L128 64 A64 64 0 0 1 109.26 109.26 Z" />
+    <path d="M64 64 L109.26 109.26 A64 64 0 0 1 64 128 Z" />
+    <path d="M64 64 L64 128 A64 64 0 0 1 18.74 109.26 Z" />
+    <path d="M64 64 L18.74 109.26 A64 64 0 0 1 0 64 Z" />
+    <path d="M64 64 L0 64 A64 64 0 0 1 18.74 18.74 Z" />
+    <path d="M64 64 L18.74 18.74 A64 64 0 0 1 64 0 Z" />
   </g>
-  <circle cx="64" cy="64" r="6" fill="#fdecef" />
+  <circle cx="64" cy="64" r="7" fill="#f4a6b3" />
   <style>
     @media (prefers-color-scheme: light) {
       rect { fill: #fcfbfa; }
