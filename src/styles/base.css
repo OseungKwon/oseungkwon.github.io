@@ -21,17 +21,29 @@ html.dark {
 body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
+  overscroll-behavior: none;
+  @apply antialiased;
+}
+
+/* 배경 그라데이션을 고정 레이어로 분리한다.
+   background-attachment: fixed는 스크롤할 때마다 배경 전체를 메인 스레드에서
+   다시 그려 간헐적으로 프레임을 떨어뜨린다(드득거림). position: fixed 레이어는
+   컴포지터가 별도 레이어로 캐싱하므로, 같은 비주얼을 유지하면서 스크롤 중
+   리페인트를 없앤다. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image: radial-gradient(
     circle at 50% 0%,
     var(--color-bg-secondary) 0%,
     var(--color-bg-tertiary) 100%
   );
-  background-attachment: fixed;
-  overscroll-behavior: none;
-  @apply antialiased;
 }
 
-html.dark body {
+html.dark body::before {
   background-image: radial-gradient(
     circle at 50% 0%,
     var(--color-bg-primary) 0%,
