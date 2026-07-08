@@ -12,68 +12,38 @@ const formatDate = (d: Date) =>
   d.toLocaleDateString('en-us', { year: 'numeric', month: 'short', day: 'numeric' });
 
 const [featured, ...rest] = posts;
-
-// 히어로 메타: 총 글 수와 최신 발행 연·월.
-const latestYm = featured
-  ? `${featured.data.pubDate.getFullYear()}.${String(
-      featured.data.pubDate.getMonth() + 1,
-    ).padStart(2, '0')}`
-  : '';
 ---
 
 <Layout>
-  <!-- 히어로: 타이포 중심 편집형 마스트헤드.
-       왼쪽에 큰 헤드라인, 오른쪽에 설명·메타를 두어 폭을 균형 있게 채운다. -->
-  <section class="pt-2 pb-2 sm:pt-6">
-    <p
-      class="font-mono text-xs font-medium uppercase tracking-[0.16em] text-token-accent"
+  <!-- 히어로: 한 줄 소개. 라이브러리 내부 분석과 아키텍처 설계라는 두 축을
+       병렬 문장으로 담담하게 말한다. 무게는 아래 카드로. -->
+  <section class="pt-7 pb-1 sm:pt-11">
+    <h1
+      class="max-w-4xl text-[17px] font-semibold leading-[1.6] tracking-tight text-token-primary break-keep sm:text-[19px]"
     >
-      프론트엔드 · 아키텍처 · 라이브러리 내부
-    </p>
-    <div
-      class="mt-5 grid gap-6 md:grid-cols-[1.1fr_0.9fr] md:items-end md:gap-14"
-    >
-      <h1
-        class="text-4xl font-bold leading-[1.12] tracking-tight text-token-primary break-keep sm:text-5xl md:text-6xl"
-      >
-        코드를 뜯어보고<br />구조를 고민한 기록.
-      </h1>
-      <div class="md:pb-1.5">
-        <p class="text-[17px] leading-relaxed text-token-secondary break-keep">
-          라이브러리 내부 동작부터 프론트엔드 아키텍처 설계까지, 직접 파고든
-          내용을 정리합니다.
-        </p>
-        <p
-          class="mt-4 flex items-center gap-2 font-mono text-xs font-medium tracking-wide text-token-date"
-        >
-          <span class="text-token-accent">{posts.length}</span>
-          <span>편의 글</span>
-          {
-            latestYm && (
-              <>
-                <span class="text-token-tertiary">·</span>
-                <span>최신 {latestYm}</span>
-              </>
-            )
-          }
-        </p>
-      </div>
-    </div>
+      라이브러리가 실제로 어떻게 동작하는지 내부를 뜯어보고, 프론트엔드
+      아키텍처를 어떻게 설계할지 고민합니다
+    </h1>
   </section>
 
-  <!-- 최신 글: 카드형 featured로 위계를 준다 -->
+  <!-- 최신 글: 카드형 featured. '지난 글'과 짝을 이루는 라벨을 달아
+       히어로에 논지를 넘긴 뒤 카드는 시퀀스의 첫 항목으로 읽히게 한다. -->
   {
     featured && (
-      <div class="mt-10 sm:mt-14">
-        <FeaturedPost
-          title={featured.data.title}
-          description={featured.data.description}
-          date={formatDate(featured.data.pubDate)}
-          image={featured.data.heroImage}
-          href={`${import.meta.env.BASE_URL}post/${featured.slug}/`}
-          category={featured.data.category}
-          tags={featured.data.tags}
-        />
+      <div class="mt-9 sm:mt-12">
+        <h2 class="mb-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">
+          최신 글
+        </h2>
+        <div class="featured-halo featured-reveal">
+          <FeaturedPost
+            title={featured.data.title}
+            description={featured.data.description}
+            date={formatDate(featured.data.pubDate)}
+            href={`${import.meta.env.BASE_URL}post/${featured.slug}/`}
+            category={featured.data.category}
+            tags={featured.data.tags}
+          />
+        </div>
       </div>
     )
   }
@@ -87,7 +57,7 @@ const latestYm = featured
       </h2>
       <span class="font-mono text-xs font-bold text-token-accent">{rest.length}</span>
     </div>
-    <div class="flex flex-col">
+    <div class="mt-4 flex flex-col gap-3">
       {
         rest.map((post) => (
           <PostListItem

@@ -146,8 +146,8 @@
   /* 인용구 스타일 */
   .prose blockquote {
     @apply pl-6 italic;
-    border-left: 4px solid var(--color-border-primary) !important;
-    color: var(--color-text-tertiary) !important;
+    border-left: 3px solid var(--color-accent) !important;
+    color: var(--color-text-secondary) !important;
   }
 
   /* blockquote 내부 따옴표 제거 */

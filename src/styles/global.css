@@ -12,6 +12,9 @@
 /* 기본 스타일 */
 @import './base.css';
 
+/* Liquid Glass 프리미티브 (glass / surface) */
+@import './glass.css';
+
 /* Prose 스타일 */
 @import './prose.css';
 

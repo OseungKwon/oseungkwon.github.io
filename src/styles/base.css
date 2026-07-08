@@ -39,25 +39,15 @@ body {
    다시 그려 간헐적으로 프레임을 떨어뜨린다(드득거림). position: fixed 레이어는
    컴포지터가 별도 레이어로 캐싱하므로, 같은 비주얼을 유지하면서 스크롤 중
    리페인트를 없앤다. */
+/* 배경 오로라: 단색 베이스(body) 위에 아주 옅은 블루 블룸만 모서리에 얹는다.
+   유리가 굴절할 최소한의 빛이자, 본문 영역은 뉴트럴하게 유지된다. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: radial-gradient(
-    circle at 50% 0%,
-    var(--color-bg-secondary) 0%,
-    var(--color-bg-tertiary) 100%
-  );
-}
-
-html.dark body::before {
-  background-image: radial-gradient(
-    circle at 50% 0%,
-    var(--color-bg-primary) 0%,
-    var(--color-bg-secondary) 100%
-  );
+  background-image: var(--backdrop);
 }
 
 /* 리스트 기본 스타일 */
@@ -73,4 +63,38 @@ li p {
 ::selection {
   background-color: var(--color-selection-bg);
   color: var(--color-selection-text);
+}
+
+/* 페이지 전환: 크로스-도큐먼트 뷰 트랜지션.
+   홈↔상세처럼 컨테이너 폭(max-w-5xl↔6xl)이 바뀔 때 헤더·본문 박스가
+   부드럽게 모핑된다. 미지원 브라우저는 즉시 전환으로 폴백한다. */
+@view-transition {
+  navigation: auto;
+}
+
+/* 헤더 pill과 본문(main)을 모두 모핑해 홈↔상세 폭 변화(max-w-5xl↔6xl)가
+   부드럽게 이어진다. 단, view-transition-name을 가진 조상(main) 아래에선
+   backdrop-filter가 비활성화되므로, featured 카드는 실시간 블러 대신
+   .featured-halo 글로우 + 반투명 배경 + sheen으로 유리감을 낸다. */
+.vt-navbar {
+  view-transition-name: site-header;
+}
+main {
+  view-transition-name: page-main;
+}
+::view-transition-group(site-header),
+::view-transition-group(page-main) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
 }

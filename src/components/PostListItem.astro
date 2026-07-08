@@ -13,28 +13,25 @@ interface Props {
   tags: string[];
 }
 
-const { title, description, date, image, href, category, tags } = Astro.props;
+const { title, description, date, image, href, category } = Astro.props;
 
-const categoryLabels = {
-  book: 'Book',
-  tech: 'Tech',
-};
+const categoryLabels = { book: 'Book', tech: 'Tech' };
 ---
 
 <a
   href={href}
-  class="group flex flex-col gap-5 border-b-[0.5px] border-token-primary py-8 transition-all duration-200 hover:bg-token-hover hover:border-token-hover sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:py-12"
+  class="group surface flex items-center gap-4 rounded-2xl p-3.5 transition duration-200 hover:-translate-y-0.5 hover:bg-token-hover sm:gap-5 sm:p-4"
 >
   <div
-    class="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-token-image border border-token-secondary transition-all duration-200 group-hover:border-token-hover order-first sm:order-last sm:aspect-auto sm:h-40 sm:w-64 sm:rounded-3xl"
+    class="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-token-image sm:h-16 sm:w-16"
   >
     {
       image ? (
         <Image
           src={image}
           alt={title}
-          widths={[256, 384, 512, 768]}
-          sizes="(min-width: 640px) 256px, 100vw"
+          widths={[128, 192]}
+          sizes="64px"
           format="webp"
           quality={80}
           loading="lazy"
@@ -46,36 +43,37 @@ const categoryLabels = {
       )
     }
   </div>
-  <div class="flex flex-1 flex-col gap-4 pr-8">
-    <div class="flex items-center gap-3 flex-wrap">
-      <span
-        class="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-token-category text-token-category"
-      >
-        {categoryLabels[category]}
-      </span>
-      <span
-        class="text-[11px] font-bold uppercase tracking-widest text-token-date"
-        >{date}</span
-      >
+
+  <div class="min-w-0 flex-1">
+    <div
+      class="flex items-center gap-2 font-mono text-[11px] tracking-wide text-token-date"
+    >
+      <span class="uppercase tracking-wider">{categoryLabels[category]}</span>
+      <span aria-hidden="true">·</span>
+      <span>{date}</span>
     </div>
     <h3
-      class="text-2xl font-bold tracking-tight text-token-primary transition-all duration-200 group-hover:text-token-secondary sm:text-3xl break-keep break-words"
+      class="mt-1 truncate text-[15px] font-semibold tracking-tight text-token-primary transition-colors duration-200 group-hover:text-token-link sm:text-base"
     >
       {title}
     </h3>
-    <p class="text-[17px] leading-relaxed text-token-secondary line-clamp-2">
+    <p
+      class="mt-0.5 hidden truncate text-[13px] text-token-secondary sm:block"
+    >
       {description}
     </p>
-    {
-      tags.length > 0 && (
-        <div class="flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-token-tertiary text-token-secondary">
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )
-    }
   </div>
+
+  <svg
+    class="hidden h-5 w-5 shrink-0 text-token-tertiary transition-all duration-200 group-hover:translate-x-1 group-hover:text-token-link sm:block"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+  >
+    <path d="M9 6l6 6-6 6"></path>
+  </svg>
 </a>

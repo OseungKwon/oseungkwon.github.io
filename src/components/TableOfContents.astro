@@ -4,7 +4,7 @@
 
 <aside
   id="table-of-contents"
-  class="fixed top-[120px] right-[max(0px,calc((100vw-1280px)/2))] hidden max-h-[calc(100vh-160px)] w-60 overflow-y-auto px-6 toc-scrollbar xl:block"
+  class="sticky top-24 hidden max-h-[calc(100vh-8rem)] w-52 shrink-0 self-start overflow-y-auto toc-scrollbar xl:block"
 >
   <nav>
     <p class="toc-label">목차</p>
@@ -63,11 +63,10 @@
     let ticking = false;
 
     function updateActiveSection() {
-      const scrollPosition = window.scrollY + 120;
-
+      // 본문이 position:relative 컨테이너 안에 있어도 정확하도록 뷰포트 기준으로 판정
       let activeIndex = 0;
       headings.forEach((heading, i) => {
-        if (scrollPosition >= heading.offsetTop) activeIndex = i;
+        if (heading.getBoundingClientRect().top <= 140) activeIndex = i;
       });
 
       links.forEach((link, i) => {

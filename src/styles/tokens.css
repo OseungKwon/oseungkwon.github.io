@@ -1,150 +1,166 @@
 /**
- * 디자인 토큰 정의
- * 색상, 폰트 등 디자인 시스템의 토큰을 중앙에서 관리
+ * 디자인 토큰 정의 — Liquid Glass / Blue
  *
- * 팔레트 원칙: 배경과 중립색은 색조 없는 뉴트럴 그레이로 두어 넓은 읽기
- * 면적에서 눈이 편하도록 한다. 색조(코랄)는 링크·마크·배지 같은 액센트에만
- * 쓰고, 본문이 올라가는 배경/텍스트에는 쓰지 않는다. 강조색을 한 곳에 모아야
- * 자몽 코랄이 더 선명하게 읽힌다. Light는 클린 오프화이트, Dark는 색조 없는
- * 차콜을 기준으로 값을 가져온다.
+ * 방향: 베이스는 화이트/블랙 단색, 액센트는 #006fff 블루 하나.
+ * 유리(glass) 질감은 시그니처인 featured 카드 한 곳에만 쓰고, 나머지 표면은
+ * 차분한 플랫(surface)로 둔다. 배경엔 아주 옅은 블루 오로라만 깔아 유리가
+ * 굴절할 최소한의 빛을 준다(모서리에만, 본문 영역은 뉴트럴).
  */
 
 @theme {
   --font-sans:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
-    'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    'Wanted Sans Variable', 'Wanted Sans', 'Pretendard Variable', Pretendard,
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+    sans-serif;
 
-  /* 데이터·라벨용 모노 — 기술 블로그의 언어는 코드다. eyebrow/날짜/카운트 등
-     '기계가 읽는' 성격의 텍스트에만 쓰고, 본문·제목엔 쓰지 않는다. */
+  /* 데이터·라벨·코드용 모노 */
   --font-mono:
-    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
-    'Liberation Mono', monospace;
+    'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    monospace;
 
-  /* 뉴트럴 그레이 스케일 (라이트 모드) */
-  --color-gray-50: #fafafa;
-  --color-gray-100: #f4f4f5;
-  --color-gray-200: #e9e9ec;
-  --color-gray-300: #d6d6db;
-  --color-gray-400: #94949c;
-  --color-gray-500: #71717a;
-  --color-gray-600: #52525b;
-  --color-gray-700: #3f3f46;
-  --color-gray-800: #27272a;
-  --color-gray-900: #18181b;
+  /* 뉴트럴 그레이 (라이트) */
+  --color-gray-50: #fafbfc;
+  --color-gray-100: #f1f4f8;
+  --color-gray-200: #e6eaf0;
+  --color-gray-300: #d3d9e2;
+  --color-gray-400: #9aa0a8;
+  --color-gray-500: #6c727b;
+  --color-gray-600: #4a4f57;
+  --color-gray-700: #343941;
+  --color-gray-800: #20242b;
+  --color-gray-900: #0a0c10;
   --color-white: #ffffff;
 
-  /* 뉴트럴 그레이 스케일 (다크 모드) — 색조 없는 차콜.
-     인덱스는 역할별로 재사용한다: 900=페이지 배경, 100=표면(카드/코드),
-     200=본문 텍스트, 400=보조 텍스트, 300/500=구분선. */
-  --color-dark-gray-50: #202124;
-  --color-dark-gray-100: #1e2022;
-  --color-dark-gray-200: #c8cbd1;
-  --color-dark-gray-300: #2b2d30;
-  --color-dark-gray-400: #8b8e95;
-  --color-dark-gray-500: #3c3f44;
-  --color-dark-gray-600: #3c3f44;
-  --color-dark-gray-700: #2b2d30;
-  --color-dark-gray-800: #1e2022;
-  --color-dark-gray-900: #17181a;
+  /* 뉴트럴 차콜 (다크) */
+  --color-dark-900: #050709;
+  --color-dark-800: #0b0d12;
+  --color-dark-700: #111318;
+  --color-dark-600: #171a20;
+  --color-dark-500: #232833;
+  --color-dark-400: #7b828c;
+  --color-dark-200: #b6bcc5;
+  --color-warm-white: #f2f4f7;
 
-  /* 오프화이트 — 다크 모드 제목 텍스트(순백 대신 중립 near-white) */
-  --color-warm-white: #f2f3f5;
+  /* 액센트 블루 스케일 (시그니처 #006fff) */
+  --color-accent-50: #e9f2ff;
+  --color-accent-100: #cfe2ff;
+  --color-accent-300: #7cb0ff;
+  --color-accent-400: #3d92ff;
+  --color-accent-500: #006fff;
+  --color-accent-600: #0059d6;
+  --color-accent-700: #0046ab;
 
-  /* 자몽(Grapefruit) 스케일 — 블로그 시그니처 액센트.
-     이름 "자몽"의 속살 코랄에서 도출. 텍스트/배지엔 대비를 위해 600을,
-     마크/구분선 등 장식엔 시그니처 500을 사용한다. */
-  --color-grapefruit-50: #fcebee;
-  --color-grapefruit-100: #f9d2d9;
-  --color-grapefruit-300: #f4a6b3;
-  --color-grapefruit-400: #ee6a7e;
-  --color-grapefruit-500: #e64a5f;
-  --color-grapefruit-600: #c9384f;
-  --color-grapefruit-700: #a62b41;
-
-  /* 배경색 토큰 */
-  --color-bg-primary: #fafafb;
-  --color-bg-secondary: var(--color-white);
+  /* ── 시맨틱 토큰 (라이트) ── */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #ffffff;
   --color-bg-tertiary: var(--color-gray-100);
   --color-bg-code: var(--color-gray-100);
-  --color-bg-code-block: #1e1e21;
-  --color-bg-header: rgba(250, 250, 251, 0.82);
-  --color-bg-card: var(--color-white);
+  --color-bg-code-block: #0d1017;
+  --color-bg-header: rgba(255, 255, 255, 0.72);
+  --color-bg-card: #ffffff;
   --color-bg-image: var(--color-gray-100);
-  --color-bg-hover: rgba(244, 244, 245, 0.7);
+  --color-bg-hover: #f4f7fb;
 
-  /* 텍스트 색상 토큰 */
   --color-text-primary: var(--color-gray-900);
   --color-text-secondary: var(--color-gray-600);
   --color-text-tertiary: var(--color-gray-400);
-  --color-text-code: var(--color-gray-600);
-  --color-text-code-block: var(--color-gray-200);
-  --color-text-date: var(--color-gray-400);
+  --color-text-code: #37506e;
+  --color-text-code-block: #d3d9e2;
+  --color-text-date: #9aa0a8;
   --color-text-nav: var(--color-gray-500);
 
-  /* 테두리 색상 토큰 */
-  --color-border-primary: rgba(228, 228, 231, 0.7);
-  --color-border-secondary: rgba(212, 212, 216, 0.75);
-  --color-border-tertiary: rgba(228, 228, 231, 0.4);
-  --color-border-hover: rgba(212, 212, 216, 0.6);
+  --color-border-primary: rgba(15, 20, 40, 0.08);
+  --color-border-secondary: rgba(15, 20, 40, 0.1);
+  --color-border-tertiary: rgba(15, 20, 40, 0.05);
+  --color-border-hover: rgba(15, 20, 40, 0.16);
 
-  /* 링크 색상 토큰 — 자몽 코랄 (대비 위해 600/700) */
-  --color-link: var(--color-grapefruit-600);
-  --color-link-hover: var(--color-grapefruit-700);
+  --color-link: var(--color-accent-500);
+  --color-link-hover: var(--color-accent-600);
+  --color-accent: var(--color-accent-500);
+  --color-accent-soft: rgba(0, 111, 255, 0.1);
 
-  /* 시그니처 액센트 (텍스트 대비 무관한 마크/구분선/포인트) */
-  --color-accent: var(--color-grapefruit-500);
-  --color-accent-soft: var(--color-grapefruit-50);
+  --color-selection-bg: rgba(0, 111, 255, 0.16);
+  --color-selection-text: var(--color-accent-700);
 
-  /* 선택 영역 색상 토큰 */
-  --color-selection-bg: rgba(230, 74, 95, 0.18);
-  --color-selection-text: var(--color-grapefruit-700);
+  --color-bg-category: var(--color-accent-500);
+  --color-text-category: #ffffff;
 
-  /* 카테고리 배지 색상 토큰 */
-  --color-bg-category: var(--color-grapefruit-600);
-  --color-text-category: var(--color-white);
+  /* ── 유리 (featured 시그니처 전용) — 라이트 ── */
+  --glass-bg: rgba(255, 255, 255, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.62);
+  --glass-sheen: rgba(255, 255, 255, 0.55);
+  --glass-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -10px 22px rgba(255, 255, 255, 0.22),
+    0 22px 50px rgba(20, 30, 70, 0.14);
+
+  /* ── 플랫 표면 (헤더·리스트·본문 등) — 라이트 ── */
+  --surface-bg: #ffffff;
+  --surface-border: rgba(15, 20, 40, 0.08);
+  --surface-shadow:
+    0 1px 2px rgba(20, 22, 50, 0.04), 0 8px 24px rgba(20, 22, 50, 0.05);
+  --surface-hover: #f4f7fb;
+
+  /* ── 배경 오로라 (모서리에만, 아주 옅게) — 라이트 ── */
+  --backdrop:
+    radial-gradient(38% 42% at 2% 0%, rgba(0, 111, 255, 0.07) 0%, transparent 60%),
+    radial-gradient(36% 40% at 99% 2%, rgba(70, 150, 255, 0.05) 0%, transparent 60%),
+    radial-gradient(42% 46% at 98% 99%, rgba(40, 180, 255, 0.045) 0%, transparent 62%),
+    radial-gradient(36% 40% at 1% 99%, rgba(0, 111, 255, 0.045) 0%, transparent 60%);
 }
 
-/* 다크모드 색상 토큰 오버라이드 */
+/* ── 다크 오버라이드 ── */
 .dark {
-  /* 배경색 토큰 */
-  --color-bg-primary: var(--color-dark-gray-900);
-  --color-bg-secondary: var(--color-dark-gray-100);
-  --color-bg-tertiary: var(--color-dark-gray-100);
-  --color-bg-code: var(--color-dark-gray-100);
-  --color-bg-code-block: #141517;
-  --color-bg-header: rgba(30, 32, 34, 0.85);
-  --color-bg-card: var(--color-dark-gray-100);
-  --color-bg-image: var(--color-dark-gray-100);
-  --color-bg-hover: rgba(60, 63, 68, 0.4);
+  --color-bg-primary: var(--color-dark-900);
+  --color-bg-secondary: var(--color-dark-700);
+  --color-bg-tertiary: var(--color-dark-600);
+  --color-bg-code: var(--color-dark-600);
+  --color-bg-code-block: #0b0d12;
+  --color-bg-header: rgba(17, 19, 24, 0.72);
+  --color-bg-card: var(--color-dark-700);
+  --color-bg-image: var(--color-dark-600);
+  --color-bg-hover: var(--color-dark-600);
 
-  /* 텍스트 색상 토큰 */
   --color-text-primary: var(--color-warm-white);
-  --color-text-secondary: var(--color-dark-gray-200);
-  --color-text-tertiary: var(--color-dark-gray-400);
-  --color-text-code: #e59a86;
-  --color-text-code-block: var(--color-dark-gray-200);
-  --color-text-date: var(--color-dark-gray-400);
-  --color-text-nav: var(--color-dark-gray-400);
+  --color-text-secondary: var(--color-dark-200);
+  --color-text-tertiary: var(--color-dark-400);
+  --color-text-code: var(--color-accent-300);
+  --color-text-code-block: var(--color-dark-200);
+  --color-text-date: var(--color-dark-400);
+  --color-text-nav: var(--color-dark-400);
 
-  /* 테두리 색상 토큰 */
-  --color-border-primary: rgba(60, 63, 68, 1);
-  --color-border-secondary: rgba(90, 94, 100, 0.8);
-  --color-border-tertiary: rgba(60, 63, 68, 0.6);
-  --color-border-hover: rgba(90, 94, 100, 1);
+  --color-border-primary: rgba(255, 255, 255, 0.09);
+  --color-border-secondary: rgba(255, 255, 255, 0.12);
+  --color-border-tertiary: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.2);
 
-  /* 링크 색상 토큰 — 다크에선 밝은 자몽으로 대비 확보 */
-  --color-link: var(--color-grapefruit-400);
-  --color-link-hover: var(--color-grapefruit-300);
+  --color-link: #4d97ff;
+  --color-link-hover: var(--color-accent-300);
+  --color-accent: #4d97ff;
+  --color-accent-soft: rgba(77, 151, 255, 0.16);
 
-  /* 시그니처 액센트 */
-  --color-accent: var(--color-grapefruit-400);
-  --color-accent-soft: rgba(230, 74, 95, 0.14);
+  --color-selection-bg: rgba(77, 151, 255, 0.24);
+  --color-selection-text: var(--color-accent-100);
 
-  /* 선택 영역 색상 토큰 */
-  --color-selection-bg: rgba(238, 106, 126, 0.28);
-  --color-selection-text: var(--color-grapefruit-300);
+  --color-bg-category: var(--color-accent-500);
+  --color-text-category: #ffffff;
 
-  /* 카테고리 배지 색상 토큰 */
-  --color-bg-category: var(--color-grapefruit-500);
-  --color-text-category: var(--color-white);
+  --glass-bg: rgba(30, 34, 44, 0.34);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-sheen: rgba(255, 255, 255, 0.12);
+  --glass-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.16),
+    inset 0 -10px 22px rgba(0, 0, 0, 0.28), 0 24px 56px rgba(0, 0, 0, 0.55);
+
+  --surface-bg: var(--color-dark-700);
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.34);
+  --surface-hover: var(--color-dark-600);
+
+  --backdrop:
+    radial-gradient(42% 46% at 2% 0%, rgba(0, 120, 255, 0.13) 0%, transparent 58%),
+    radial-gradient(40% 44% at 99% 2%, rgba(70, 150, 255, 0.09) 0%, transparent 58%),
+    radial-gradient(44% 48% at 98% 99%, rgba(40, 180, 255, 0.07) 0%, transparent 60%),
+    radial-gradient(38% 42% at 1% 99%, rgba(0, 120, 255, 0.08) 0%, transparent 58%);
 }

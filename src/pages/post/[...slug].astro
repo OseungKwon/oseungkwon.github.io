@@ -16,6 +16,15 @@ type Props = CollectionEntry<'blog'>;
 
 const post = Astro.props;
 const { Content } = await post.render();
+
+const BASE = import.meta.env.BASE_URL;
+const categoryLabels = { book: 'Book', tech: 'Tech' } as const;
+const category = categoryLabels[post.data.category];
+const dateLabel = post.data.pubDate.toLocaleDateString('en-us', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
 ---
 
 <Layout
@@ -28,35 +37,37 @@ const { Content } = await post.render();
   publishedTime={post.data.pubDate.toISOString()}
   modifiedTime={post.data.updatedDate?.toISOString()}
   tags={post.data.tags}
+  wide={true}
 >
-  <div class="relative">
-    <article class="mx-auto max-w-3xl">
-      <div class="mb-12 text-center">
-        <div
-          class="mb-4 text-sm font-bold uppercase tracking-widest text-token-date"
+  <div class="mx-auto mt-6 flex max-w-4xl gap-10 sm:mt-10 xl:max-w-6xl">
+    <article
+      class="surface min-w-0 flex-1 rounded-3xl px-5 py-8 sm:px-10 sm:py-12"
+    >
+      <a
+        href={BASE}
+        class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-token-nav transition-colors hover:bg-token-hover hover:text-token-primary"
+      >
+        ← 목록으로
+      </a>
+
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <span
+          class="rounded-full bg-token-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-token-link"
+          >{category}</span
         >
-          {
-            post.data.pubDate.toLocaleDateString('en-us', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })
-          }
-        </div>
-        <h1
-          class="mb-6 text-4xl font-bold tracking-tight text-token-primary sm:text-5xl break-keep break-words"
-          style="scroll-margin-top: 4rem;"
-        >
-          {post.data.title}
-        </h1>
-        <hr
-          class="mx-auto my-8 h-1 w-16 rounded-full border-0 bg-token-accent"
-        />
+        <span class="font-mono text-[13px] text-token-date">{dateLabel}</span>
       </div>
+
+      <h1
+        class="mt-4 text-3xl font-bold leading-[1.15] tracking-tight text-token-primary break-keep break-words sm:text-[42px]"
+        style="scroll-margin-top: 4rem;"
+      >
+        {post.data.title}
+      </h1>
 
       {
         post.data.heroImage && (
-          <div class="mb-12 overflow-hidden rounded-3xl shadow-sm">
+          <div class="mt-8 overflow-hidden rounded-2xl">
             <Image
               src={post.data.heroImage}
               alt={post.data.title}
@@ -72,9 +83,21 @@ const { Content } = await post.render();
         )
       }
 
-      <div class="prose prose-lg prose-gray mx-auto">
+      <div class="prose prose-lg mt-8 max-w-none">
         <Content />
       </div>
+
+      {
+        post.data.tags.length > 0 && (
+          <div class="mt-10 flex flex-wrap gap-1.5 border-t border-token-primary pt-6">
+            {post.data.tags.map((tag) => (
+              <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )
+      }
     </article>
 
     <!-- Table of Contents (우측 고정) -->
