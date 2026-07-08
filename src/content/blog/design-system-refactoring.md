@@ -121,11 +121,11 @@ export function Button({
 
 ---
 
-## 기존 코드의 문제점 3 – 부족한 확장성
+## 문제점 3 – 부족한 확장성
 
 확장성 측면에서도 아쉬운 부분이 많았습니다.
 
-예를 들어 `Input` 컴포넌트는 “입력 필드” 역할만 딱 수행하는, 어떻게 보면 이상적인 컴포넌트였습니다.
+예를 들어 `Input` 컴포넌트는 “입력 필드” 역할만 수행하는, 그 자체로는 잘 만든 컴포넌트였습니다.
 
 하지만 실제 사용처를 보면 대부분 `label`이 필수로 함께 묶여 사용되고 있었고, 그럼에도 불구하고 label은 매번 직접 구현해야 했습니다.
 
@@ -170,7 +170,7 @@ export function Button({
 
 > “기본 HTML 요소가 가진 속성은 우리가 다시 정의하지 말고, 그대로 열어 두자.”
 
-하지만 React의 `ComponentProps`를 활용하면 네이티브 태그의 속성을 그대로 상속받을 수 있기 때문에, 이를 통해 개발자는 문서를 일일이 찾아보지 않고도 `onClick`, `onMouseEnter`, `aria-label` 같은 표준 속성을 자연스럽게 사용할 수 있습니다.
+React의 `ComponentProps`를 활용하면 네이티브 태그의 속성을 그대로 상속받을 수 있습니다. 덕분에 개발자는 문서를 일일이 찾아보지 않고도 `onClick`, `onMouseEnter`, `aria-label` 같은 표준 속성을 자연스럽게 사용할 수 있습니다.
 
 ### 개선된 Button 컴포넌트
 
@@ -179,16 +179,21 @@ import { ComponentProps } from 'react';
 
 // HTMLButtonElement의 모든 속성을 상속받으면서, 커스텀 props를 추가
 interface ButtonProps extends ComponentProps<'button'> {
-  size?: boolean;
   isLoading?: boolean;
 }
 
-export function Button({ className, size, children, ...props }: ButtonProps) {
+export function Button({
+  className,
+  isLoading,
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
   return (
     <button
+      {...props} // 상속받은 표준 속성을 먼저 주입
       className={className}
-      disabled={isLoading || props.disabled}
-      {...props} // 나머지 props는 그대로 주입
+      disabled={isLoading || disabled} // 로딩 중에는 비활성화
     >
       {isLoading ? <Spinner /> : children}
     </button>
@@ -198,7 +203,7 @@ export function Button({ className, size, children, ...props }: ButtonProps) {
 
 이 개선을 통해 기존보다 더욱 확장성 있는 코드를 작성할 수 있게 되었습니다.
 
-- `className`으로 스타일을 오버라이드 할 수 있어짐.
+- `className`으로 스타일을 오버라이드할 수 있어짐.
 - `data-testid` 같은 속성을 자유롭게 추가 가능해짐.
 - 표준 DOM 속성을 거의 그대로 활용해 추가적인 속성 정의를 하지 않아도 됨.
 
@@ -284,8 +289,19 @@ common-components/
 ## 4. 문서화와 협업의 중심, Storybook 도입
 
 앞서 언급했듯, 기존 시스템에서 `pre-components`나 중복 코드가 우후죽순 생겨난 가장 큰 원인 중 하나는 **가시성 부족**이었습니다.
-어떤 컴포넌트가 존재하는지, 어떻게 생겼는지 가식적으로 확인할 수 없던 문제를 개선하기 위해 Storybook을 도입했습니다.
+어떤 컴포넌트가 존재하는지, 어떻게 생겼는지 눈으로 확인할 수 없던 문제를 개선하기 위해 Storybook을 도입했습니다.
 
-이를 통해 개발자는 컴포넌트를 바로 시각화 해서 볼 수 있게 되었으며, 컴포넌트의 사용법 또한 스토리북 문서를 통해 바로 확인할 수 있게 되었습니다.
+이를 통해 개발자는 컴포넌트를 바로 시각화해서 볼 수 있게 되었으며, 컴포넌트의 사용법 또한 스토리북 문서를 통해 바로 확인할 수 있게 되었습니다.
 
-또한, 디자인 시스템을 개편하면서 변경/추가된 공통 컴포넌트가 다수 존재했는데, 스토리북을 통해 빠르게 피드백을 받을 수 있었으며, 소통 시간또한 감소시킬 수 있었습니다.
+또한, 디자인 시스템을 개편하면서 변경·추가된 공통 컴포넌트가 다수 존재했는데, 스토리북을 통해 빠르게 피드백을 받을 수 있었고 소통 시간 또한 줄일 수 있었습니다.
+
+## 마무리
+
+디자인 시스템을 개편하며 네 가지를 손봤습니다.
+
+- **표준 HTML 속성 상속**으로 과다한 props를 걷어내고, Button은 고유한 역할에만 집중하게 했습니다.
+- **합성 컴포넌트 패턴**으로 Table과 Input이 떠안던 기능을 서브 컴포넌트로 쪼개, 필요한 것만 조립하도록 바꿨습니다.
+- **Co-location**으로 강하게 결합된 코드를 한 폴더에 모아, 변경 영향 범위를 한눈에 보이게 했습니다.
+- **Storybook**으로 어떤 컴포넌트가 있는지 눈으로 확인할 수 있게 해, 중복 구현과 `pre-components`가 다시 생기지 않도록 막았습니다.
+
+돌아보면 네 가지 모두 컴포넌트가 떠안던 책임을 밖으로 덜어낸다는 방향을 공유합니다. HTML 속성은 브라우저에, 조립 결정은 사용하는 쪽에, 관련 코드는 같은 폴더에 맡겼습니다. 앞으로 컴포넌트를 새로 만들 때도 "이 책임이 정말 컴포넌트 안에 있어야 하는가"를 먼저 묻게 되었습니다.
