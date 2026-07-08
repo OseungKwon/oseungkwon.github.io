@@ -144,7 +144,6 @@ function ProductCard({ product }: { product: Product }) {
 ```ts
 const gaAdapter = {
   type: 'ga',
-  enabled: import.meta.env.PROD, // 개발 환경에서는 GA로 실제 전송하지 않음
   execute(target, dynamicParams) {
     gtag('event', target.event, { ...dynamicParams });
   },
@@ -152,14 +151,25 @@ const gaAdapter = {
 
 const amplitudeAdapter = {
   type: 'amplitude',
-  enabled: true,
   execute(target, dynamicParams) {
     amplitude.track(target.eventName, { ...dynamicParams });
   },
 };
 ```
 
-`enabled` 플래그가 있어서, 개발 환경에서 GA는 끄고 콘솔 로그만 확인하고 싶을 때 맵은 그대로 두고 어댑터만 꺼두면 됩니다.
+어댑터는 `type`과 `execute`만 가집니다. 채널을 켤지 끌지는 어댑터를 등록할 때 `enabled` 플래그로 정합니다.
+
+```ts
+createTracker({
+  map,
+  adapters: [
+    { adapter: gaAdapter, enabled: import.meta.env.PROD }, // 개발 환경에선 GA 미전송
+    { adapter: amplitudeAdapter }, // enabled 기본값 true
+  ],
+});
+```
+
+덕분에 개발 환경에서 GA만 꺼 두고 콘솔로 확인하고 싶을 때, 맵이나 어댑터 코드는 그대로 두고 등록 옵션만 바꾸면 됩니다. `enabled: false`인 어댑터는 디스패처가 `execute`를 아예 호출하지 않습니다.
 
 ### 채널마다 다른 키로 매핑하기
 
@@ -282,6 +292,29 @@ function handleClick(e: Event) {
 ```
 
 캡처 단계를 쓴 데에는 이유가 있습니다. 하위 컴포넌트에서 `stopPropagation()`을 호출해도 트래킹은 이미 잡혀 있습니다. 실제로 모달 닫기 버튼에서 이벤트 전파를 막고 있었는데, 버블링 단계였다면 트래킹까지 함께 막혀 데이터가 누락됐을 것입니다.
+
+### 노출 감지: IntersectionObserver
+
+`content-view`나 `pageview` 트리거는 클릭과 달리 "요소가 화면에 보였는가"를 판단해야 합니다. 이 판단은 `IntersectionObserver`가 맡아, 요소가 뷰포트에 얼마나 걸쳤는지 관찰합니다.
+
+```ts
+const observer = new IntersectionObserver(
+  (entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      // 이 요소를 resolve → dispatch (트리거가 content-view일 때만 전송)
+    }
+  },
+  { threshold: 0.5 }, // 50% 이상 보이면 노출로 간주
+);
+
+// data-track 요소를 관찰 대상으로 등록
+observer.observe(el);
+```
+
+`threshold: 0.5`이므로 카드가 화면에 절반 이상 들어온 순간에만 노출 이벤트가 나갑니다. 스크롤로 스쳐 지나간 요소까지 노출로 세지 않으려는 기준입니다. 앞서 `product-impression`이 "화면에 50% 이상 노출된 시점"에 발사된다고 한 동작이 여기서 나옵니다.
+
+다만 이 콜백만으로는 요소가 화면에 들락날락할 때마다 노출 이벤트가 다시 나갑니다. 노출은 요소당 한 번이면 충분하므로, 한 번 보낸 요소를 기억해 두는 장치가 필요합니다.
 
 ### WeakSet으로 요소당 한 번
 
