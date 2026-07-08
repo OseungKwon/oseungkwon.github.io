@@ -12,6 +12,8 @@ const blog = defineCollection({
       heroImage: image().optional(),
       category: z.enum(['book', 'tech']),
       tags: z.array(z.string()).default([]),
+      // 초안 표시. true면 프로덕션 빌드(색인/sitemap/RSS)에서 제외된다.
+      draft: z.boolean().default(false),
     }),
 });
 
