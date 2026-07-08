@@ -1,26 +1,17 @@
 ---
 title: 'zustand 라이브러리 코드 분석하기'
-description: 'zustand 라이브러리를 코드 레벨에서 직접 분석'
+description: 'zustand의 소스 코드를 따라가며 스토어가 상태를 저장하고 구독자에게 알리는 과정, 그리고 useSyncExternalStore로 React에 연결되는 과정을 정리했습니다.'
 pubDate: '2025.12.20'
 heroImage: '@assets/post/zustand.png'
 category: 'tech'
 tags: ['Zustand', '상태 관리 라이브러리', 'React', 'useSyncExternalStore']
 ---
 
-`Zustand`는 작고 빠르며 확장 가능한 React 프로젝트에서 사용하는 상태 관리 라이브러리입니다.
+`Zustand`는 React 상태 관리 라이브러리입니다. 그동안 `Redux`와 `Recoil`을 써왔는데, `Redux`는 스토어 하나를 만드는 데도 보일러플레이트가 많았고, `Recoil`은 더 이상 업데이트되지 않고 있었습니다. 그 대안을 찾다가 zustand로 넘어왔습니다.
 
-이전에 `redux`, `recoil` 등등의 상태 관리 라이브러리를 써왔지만, `redux`의 경우 보일러 플레이트가 많고 복잡하다는 단점이 있고, `recoil`은 더 이상 라이브러리의 업데이트가 이뤄지지 않는다는 단점이 있었습니다.
+zustand는 스토어를 만들고 훅으로 꺼내 쓰는 구조가 전부라 API 표면이 좁습니다. 미들웨어로 기능을 덧붙일 수 있고, 상태가 바뀌면 그 상태를 구독한 컴포넌트만 다시 렌더링합니다. 다만 여기까지는 사용하는 쪽에서 본 설명이고, 이 동작이 내부에서 어떻게 이뤄지는지는 써 보는 것만으로는 알기 어려웠습니다.
 
-이러한 상황 속에서 zustand 라이브러리는 간결하고 경령화된 라이브러리로 점차 인기를 얻고 있습니다.
-
-zustand가 인기가 많아지고 있는 비결에는 다음과 같은 특징들이 있습니다.
-
-- **간결한 api**: 복잡성 없이 간단하게 사용 가능
-- **경량화**: 가벼운 라이브러리 크기
-- **유연성**: middleware를 통한 확장 가능
-- **성능**: 최소한의 상태 변경과 렌더링으로 동작
-
-내부적으로 어떻게 동작하는지 알면, 코드적으로도 좋은 인사이트가 될 것 같고, 라이브러리에 대한 이해도를 더 잘 가져갈 수 있을 것 같아 이번 기회에 **zustand 라이브러리 코드 분석하기**라는 주제로 글을 쓰게 되었습니다.
+그래서 이 글에서는 zustand의 소스 코드를 직접 따라가며, 스토어가 상태를 저장하고 구독자에게 알리는 과정, 그리고 그 스토어를 React 훅으로 잇는 과정을 코드 레벨에서 정리해 보려고 합니다.
 
 ## zustand로 상태 관리하기
 
@@ -45,17 +36,15 @@ function Counter() {
 }
 ```
 
-zustand는 상태를 저장하기 위해 스토어를 활용합니다.
+zustand는 상태를 스토어에 저장합니다. `create` 함수에 저장할 상태와 그 상태를 다루는 액션을 함께 정의하면, 스토어를 구독하는 훅 `useStore`가 반환됩니다. 컴포넌트에서는 이 훅을 호출해 상태와 액션을 꺼내 씁니다.
 
-create 함수를 사용해, 저장할 상태와 그 상태를 핸들링하는 액션을 정의합니다.
-이후 useStore를 리턴해 정의한 상태와 액션들을 가져와 사용하면 되는 단순한 구조로 이루어져 있습니다.
+위 예제에서 `Counter`는 `useStore`를 호출해 `count`와 `inc`를 구조 분해로 받아, 화면에 그리고 버튼에 연결합니다. 사용하는 쪽 코드는 이게 전부입니다. 이 좁은 표면 뒤에서 스토어가 어떻게 상태를 관리하는지 다음 절에서 코드로 확인해 보겠습니다.
 
 ## zustand 핵심 개념 코드 분석
 
-zustand는 '구독'이라는 개념을 통해 상태를 추가적으로 관리합니다.
-상태 변경을 구독하고, 변경 사항을 알림으로 전달합니다.
+zustand는 '구독'이라는 개념으로 상태를 관리합니다. 컴포넌트가 스토어의 상태 변경을 구독해 두면, 상태가 바뀔 때 스토어가 구독자에게 변경을 알립니다.
 
-우선 코드를 상세하게 뜯어보기 전에, 전체적으로 어떤 함수들이 사용되는지 확인해 보겠습니다.
+코드를 한 줄씩 뜯어보기 전에, 스토어가 어떤 함수들로 이뤄지는지 먼저 확인해 보겠습니다.
 
 - `createStore`: 스토어 생성
   상태와 상태 관리 API를 정의합니다.
@@ -127,10 +116,10 @@ const listeners: Set<Listener> = new Set();
 
 ```tsx
 const setState: StoreApi<TState>['setState'] = (partial, replace) => {
-const nextState =
-typeof partial === 'function'
-? (partial as (state: TState) => TState)(state)
-: partial;
+  const nextState =
+    typeof partial === 'function'
+      ? (partial as (state: TState) => TState)(state)
+      : partial;
 ```
 
 `setState` 함수는 인자로 `partial`과 `replace` 값을 받습니다.
@@ -146,11 +135,10 @@ typeof partial === 'function'
 
 ```tsx
 if (!Object.is(nextState, state)) {
-const previousState = state;
+  const previousState = state;
 ```
 
-`Object.is`를 통해 현재 상태와 새로운 상태가 같은 값인지 판단합니다.
-먄약 다른 값이라면, 이전 상태에 현재 상태를 저장합니다.
+`Object.is`로 현재 상태와 새로운 상태가 같은 값인지 판단합니다. 다른 값일 때만 블록 안으로 들어가, 갱신 전 상태를 `previousState`에 보관합니다. 같은 값이면 아무 일도 하지 않으니, 불필요한 구독자 호출을 여기서 걸러 냅니다.
 
 ### 현재 상태 업데이트
 
@@ -208,14 +196,11 @@ return api as any
 }
 ```
 
-클로저를 사용하면 함수가 호출될 때마다 이전 상태를 기억합니다.
-이러한 클로저의 특성을 활용해, `createStore` 함수 내에서 사용된 변수(state, subscribe)들을 반환(return)해 스토어 내부 상태를 관리합니다.
+`createStoreImpl` 함수가 반환하는 `api`는 `setState`, `getState`, `subscribe` 같은 함수들입니다. 이 함수들은 모두 `createStoreImpl` 안에 선언된 `state`와 `listeners`를 참조합니다. 클로저 덕분에 함수 실행이 끝난 뒤에도 이 두 변수는 사라지지 않고, 반환된 `api` 함수들이 계속 붙들어 둡니다. 스토어의 상태와 구독자 목록이 컴포넌트 바깥에서 유지되는 근거가 여기에 있습니다.
 
 > Closure(클로저): 어떤 함수가 다른 함수 내부에서 선언되었을 때, 그 함수가 외부 함수의 변수와 환경에 접근할 수 있는 기능
-> 쉽게 말하자면 상태와 상태를 업데이트 하는 함수가 있고, 상태가 업데이트되면, 등록된 구독자들이 실행되는 과정을 담고 있습니다.
 
-여기까지가 상태의 저장과 업데이트 부분이였고,
-이제 이를 `React`에서 사용하기 위해 훅으로 만들어주는 추가적인 코드를 확인할 필요가 있습니다.
+여기까지가 상태를 저장하고 업데이트하는 부분입니다. 이제 이 스토어를 `React`에서 쓰려면 훅으로 감싸 주는 코드가 필요합니다.
 
 ## zustand 리액트 훅 코드 분석
 
@@ -223,27 +208,27 @@ return api as any
 
 ```tsx
 export function useStore<TState, StateSlice>(
-api: ReadonlyStoreApi<TState>,
-selector: (state: TState) => StateSlice = identity as any,
+  api: ReadonlyStoreApi<TState>,
+  selector: (state: TState) => StateSlice = identity as any,
 ) {
-const slice = React.useSyncExternalStore(
-api.subscribe,
-() => selector(api.getState()),
-() => selector(api.getInitialState()),
-)
-React.useDebugValue(slice)
-return slice
+  const slice = React.useSyncExternalStore(
+    api.subscribe,
+    () => selector(api.getState()),
+    () => selector(api.getInitialState()),
+  );
+  React.useDebugValue(slice);
+  return slice;
 }
 
 const createImpl = <T>(createState: StateCreator<T, [], []>) => {
-const api = createStore(createState)
+  const api = createStore(createState);
 
-const useBoundStore: any = (selector?: any) => useStore(api, selector)
+  const useBoundStore: any = (selector?: any) => useStore(api, selector);
 
-Object.assign(useBoundStore, api)
+  Object.assign(useBoundStore, api);
 
-return useBoundStore
-}
+  return useBoundStore;
+};
 ```
 
 ### 상태 저장 훅
@@ -263,9 +248,7 @@ export function useStore<TState, StateSlice>(
 }
 ```
 
-**React18** 이전에는 이보다 더 긴 코드로 작성되었지만, **React18**에서 `useSyncExternalStore`를 지원하면서 코드가 간소화 되었습니다.
-
-`useSyncExternalStore`는 인자로 `subscribe`, `getSnapshot`, `getServerSnapshot`을 받는데, `subscribe` 인자를 받아 내부적으로 구독과 구독 해제를 관리합니다.
+**React 18** 이전에는 이 부분이 더 긴 코드로 작성되어 있었지만, React 18이 `useSyncExternalStore`를 지원하면서 짧아졌습니다.
 
 > `React.useSyncExternalStore`: external state의 변경사항을 관찰하고 있다가, tearing이 발생하지 않도록 상태 변경이 관찰되면 다시 렌더링을 시작합니다.
 
@@ -273,7 +256,41 @@ export function useStore<TState, StateSlice>(
 const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?)
 ```
 
-따라서 외부 스토어를 구독해 스토어에 있는 데이터의 스냅샷을 반환하며, React는 컴포넌트가 스토어를 구독한 상태로 유지하고 변경 사항이 있을 때 다시 렌더링합니다.
+`useSyncExternalStore`는 `subscribe`, `getSnapshot`, `getServerSnapshot` 세 인자를 받습니다. `useStore`가 넘긴 세 인자가 앞서 만든 스토어의 함수들과 그대로 맞물립니다.
+
+- `api.subscribe` → 스토어의 구독 함수. React가 이 함수로 스토어에 콜백을 등록해 두고, 상태가 바뀌면 알림을 받습니다.
+- `() => selector(api.getState())` → 스냅샷 함수. 현재 상태에서 `selector`가 고른 부분만 반환합니다.
+- `() => selector(api.getInitialState())` → 서버 렌더링용 초기 스냅샷.
+
+여기서 `selector`가 성능의 핵심입니다. 컴포넌트가 상태 전체가 아니라 `selector`로 고른 일부만 구독하면, 그 부분이 바뀔 때만 다시 렌더링됩니다. 앞서 `setState`가 `Object.is`로 변경 여부를 거르고 `listeners`에 알린 흐름이, 여기서 컴포넌트의 리렌더링으로 이어집니다.
+
+## 스토어와 훅 잇기
+
+`useStore`는 `api`를 인자로 받는데, 정작 위 사용 예제에서는 `useStore(api, selector)`가 아니라 `useStore()`만 호출했습니다. 이 간극을 메우는 것이 `create`의 실제 구현인 `createImpl`입니다.
+
+```tsx
+const createImpl = <T>(createState: StateCreator<T, [], []>) => {
+  const api = createStore(createState);
+
+  const useBoundStore: any = (selector?: any) => useStore(api, selector);
+
+  Object.assign(useBoundStore, api);
+
+  return useBoundStore;
+};
+```
+
+`createImpl`은 먼저 `createStore`로 스토어의 `api`를 만듭니다. 그다음 이 `api`를 고정으로 물고 있는 훅 `useBoundStore`를 만드는데, 이 훅을 호출하면 내부에서 `useStore(api, selector)`가 실행됩니다. 덕분에 컴포넌트는 `api`를 넘기지 않고 `useStore()`만 호출하면 됩니다.
+
+마지막 `Object.assign(useBoundStore, api)`는 훅 함수 자체에 `api`의 메서드를 붙입니다. 그래서 컴포넌트 밖에서도 `useStore.getState()`나 `useStore.setState()`처럼 훅을 거치지 않고 스토어를 직접 다룰 수 있습니다.
+
+## 마무리
+
+zustand의 코드는 크게 두 부분으로 나뉩니다. `createStore`는 클로저로 `state`와 `listeners`를 컴포넌트 바깥에 붙들어 두고, `setState`가 상태를 바꿀 때 `Object.is`로 실제 변경만 걸러 구독자에게 알립니다. 여기까지는 React와 무관한 순수한 스토어입니다.
+
+그 스토어를 React에 잇는 것이 `useStore`이고, 다리 역할은 `useSyncExternalStore`가 합니다. 스토어의 `subscribe`와 `getState`를 그대로 넘겨 외부 상태를 구독하고, `selector`로 고른 부분이 바뀔 때만 컴포넌트를 다시 렌더링합니다.
+
+라이브러리를 쓸 때는 `create`와 `useStore` 두 함수가 전부처럼 보이지만, 그 뒤에는 클로저로 상태를 붙들고 구독으로 렌더링을 잇는 구조가 있었습니다. 이렇게 원리를 정확히 알고 나니 올바른 활용법도 자연스럽게 따라왔습니다. `selector`로 필요한 상태만 구독해 리렌더링을 줄이는 것도, 그 동작을 코드로 확인한 뒤에는 근거를 가지고 쓰게 되었습니다.
 
 ## 참고
 
