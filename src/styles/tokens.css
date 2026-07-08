@@ -1,6 +1,12 @@
 /**
  * 디자인 토큰 정의
  * 색상, 폰트 등 디자인 시스템의 토큰을 중앙에서 관리
+ *
+ * 팔레트 원칙: 모든 중립색을 자몽에서 파생시킨다.
+ * 코랄 과육(액센트) 하나만 강조색이고, 나머지 회색은 파란 언더톤이 아니라
+ * 붉은 언더톤을 옅게 머금은 웜 그레이다. 그래야 코랄이 덧붙인 색이 아니라
+ * 같은 과일의 일부로 읽힌다. Light는 속껍질(로제빛 화이트),
+ * Dark는 노을빛 겉껍질(웜 플럼-브라운 차콜)에서 값을 가져온다.
  */
 
 @theme {
@@ -8,30 +14,33 @@
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  /* Gray 스케일 (라이트 모드) */
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
+  /* 웜 그레이 스케일 (라이트 모드) — 붉은 언더톤을 옅게 머금은 중립색 */
+  --color-gray-50: #faf8f7;
+  --color-gray-100: #f4efee;
+  --color-gray-200: #e7ddd8;
+  --color-gray-300: #d5c9c3;
+  --color-gray-400: #a89d97;
+  --color-gray-500: #7b716c;
+  --color-gray-600: #564d49;
+  --color-gray-700: #3c3431;
+  --color-gray-800: #262020;
+  --color-gray-900: #1b1513;
   --color-white: #ffffff;
 
-  /* Gray 스케일 (다크 모드) */
-  --color-dark-gray-50: #1e1e1e;
-  --color-dark-gray-100: #252526;
-  --color-dark-gray-200: #e5e5e5;
-  --color-dark-gray-300: #3e3e42;
-  --color-dark-gray-400: #b3b3b3;
-  --color-dark-gray-500: #505050;
-  --color-dark-gray-600: #505050;
-  --color-dark-gray-700: #3e3e42;
-  --color-dark-gray-800: #252526;
-  --color-dark-gray-900: #1e1e1e;
+  /* 웜 그레이 스케일 (다크 모드) — 노을빛 겉껍질의 플럼-브라운 차콜 */
+  --color-dark-gray-50: #241c19;
+  --color-dark-gray-100: #29211e;
+  --color-dark-gray-200: #ece2de;
+  --color-dark-gray-300: #3d302c;
+  --color-dark-gray-400: #ad9f9a;
+  --color-dark-gray-500: #5a4d49;
+  --color-dark-gray-600: #5a4d49;
+  --color-dark-gray-700: #3d302c;
+  --color-dark-gray-800: #29211e;
+  --color-dark-gray-900: #201917;
+
+  /* 웜 오프화이트 — 다크 모드 본문 텍스트(순백 대신 과육빛 화이트) */
+  --color-warm-white: #f8f0ec;
 
   /* 자몽(Grapefruit) 스케일 — 블로그 시그니처 액센트.
      이름 "자몽"의 속살 코랄에서 도출. 텍스트/배지엔 대비를 위해 600을,
@@ -45,15 +54,15 @@
   --color-grapefruit-700: #a62b41;
 
   /* 배경색 토큰 */
-  --color-bg-primary: #fcfbfa;
+  --color-bg-primary: #fdfcfb;
   --color-bg-secondary: var(--color-white);
   --color-bg-tertiary: var(--color-gray-100);
   --color-bg-code: var(--color-gray-100);
-  --color-bg-code-block: #1c1c1e;
-  --color-bg-header: rgba(255, 255, 255, 0.8);
+  --color-bg-code-block: #1c1513;
+  --color-bg-header: rgba(253, 252, 251, 0.82);
   --color-bg-card: var(--color-white);
   --color-bg-image: var(--color-gray-100);
-  --color-bg-hover: rgba(249, 250, 251, 0.8);
+  --color-bg-hover: rgba(244, 239, 238, 0.7);
 
   /* 텍스트 색상 토큰 */
   --color-text-primary: var(--color-gray-900);
@@ -65,10 +74,10 @@
   --color-text-nav: var(--color-gray-500);
 
   /* 테두리 색상 토큰 */
-  --color-border-primary: rgba(229, 231, 235, 0.5);
-  --color-border-secondary: rgba(209, 213, 219, 0.6);
-  --color-border-tertiary: rgba(229, 231, 235, 0.3);
-  --color-border-hover: rgba(209, 213, 219, 0.5);
+  --color-border-primary: rgba(233, 227, 225, 0.7);
+  --color-border-secondary: rgba(215, 206, 203, 0.75);
+  --color-border-tertiary: rgba(233, 227, 225, 0.4);
+  --color-border-hover: rgba(215, 206, 203, 0.6);
 
   /* 링크 색상 토큰 — 자몽 코랄 (대비 위해 600/700) */
   --color-link: var(--color-grapefruit-600);
@@ -94,26 +103,26 @@
   --color-bg-secondary: var(--color-dark-gray-100);
   --color-bg-tertiary: var(--color-dark-gray-100);
   --color-bg-code: var(--color-dark-gray-100);
-  --color-bg-code-block: var(--color-dark-gray-900);
-  --color-bg-header: rgba(37, 37, 38, 0.95);
+  --color-bg-code-block: #171210;
+  --color-bg-header: rgba(41, 33, 30, 0.85);
   --color-bg-card: var(--color-dark-gray-100);
   --color-bg-image: var(--color-dark-gray-100);
-  --color-bg-hover: rgba(37, 37, 38, 0.5);
+  --color-bg-hover: rgba(61, 50, 46, 0.4);
 
   /* 텍스트 색상 토큰 */
-  --color-text-primary: var(--color-white);
+  --color-text-primary: var(--color-warm-white);
   --color-text-secondary: var(--color-dark-gray-200);
   --color-text-tertiary: var(--color-dark-gray-400);
-  --color-text-code: #ce9178;
+  --color-text-code: #e59a86;
   --color-text-code-block: var(--color-dark-gray-200);
   --color-text-date: var(--color-dark-gray-400);
   --color-text-nav: var(--color-dark-gray-400);
 
   /* 테두리 색상 토큰 */
-  --color-border-primary: rgba(62, 62, 66, 1);
-  --color-border-secondary: rgba(80, 80, 80, 0.8);
-  --color-border-tertiary: rgba(62, 62, 66, 0.6);
-  --color-border-hover: rgba(80, 80, 80, 1);
+  --color-border-primary: rgba(58, 46, 43, 1);
+  --color-border-secondary: rgba(87, 74, 70, 0.8);
+  --color-border-tertiary: rgba(58, 46, 43, 0.6);
+  --color-border-hover: rgba(87, 74, 70, 1);
 
   /* 링크 색상 토큰 — 다크에선 밝은 자몽으로 대비 확보 */
   --color-link: var(--color-grapefruit-400);
