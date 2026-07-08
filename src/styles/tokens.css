@@ -14,6 +14,12 @@
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
+  /* 데이터·라벨용 모노 — 기술 블로그의 언어는 코드다. eyebrow/날짜/카운트 등
+     '기계가 읽는' 성격의 텍스트에만 쓰고, 본문·제목엔 쓰지 않는다. */
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+
   /* 뉴트럴 그레이 스케일 (라이트 모드) */
   --color-gray-50: #fafafa;
   --color-gray-100: #f4f4f5;

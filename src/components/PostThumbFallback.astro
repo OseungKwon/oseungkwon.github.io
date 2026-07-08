@@ -1,0 +1,21 @@
+---
+// 이미지가 없는 글의 중립 폴백. 과한 그래픽 대신, 기술 블로그의 언어인
+// 모노 라벨을 옅게 얹어 '빈 회색 박스'로 보이지 않게 한다.
+interface Props {
+  label: string;
+  class?: string;
+}
+const { label, class: className = '' } = Astro.props;
+---
+
+<div
+  class:list={[
+    'flex h-full w-full items-center justify-center bg-token-tertiary',
+    className,
+  ]}
+>
+  <span
+    class="font-mono text-sm font-semibold uppercase tracking-[0.35em] text-token-tertiary"
+    >{label}</span
+  >
+</div>

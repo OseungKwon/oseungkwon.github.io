@@ -18,6 +18,15 @@ html.dark {
   color-scheme: dark;
 }
 
+/* 테마 전환 순간에는 모든 요소의 transition을 끈다. 끄지 않으면 색 토큰이
+   바뀌며 카드 배경·테두리처럼 transition이 걸린 요소가 200ms 뒤늦게 따라온다. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
 body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);

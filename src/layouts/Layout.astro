@@ -169,14 +169,11 @@ const jsonLd =
       // 다크모드 토글 함수
       function toggleDarkMode() {
         const html = document.documentElement;
-        const header = document.getElementById('main-header');
         const isDark = html.classList.contains('dark');
 
-        // CSS 변수 변경 시 즉시 반영되도록 transition 일시 비활성화
-        html.style.transition = 'none';
-        if (header) {
-          header.style.transition = 'none';
-        }
+        // 색 토큰이 바뀌는 동안 모든 요소의 transition을 꺼, 카드 배경·테두리
+        // 같은 요소가 뒤늦게 따라오지 않도록 한다.
+        html.classList.add('theme-switching');
 
         if (isDark) {
           html.classList.remove('dark');
@@ -186,12 +183,12 @@ const jsonLd =
           localStorage.theme = 'dark';
         }
 
-        // 다음 프레임에서 transition 복원 (다른 요소들의 transition은 유지)
+        // 색이 이미 바뀐 뒤 다음 프레임에서 transition을 복원한다.
+        // (두 번의 rAF로 스타일 재계산이 끝난 뒤 복원되도록 보장)
         requestAnimationFrame(() => {
-          html.style.transition = '';
-          if (header) {
-            header.style.transition = '';
-          }
+          requestAnimationFrame(() => {
+            html.classList.remove('theme-switching');
+          });
         });
       }
 

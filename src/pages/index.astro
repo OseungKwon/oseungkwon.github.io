@@ -1,49 +1,99 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PostListItem from '../components/PostListItem.astro';
+import FeaturedPost from '../components/FeaturedPost.astro';
 import { getPublishedPosts } from '../utils/posts';
 
 const posts = (await getPublishedPosts()).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
+
+const formatDate = (d: Date) =>
+  d.toLocaleDateString('en-us', { year: 'numeric', month: 'short', day: 'numeric' });
+
+const [featured, ...rest] = posts;
+
+// 히어로 메타: 총 글 수와 최신 발행 연·월.
+const latestYm = featured
+  ? `${featured.data.pubDate.getFullYear()}.${String(
+      featured.data.pubDate.getMonth() + 1,
+    ).padStart(2, '0')}`
+  : '';
 ---
 
 <Layout>
-  <!-- 히어로: 자몽 정체성 + 콘텐츠 thesis -->
-  <section class="pt-6 pb-2 sm:pt-10">
-    <h1
-      class="max-w-2xl text-4xl font-bold leading-[1.15] tracking-tight text-token-primary break-keep sm:text-5xl"
-    >
-      코드를 뜯어보고<br />구조를 고민한 기록.
-    </h1>
+  <!-- 히어로: 타이포 중심 편집형 마스트헤드.
+       왼쪽에 큰 헤드라인, 오른쪽에 설명·메타를 두어 폭을 균형 있게 채운다. -->
+  <section class="pt-2 pb-2 sm:pt-6">
     <p
-      class="mt-5 max-w-xl text-[17px] leading-relaxed text-token-secondary break-keep"
+      class="font-mono text-xs font-medium uppercase tracking-[0.16em] text-token-accent"
     >
-      라이브러리 내부 동작부터 프론트엔드 아키텍처 설계까지, 직접 파고든 내용을
-      정리합니다.
+      프론트엔드 · 아키텍처 · 라이브러리 내부
     </p>
+    <div
+      class="mt-5 grid gap-6 md:grid-cols-[1.1fr_0.9fr] md:items-end md:gap-14"
+    >
+      <h1
+        class="text-4xl font-bold leading-[1.12] tracking-tight text-token-primary break-keep sm:text-5xl md:text-6xl"
+      >
+        코드를 뜯어보고<br />구조를 고민한 기록.
+      </h1>
+      <div class="md:pb-1.5">
+        <p class="text-[17px] leading-relaxed text-token-secondary break-keep">
+          라이브러리 내부 동작부터 프론트엔드 아키텍처 설계까지, 직접 파고든
+          내용을 정리합니다.
+        </p>
+        <p
+          class="mt-4 flex items-center gap-2 font-mono text-xs font-medium tracking-wide text-token-date"
+        >
+          <span class="text-token-accent">{posts.length}</span>
+          <span>편의 글</span>
+          {
+            latestYm && (
+              <>
+                <span class="text-token-tertiary">·</span>
+                <span>최신 {latestYm}</span>
+              </>
+            )
+          }
+        </p>
+      </div>
+    </div>
   </section>
 
-  <div class="mt-10 border-t-[0.5px] border-token-primary pt-6 sm:mt-20">
+  <!-- 최신 글: 카드형 featured로 위계를 준다 -->
+  {
+    featured && (
+      <div class="mt-10 sm:mt-14">
+        <FeaturedPost
+          title={featured.data.title}
+          description={featured.data.description}
+          date={formatDate(featured.data.pubDate)}
+          image={featured.data.heroImage}
+          href={`${import.meta.env.BASE_URL}post/${featured.slug}/`}
+          category={featured.data.category}
+          tags={featured.data.tags}
+        />
+      </div>
+    )
+  }
+
+  <div class="mt-10 border-t-[0.5px] border-token-primary pt-6 sm:mt-14">
     <div class="flex items-baseline gap-3">
       <h2
-        class="text-xs font-bold uppercase tracking-[0.18em] text-token-secondary"
+        class="font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary"
       >
-        최근 글
+        지난 글
       </h2>
-      <span class="text-xs font-bold text-token-accent">{posts.length}</span>
+      <span class="font-mono text-xs font-bold text-token-accent">{rest.length}</span>
     </div>
     <div class="flex flex-col">
       {
-        posts.map((post) => (
+        rest.map((post) => (
           <PostListItem
             title={post.data.title}
             description={post.data.description}
-            date={post.data.pubDate.toLocaleDateString('en-us', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })}
+            date={formatDate(post.data.pubDate)}
             image={post.data.heroImage}
             href={`${import.meta.env.BASE_URL}post/${post.slug}/`}
             category={post.data.category}

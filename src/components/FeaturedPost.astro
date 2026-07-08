@@ -1,0 +1,82 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import PostThumbFallback from './PostThumbFallback.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  date: string;
+  image?: ImageMetadata;
+  href: string;
+  category: 'book' | 'tech';
+  tags: string[];
+}
+
+const { title, description, date, image, href, category, tags } = Astro.props;
+
+const categoryLabels = { book: 'Book', tech: 'Tech' };
+---
+
+<a
+  href={href}
+  class="group relative grid gap-6 overflow-hidden rounded-3xl border border-token-secondary bg-token-card p-5 transition-all duration-200 hover:border-token-hover sm:p-6 md:grid-cols-2 md:items-center md:gap-8 md:p-7"
+>
+  <div
+    class="relative order-first aspect-video w-full overflow-hidden rounded-2xl bg-token-image md:order-last md:aspect-[16/10]"
+  >
+    {
+      image ? (
+        <Image
+          src={image}
+          alt={title}
+          widths={[384, 512, 768, 1024]}
+          sizes="(min-width: 768px) 512px, 100vw"
+          format="webp"
+          quality={80}
+          loading="eager"
+          decoding="async"
+          class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+        />
+      ) : (
+        <PostThumbFallback label={categoryLabels[category]} />
+      )
+    }
+  </div>
+
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center gap-3">
+      <span
+        class="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-token-accent"
+        >최신 글</span
+      >
+      <span class="h-px flex-1 bg-token-accent opacity-20"></span>
+      <span
+        class="font-mono text-[11px] font-medium uppercase tracking-widest text-token-date"
+        >{date}</span
+      >
+    </div>
+    <h2
+      class="text-3xl font-bold leading-[1.15] tracking-tight text-token-primary break-keep transition-colors duration-200 group-hover:text-token-secondary sm:text-4xl"
+    >
+      {title}
+    </h2>
+    <p class="text-[17px] leading-relaxed text-token-secondary break-keep line-clamp-3">
+      {description}
+    </p>
+    {
+      tags.length > 0 && (
+        <div class="mt-1 flex flex-wrap gap-1.5">
+          <span class="rounded bg-token-category px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-token-category">
+            {categoryLabels[category]}
+          </span>
+          {tags.slice(0, 4).map((tag) => (
+            <span class="rounded-full bg-token-tertiary px-2 py-0.5 text-[11px] text-token-secondary">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</a>
