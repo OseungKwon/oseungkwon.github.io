@@ -81,7 +81,7 @@ const sendMessageToNative = (
   data: { [key: string]: unknown },
 ) => {
   try {
-    if (userMobileOS === [MobileOS.ANDROID]) {
+    if (userMobileOS === MobileOS.ANDROID) {
       window[handlerName]?.postMessage(JSON.stringify(data));
     } else if (userMobileOS === MobileOS.IOS) {
       window.webkit?.messageHandlers[handlerName]?.postMessage(data);
@@ -225,7 +225,7 @@ window.onNativeBackButtonClick = function () {
      * 네이티브가 데이터를 보내면 이 함수가 실행됩니다.
      */
     emit(event: string, data: unknown) {
-      const eventData = { event, data, timestamp };
+      const eventData = { event, data, timestamp: Date.now() };
 
       // 1. 데이터 중복 방지 (최신 상태 유지를 위해 이전 동일 이벤트 제거)
       this._queue = this._queue.filter((item) => item.event !== event);
