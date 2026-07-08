@@ -9,7 +9,7 @@ tags: ['Web APIs', 'File System API', 'FileSystemWritableFileStream', '스트리
 
 웹 애플리케이션에서 로컬 파일 시스템에 접근하는 방식은, 과거의 제한적인 샌드박스 형태에서 벗어나 네이티브 앱 수준의 제어가 가능한 **File System API**로 진화했습니다. 
 
-오늘은 이 API의 내부 구조와 핵심 메서드, 그리고 `FileSystemWritableFileStream`에 대해 자세히 알아보겠습니다.
+이 글에서는 이 API의 내부 구조와 핵심 메서드, 그리고 `FileSystemWritableFileStream`을 자세히 알아보겠습니다.
 
 ## 1. File System API란 무엇인가?
 
@@ -42,7 +42,7 @@ API의 모든 진입점은 `FileSystemHandle`이며, 이를 상속받은 파일 
 * **kind**: 해당 항목이 `file`인지 `directory`인지 반환합니다.
 * **name**: 항목의 이름을 반환합니다.
 * **isSameEntry(other)**: 두 핸들이 동일한 파일 시스템 항목을 가리키는지 비교합니다.
-* **queryPermission()` / `requestPermission()**: 핸들에 대한 읽기/쓰기 권한 상태를 확인하거나 사용자에게 권한을 요청합니다.
+* **queryPermission()** / **requestPermission()**: 핸들에 대한 읽기/쓰기 권한 상태를 확인하거나 사용자에게 권한을 요청합니다.
 * **remove()**: 해당 항목을 파일 시스템에서 삭제 요청합니다.
 
 ### ② FileSystemDirectoryHandle (디렉토리 제어)
@@ -55,13 +55,13 @@ API의 모든 진입점은 `FileSystemHandle`이며, 이를 상속받은 파일 
 * **removeEntry(name, options)**: 지정된 이름의 하위 항목을 삭제합니다.
   폴더를 재귀적으로 삭제하려면 `{ recursive: true }` 옵션을 사용합니다.
 * **resolve(possibleDescendant)**: 특정 하위 항목이 현재 디렉토리로부터 어떤 경로에 있는지 이름 배열(Array of names)로 반환합니다.
-* **entries()`, `keys()`, `values()**: 디렉토리 내 항목들을 비동기 반복자(Async Iterator)로 탐색합니다.
+* **entries()** / **keys()** / **values()**: 디렉토리 내 항목들을 비동기 반복자(Async Iterator)로 탐색합니다.
 
 
 
 ### ③ FileSystemFileHandle (파일 제어)
 
-개별 파일에 접근하고 데이터를 다루기 위한 핸들러 입니다.
+개별 파일에 접근하고 데이터를 다루기 위한 핸들입니다.
 
 * **getFile()**: 디스크의 현재 파일 상태를 나타내는 `File` 객체(Blob의 일종)를 반환합니다.
 * **createWritable()**: 파일에 데이터를 쓰기 위한 `FileSystemWritableFileStream`을 생성합니다.
@@ -141,8 +141,8 @@ onmessage = async (e) => {
 ```
 
 ## 응용하기 - 파일 다운로드
-대용량 파일을 비동기 스트리밍 방식으로 다운로드 할 수 있고, `showOpenFilePicker`가 지원되지 않는 브라우저에서는 OPFS를 툥해 저장하고, 이를 다시 `<a/>`를 통해 저장하도록 했습니다. 
-렌더링을 블로킹을 막기 위해 web worker를 사용했습니다.
+
+대용량 파일을 비동기 스트리밍 방식으로 다운로드하고, `showSaveFilePicker`가 지원되지 않는 브라우저에서는 OPFS에 저장한 뒤 이를 다시 `<a>` 태그로 내려받도록 했습니다. 렌더링이 블로킹되는 것을 막기 위해 web worker를 사용했습니다.
 
 1. 다운로드 화면
 ![다운로드 화면](@assets/post/file-system-api/2.png)
@@ -153,13 +153,13 @@ onmessage = async (e) => {
 3. 파일 스트리밍 다운로드
 ![파일 스트리밍 다운로드](@assets/post/file-system-api/4.png)
 
-3. 라우팅이 이동되도 다운로드 오버레이 유지
+4. 라우팅이 이동돼도 다운로드 오버레이 유지
 ![라우팅이 이동](@assets/post/file-system-api/5.png)
 
 ## 마무리
 
-File System API의 비동기 스트리밍 방식을 통해 메모리를 크게 점유하지 않고 대용량 파일을 다운로드 할 수 있습니다.
-오프라인을 우선하거나 브라우저 기반 동영상 편집 등의 기능을 구현할 때에는 OPFS를 활용해 빠른 속도로 사용자의 읽기/쓰기 동작을 가능하게 합니다.
+File System API의 비동기 스트리밍 방식을 통해 메모리를 크게 점유하지 않고 대용량 파일을 다운로드할 수 있습니다.
+오프라인을 우선하거나 브라우저 기반 동영상 편집 같은 기능을 구현할 때에는 OPFS를 활용해 빠른 속도로 읽기/쓰기를 처리할 수 있습니다.
 
-하지만 대용량 데이터 처리를 위해 web worker를 사용해 최적화 하고, 브라우저 호환성을 맞추고, 보안 등 신경을 써야 하는 여러가지 부분들이 있습니다.
-이런 부분을 잘 신경쓴다면, File System API 기반으로 더욱 네이티브 앱에 가까운 사용자 경험을 웹에서도 제공할 수 있습니다.
+다만 대용량 데이터 처리를 위해 web worker로 최적화하고, 브라우저 호환성을 맞추고, 보안까지 신경 써야 하는 부분이 여럿 있습니다.
+이런 부분을 잘 챙긴다면, File System API로 네이티브 앱에 가까운 사용자 경험을 웹에서도 제공할 수 있습니다.
