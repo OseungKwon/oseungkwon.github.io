@@ -79,7 +79,11 @@ li p {
 .vt-navbar {
   view-transition-name: site-header;
 }
-::view-transition-group(site-header) {
+/* 활성 내비 pill(홈/Contact 중 현재 페이지)에 공유 이름을 줘, 홈↔Contact
+   이동 시 파란 하이라이트가 좌우로 미끄러지듯 자연스럽게 자리를 옮긴다.
+   (활성 항목은 페이지마다 하나뿐이라 이름 충돌이 없다.) */
+::view-transition-group(site-header),
+::view-transition-group(nav-pill) {
   animation-duration: 0.34s;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }

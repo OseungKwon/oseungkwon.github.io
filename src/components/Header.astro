@@ -32,6 +32,7 @@ const isContact = path === `${base}/contact`;
       <a
         href={BASE}
         aria-current={isHome ? 'page' : undefined}
+        style={isHome ? 'view-transition-name: nav-pill' : undefined}
         class:list={[
           'rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
           isHome
@@ -42,6 +43,7 @@ const isContact = path === `${base}/contact`;
       <a
         href={`${BASE}contact/`}
         aria-current={isContact ? 'page' : undefined}
+        style={isContact ? 'view-transition-name: nav-pill' : undefined}
         class:list={[
           'rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
           isContact
