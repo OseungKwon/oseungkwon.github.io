@@ -6,6 +6,11 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
+/* 이 블로그는 시스템 설정이 아니라 <html>의 .dark 클래스로 테마를 토글한다.
+   Tailwind v4의 dark: 변형 기본값(prefers-color-scheme)을 .dark 클래스
+   기준으로 바꿔, 토글 시 dark: 유틸리티(예: 헤더 해/달 아이콘)도 함께 전환된다. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* 디자인 토큰 정의 */
 @import './tokens.css';
 
