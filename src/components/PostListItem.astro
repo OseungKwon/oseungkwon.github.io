@@ -20,7 +20,7 @@ const categoryLabels = { book: 'Book', tech: 'Tech' };
 
 <a
   href={href}
-  class="group surface flex items-center gap-4 rounded-2xl p-3.5 transition duration-200 hover:-translate-y-0.5 hover:bg-token-hover sm:gap-5 sm:p-4"
+  class="press surface flex items-center gap-4 rounded-2xl p-3.5 sm:gap-5 sm:p-4"
 >
   <div
     class="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-token-image sm:h-16 sm:w-16"
@@ -36,7 +36,7 @@ const categoryLabels = { book: 'Book', tech: 'Tech' };
           quality={80}
           loading="lazy"
           decoding="async"
-          class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          class="h-full w-full object-cover"
         />
       ) : (
         <PostThumbFallback label={categoryLabels[category]} />
@@ -53,7 +53,7 @@ const categoryLabels = { book: 'Book', tech: 'Tech' };
       <span>{date}</span>
     </div>
     <h3
-      class="mt-1 truncate text-[15px] font-semibold tracking-tight text-token-primary transition-colors duration-200 group-hover:text-token-link sm:text-base"
+      class="mt-1 truncate text-[15px] font-semibold tracking-tight text-token-primary sm:text-base"
     >
       {title}
     </h3>
@@ -65,7 +65,7 @@ const categoryLabels = { book: 'Book', tech: 'Tech' };
   </div>
 
   <svg
-    class="hidden h-5 w-5 shrink-0 text-token-tertiary transition-all duration-200 group-hover:translate-x-1 group-hover:text-token-link sm:block"
+    class="hidden h-5 w-5 shrink-0 text-token-tertiary sm:block"
     fill="none"
     stroke="currentColor"
     stroke-width="2"

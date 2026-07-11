@@ -234,6 +234,15 @@ const jsonLd =
         }
       }
 
+      // 시스템 테마 변경 실시간 반영. 단, 사용자가 토글로 명시적으로 고른
+      // 적이 있으면(localStorage.theme 존재) 그 선택을 존중하고 따라가지 않는다.
+      window
+        .matchMedia('(prefers-color-scheme: dark)')
+        .addEventListener('change', (e) => {
+          if ('theme' in localStorage) return;
+          document.documentElement.classList.toggle('dark', e.matches);
+        });
+
       // 상단 리딩 프로그레스 바 — 스크롤 진행도를 얇은 액센트 라인으로.
       (function () {
         const bar = document.getElementById('reading-progress');
