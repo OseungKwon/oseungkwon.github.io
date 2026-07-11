@@ -79,13 +79,31 @@ li p {
 .vt-navbar {
   view-transition-name: site-header;
 }
-/* 활성 내비 pill(홈/Contact 중 현재 페이지)에 공유 이름을 줘, 홈↔Contact
-   이동 시 파란 하이라이트가 좌우로 미끄러지듯 자연스럽게 자리를 옮긴다.
+/* 활성 pill의 '파란 배경'만 별도 레이어로 분리한다. 텍스트(홈/Contact)는
+   site-header 스냅샷에 그대로 남아 제자리에 있고, 이 배경 요소에만
+   view-transition-name을 줘 홈↔Contact 이동 시 파란 영역만 좌우로 옮겨간다.
    (활성 항목은 페이지마다 하나뿐이라 이름 충돌이 없다.) */
+.nav-pill-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 9999px;
+  background-color: var(--color-accent-soft);
+  pointer-events: none;
+  view-transition-name: nav-pill;
+}
 ::view-transition-group(site-header),
 ::view-transition-group(nav-pill) {
   animation-duration: 0.34s;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 파란 배경 스냅샷이 그룹 폭(40→82px)에 맞춰 비율 유지로 세로까지 부풀었다
+   줄어드는 기본 동작을 막는다. 높이를 그룹에 꽉 채워(height:100%) 고정하면
+   높이는 그대로 두고 폭·위치만 매끄럽게 이동한다. */
+::view-transition-old(nav-pill),
+::view-transition-new(nav-pill) {
+  height: 100%;
+  object-fit: fill;
 }
 ::view-transition-old(root),
 ::view-transition-new(root) {

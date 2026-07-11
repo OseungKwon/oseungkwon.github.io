@@ -32,25 +32,29 @@ const isContact = path === `${base}/contact`;
       <a
         href={BASE}
         aria-current={isHome ? 'page' : undefined}
-        style={isHome ? 'view-transition-name: nav-pill' : undefined}
         class:list={[
-          'rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
+          'relative isolate rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
           isHome
-            ? 'bg-token-accent-soft text-token-link'
+            ? 'text-token-link'
             : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
-        ]}>홈</a
+        ]}
       >
+        {isHome && <span class="nav-pill-bg" aria-hidden="true" />}
+        홈
+      </a>
       <a
         href={`${BASE}contact/`}
         aria-current={isContact ? 'page' : undefined}
-        style={isContact ? 'view-transition-name: nav-pill' : undefined}
         class:list={[
-          'rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
+          'relative isolate rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
           isContact
-            ? 'bg-token-accent-soft text-token-link'
+            ? 'text-token-link'
             : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
-        ]}>Contact</a
+        ]}
       >
+        {isContact && <span class="nav-pill-bg" aria-hidden="true" />}
+        Contact
+      </a>
       <button
         id="dark-mode-toggle"
         class="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-full text-token-nav transition-colors hover:bg-token-hover hover:text-token-primary"
