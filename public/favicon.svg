@@ -1,20 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="28" fill="#1a1a1a" />
-  <!-- 헤더 로고와 같은 8조각 부채꼴 자몽. 아이콘에 꽉 차도록 반지름을 키우고 전부 채운다 -->
-  <g fill="#ee6a7e" stroke="#f4a6b3" stroke-width="3" stroke-linejoin="round">
-    <path d="M64 64 L64 0 A64 64 0 0 1 109.26 18.74 Z" />
-    <path d="M64 64 L109.26 18.74 A64 64 0 0 1 128 64 Z" />
-    <path d="M64 64 L128 64 A64 64 0 0 1 109.26 109.26 Z" />
-    <path d="M64 64 L109.26 109.26 A64 64 0 0 1 64 128 Z" />
-    <path d="M64 64 L64 128 A64 64 0 0 1 18.74 109.26 Z" />
-    <path d="M64 64 L18.74 109.26 A64 64 0 0 1 0 64 Z" />
-    <path d="M64 64 L0 64 A64 64 0 0 1 18.74 18.74 Z" />
-    <path d="M64 64 L18.74 18.74 A64 64 0 0 1 64 0 Z" />
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3d97ff" />
+      <stop offset="1" stop-color="#006fff" />
+    </linearGradient>
+    <clipPath id="round"><rect width="128" height="128" rx="30" /></clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect width="128" height="128" fill="url(#bg)" />
+    <!-- 리퀴드 글래스 스펙큘러 시트 -->
+    <path d="M0 0 H128 V60 Q66 28 0 72 Z" fill="#ffffff" opacity="0.2" />
   </g>
-  <circle cx="64" cy="64" r="7" fill="#f4a6b3" />
-  <style>
-    @media (prefers-color-scheme: light) {
-      rect { fill: #fcfbfa; }
-    }
-  </style>
 </svg>

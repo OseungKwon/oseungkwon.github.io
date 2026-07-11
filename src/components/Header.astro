@@ -22,10 +22,28 @@ const isContact = path === `${base}/contact`;
   >
     <a
       href={BASE}
-      class="text-[15px] font-extrabold tracking-tight text-token-primary sm:text-base"
+      class="flex items-center gap-2 text-token-primary"
       aria-label="자몽의 기술블로그 홈"
     >
-      자몽의 기술블로그
+      <!-- favicon과 동일한 B1 블루 글래스 타일 마크 -->
+      <svg class="h-[22px] w-[22px] shrink-0" viewBox="0 0 128 128" aria-hidden="true">
+        <defs>
+          <linearGradient id="hdr-mark" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#3d97ff" />
+            <stop offset="1" stop-color="#006fff" />
+          </linearGradient>
+          <clipPath id="hdr-round"
+            ><rect width="128" height="128" rx="30" /></clipPath
+          >
+        </defs>
+        <g clip-path="url(#hdr-round)">
+          <rect width="128" height="128" fill="url(#hdr-mark)" />
+          <path d="M0 0 H128 V60 Q66 28 0 72 Z" fill="#fff" opacity="0.2" />
+        </g>
+      </svg>
+      <span class="text-[15px] font-semibold tracking-tight sm:text-base"
+        >자몽의 기술블로그</span
+      >
     </a>
 
     <div class="flex items-center gap-0.5 sm:gap-1">
