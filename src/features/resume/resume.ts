@@ -1,8 +1,18 @@
 import { getCollection, render } from 'astro:content';
 
-export async function getResume() {
+interface ResumeOptions {
+  profile?: string;
+}
+
+export async function getResume(options: ResumeOptions = {}) {
+  const sourceProjects = options.profile
+    ? await getCollection('resume', ({ id }) =>
+        id.startsWith(`${options.profile}/`),
+      )
+    : await getCollection('career');
+
   const projects = await Promise.all(
-    (await getCollection('career'))
+    sourceProjects
       .sort(
         (a, b) =>
           b.data.endDate.localeCompare(a.data.endDate) ||
@@ -10,6 +20,9 @@ export async function getResume() {
       )
       .map(async (project, projectIndex) => ({
         ...project,
+        id: options.profile
+          ? project.id.slice(`${options.profile}/`.length)
+          : project.id,
         projectIndex,
         Content: (await render(project)).Content,
       })),
@@ -25,7 +38,7 @@ export async function getResume() {
   ].sort();
 
   const projectGroups = projects
-    .reduce<Array<{ year: string; projects: ResumeProject[] }>>(
+    .reduce<Array<{ year: string; projects: typeof projects }>>(
       (groups, project) => {
         const year = project.data.endDate.slice(0, 4);
         const group = groups.find((item) => item.year === year);
