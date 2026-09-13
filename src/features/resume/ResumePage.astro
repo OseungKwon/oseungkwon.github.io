@@ -17,7 +17,13 @@ const { resume } = Astro.props;
   <ResumeHeader />
   <CareerIntroduction />
   <CareerOverview />
-  <ProjectTimeline groups={resume.projectGroups} projectCount={resume.projectCount} yearsLabel={resume.projectYearsLabel} />
+  <ProjectTimeline
+    groups={resume.featuredGroups}
+    otherProjects={resume.otherProjects}
+    projectCount={resume.projectCount}
+    otherCount={resume.otherCount}
+    yearsLabel={resume.projectYearsLabel}
+  />
   <ResumeFooter lastUpdated={resume.lastUpdated} />
 </article>
 

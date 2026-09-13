@@ -1,32 +1,30 @@
 import { getCollection, render } from 'astro:content';
 
-interface ResumeOptions {
-  profile?: string;
-}
+export async function getResume() {
+  const sourceProjects = await getCollection('career');
 
-export async function getResume(options: ResumeOptions = {}) {
-  const sourceProjects = options.profile
-    ? await getCollection('resume', ({ id }) =>
-        id.startsWith(`${options.profile}/`),
-      )
-    : await getCollection('career');
-
-  const projects = await Promise.all(
-    sourceProjects
-      .sort(
-        (a, b) =>
-          b.data.endDate.localeCompare(a.data.endDate) ||
-          a.data.order - b.data.order,
-      )
-      .map(async (project, projectIndex) => ({
-        ...project,
-        id: options.profile
-          ? project.id.slice(`${options.profile}/`.length)
-          : project.id,
-        projectIndex,
-        Content: (await render(project)).Content,
-      })),
+  // 최신 종료월이 위로 오게 정렬하고, 같은 달이면 order로 순서를 고정한다.
+  const sorted = sourceProjects.sort(
+    (a, b) =>
+      b.data.endDate.localeCompare(a.data.endDate) ||
+      a.data.order - b.data.order,
   );
+
+  const featuredSource = sorted.filter(({ data }) => data.tier === 'featured');
+  const otherSource = sorted.filter(({ data }) => data.tier === 'other');
+
+  // 인쇄물의 '프로젝트 01~12' 번호가 화면에 보이는 순서와 어긋나지 않도록,
+  // 대표 → 그 외 순으로 합친 뒤에 인덱스를 매긴다.
+  const projects = await Promise.all(
+    [...featuredSource, ...otherSource].map(async (project, projectIndex) => ({
+      ...project,
+      projectIndex,
+      Content: (await render(project)).Content,
+    })),
+  );
+
+  const featuredProjects = projects.slice(0, featuredSource.length);
+  const otherProjects = projects.slice(featuredSource.length);
 
   const projectYears = [
     ...new Set(
@@ -37,7 +35,7 @@ export async function getResume(options: ResumeOptions = {}) {
     ),
   ].sort();
 
-  const projectGroups = projects
+  const featuredGroups = featuredProjects
     .reduce<Array<{ year: string; projects: typeof projects }>>(
       (groups, project) => {
         const year = project.data.endDate.slice(0, 4);
@@ -56,8 +54,10 @@ export async function getResume(options: ResumeOptions = {}) {
     .sort((a, b) => b.year.localeCompare(a.year));
 
   return {
-    projectGroups,
+    featuredGroups,
+    otherProjects,
     projectCount: projects.length,
+    otherCount: otherProjects.length,
     projectYearsLabel:
       projectYears.length > 1
         ? `${projectYears[0]}—${projectYears.at(-1)}`
@@ -70,6 +70,5 @@ export async function getResume(options: ResumeOptions = {}) {
 }
 
 export type ResumeViewModel = Awaited<ReturnType<typeof getResume>>;
-export type ResumeProject =
-  ResumeViewModel['projectGroups'][number]['projects'][number];
-export type ResumeProjectGroup = ResumeViewModel['projectGroups'][number];
+export type ResumeProject = ResumeViewModel['otherProjects'][number];
+export type ResumeProjectGroup = ResumeViewModel['featuredGroups'][number];

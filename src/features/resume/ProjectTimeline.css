@@ -84,6 +84,55 @@ resume-project-timeline {
   margin-top: 1.25rem;
 }
 
+/* ── 그 외 프로젝트 ─────────────────────────────────────────────
+   대표 프로젝트와 같은 카드를 쓰되, 제목·여백을 한 단계 줄여
+   위계만 낮춘다. ProjectEntry는 수정하지 않는다. */
+.project-other {
+  margin-top: 2.5rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--resume-rule);
+}
+
+.project-other-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-inline: 0.5rem;
+}
+
+.project-other-heading h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--color-text-secondary);
+}
+
+.project-other-heading span {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-date);
+}
+
+.project-other-stack {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.project-other .project-summary {
+  padding: 1.25rem 1.5rem;
+}
+
+.project-other .project-summary-main h4 {
+  font-size: 1.0625rem;
+}
+
+.project-other .project-summary-lead > p {
+  font-size: 0.9375rem;
+}
+
 @media (max-width: 680px) {
   .projects-section {
     margin-top: 2.5rem;
@@ -105,6 +154,19 @@ resume-project-timeline {
 
   .project-year-list {
     gap: 1.6rem;
+  }
+
+  .project-other {
+    margin-top: 2rem;
+    padding-top: 1.4rem;
+  }
+
+  .project-other .project-summary {
+    padding: 1.1rem 1.25rem;
+  }
+
+  .project-other .project-summary-main h4 {
+    font-size: 1rem;
   }
 }
 
@@ -134,6 +196,25 @@ resume-project-timeline {
   .project-year-list {
     display: block;
     margin-top: 8mm;
+  }
+
+
+  .project-other {
+    margin-top: 6mm;
+    padding-top: 3mm;
+  }
+
+  .project-other-heading {
+    padding: 0 0 2mm;
+  }
+
+  .project-other-heading h3 {
+    font-size: 9.5pt;
+  }
+
+  .project-other-stack {
+    display: block;
+    margin-top: 0;
   }
 
   [data-print-hidden] {

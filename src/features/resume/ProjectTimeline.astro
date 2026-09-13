@@ -1,15 +1,19 @@
 ---
-import type { ResumeProjectGroup } from './resume';
+import type { ResumeProject, ResumeProjectGroup } from './resume';
+import ProjectEntry from './ProjectEntry.astro';
 import ProjectYearGroup from './ProjectYearGroup.astro';
 import './ProjectTimeline.css';
 
 interface Props {
   groups: ResumeProjectGroup[];
+  otherProjects: ResumeProject[];
   projectCount: number;
+  otherCount: number;
   yearsLabel: string;
 }
 
-const { groups, projectCount, yearsLabel } = Astro.props;
+const { groups, otherProjects, projectCount, otherCount, yearsLabel } =
+  Astro.props;
 ---
 
 <resume-project-timeline>
@@ -28,8 +32,27 @@ const { groups, projectCount, yearsLabel } = Astro.props;
       </button>
     </div>
 
-    <div class="project-year-list" id="project-list">
-      {groups.map((group) => <ProjectYearGroup group={group} />)}
+    <div id="project-list">
+      <div class="project-year-list">
+        {groups.map((group) => <ProjectYearGroup group={group} />)}
+      </div>
+
+      {
+        otherCount > 0 && (
+          <section class="project-other" aria-labelledby="project-other-title">
+            <header class="project-other-heading">
+              <h3 id="project-other-title">그 외 프로젝트</h3>
+              <span>{otherCount}개</span>
+            </header>
+
+            <div class="project-other-stack">
+              {otherProjects.map((project) => (
+                <ProjectEntry project={project} />
+              ))}
+            </div>
+          </section>
+        )
+      }
     </div>
   </section>
 </resume-project-timeline>
