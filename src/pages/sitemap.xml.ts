@@ -16,7 +16,6 @@ interface SitemapEntry {
 const STATIC_PAGES = [
   { path: '/', changefreq: 'weekly', priority: 1 },
   { path: '/about/', changefreq: 'monthly', priority: 0.8 },
-  { path: '/about/toss/', changefreq: 'monthly', priority: 0.7 },
   { path: '/contact/', changefreq: 'yearly', priority: 0.5 },
 ] satisfies Array<{
   path: string;

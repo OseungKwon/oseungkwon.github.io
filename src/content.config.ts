@@ -20,6 +20,8 @@ const careerSchema = z.object({
   title: z.string(),
   category: z.string(),
   order: z.number().int().nonnegative(),
+  /** featured: 상단 대표 프로젝트, other: 하단 '그 외 프로젝트' */
+  tier: z.enum(['featured', 'other']).default('featured'),
   startDate: z.string().regex(/^\d{4}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}$/),
   summary: z.string(),
@@ -47,9 +49,4 @@ const career = defineCollection({
   schema: careerSchema,
 });
 
-const resume = defineCollection({
-  loader: glob({ base: './src/content/resume', pattern: '**/*.{md,mdx}' }),
-  schema: careerSchema,
-});
-
-export const collections = { blog, career, resume };
+export const collections = { blog, career };
