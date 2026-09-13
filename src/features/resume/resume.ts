@@ -11,7 +11,11 @@ export async function getResume() {
   );
 
   const featuredSource = sorted.filter(({ data }) => data.tier === 'featured');
-  const otherSource = sorted.filter(({ data }) => data.tier === 'other');
+  // pinLast 카드는 시간순에서 빼고 '그 외 프로젝트'의 맨 뒤에 붙인다.
+  const otherSource = [
+    ...sorted.filter(({ data }) => data.tier === 'other' && !data.pinLast),
+    ...sorted.filter(({ data }) => data.tier === 'other' && data.pinLast),
+  ];
 
   // 인쇄물의 '프로젝트 01~12' 번호가 화면에 보이는 순서와 어긋나지 않도록,
   // 대표 → 그 외 순으로 합친 뒤에 인덱스를 매긴다.

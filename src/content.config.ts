@@ -22,6 +22,8 @@ const careerSchema = z.object({
   order: z.number().int().nonnegative(),
   /** featured: 상단 대표 프로젝트, other: 하단 '그 외 프로젝트' */
   tier: z.enum(['featured', 'other']).default('featured'),
+  /** 기간이 길어 시간순 정렬이 어색한 나열 카드를 맨 뒤로 고정한다 */
+  pinLast: z.boolean().default(false),
   startDate: z.string().regex(/^\d{4}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}$/),
   summary: z.string(),
