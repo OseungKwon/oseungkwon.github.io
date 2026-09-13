@@ -7,6 +7,10 @@
     <dt>경력</dt>
     <dd>Frontend Engineer · 4년</dd>
   </div>
+  <div class="career-stack">
+    <dt>주요 기술</dt>
+    <dd>React · Next.js · TypeScript</dd>
+  </div>
   <div class="career-focus">
     <dt>주요 영역</dt>
     <dd>주문·결제 · 웹뷰·딥링크 · 디자인 시스템 · 공통 라이브러리 · AI 개발 환경</dd>
@@ -16,7 +20,7 @@
 <style>
   .career-overview {
     display: grid;
-    grid-template-columns: 0.7fr 1.15fr 2fr;
+    grid-template-columns: 0.7fr 1.15fr 1.2fr 2fr;
     margin: 1rem 0.5rem 0;
     padding: 1rem 0;
     border-bottom: 1px solid var(--resume-rule);
@@ -71,6 +75,7 @@
       border-left: 0;
     }
 
+    .career-overview .career-stack,
     .career-overview .career-focus {
       grid-column: 1 / -1;
       margin-top: 0.85rem;
@@ -82,7 +87,7 @@
 
   @media print {
     .career-overview {
-      grid-template-columns: 0.7fr 1.15fr 2fr;
+      grid-template-columns: 0.7fr 1.15fr 1.2fr 2fr;
       margin: 3mm 0 0;
       padding: 3.5mm 0;
     }
@@ -96,12 +101,12 @@
     }
 
     .career-overview dt {
-      font-size: 6.5pt;
+      font-size: 7.5pt;
     }
 
     .career-overview dd {
       margin-top: 1mm;
-      font-size: 8pt;
+      font-size: 10pt;
     }
   }
 </style>

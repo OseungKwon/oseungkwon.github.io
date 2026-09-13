@@ -35,7 +35,7 @@
     display: block;
     margin-bottom: 2.5mm;
     font-family: var(--font-mono);
-    font-size: 6.5pt;
+    font-size: 7.5pt;
     font-weight: 650;
     letter-spacing: 0.1em;
     color: var(--color-text-date);
@@ -47,7 +47,7 @@
   }
 
   .project-summary-main h4 {
-    font-size: 16pt;
+    font-size: 14pt;
     line-height: 1.25;
     color: var(--color-text-primary) !important;
   }
@@ -55,7 +55,7 @@
   .project-title-row time {
     padding: 0;
     border: 0;
-    font-size: 7.5pt;
+    font-size: 8.6pt;
   }
 
   .project-summary-lead {
@@ -64,12 +64,12 @@
   }
 
   .project-summary-lead > p {
-    font-size: 9pt;
+    font-size: 10pt;
     line-height: 1.55;
   }
 
   .project-proof-link {
-    font-size: 7.5pt;
+    font-size: 8.6pt;
   }
 
   .project-facts {
@@ -80,7 +80,7 @@
   }
 
   .project-facts dd > strong {
-    font-size: 8.5pt;
+    font-size: 10pt;
   }
 
   .technology-list {
@@ -91,7 +91,7 @@
     padding: 0;
     border: 0;
     border-radius: 0;
-    font-size: 7.5pt;
+    font-size: 8.6pt;
   }
 
   .technology-list li:not(:last-child)::after {
@@ -122,6 +122,7 @@
   }
 
   .project-change {
+    overflow: visible;
     border-radius: 1mm;
   }
 
@@ -145,13 +146,13 @@
   }
 
   .project-content h2 {
-    font-size: 10.5pt;
+    font-size: 12pt;
     break-after: avoid-page;
   }
 
   .project-content p {
     margin-top: 1.8mm;
-    font-size: 8.6pt;
+    font-size: 10pt;
     line-height: 1.6;
     orphans: 2;
     widows: 2;

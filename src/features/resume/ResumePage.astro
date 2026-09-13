@@ -60,11 +60,16 @@ const { resume } = Astro.props;
   @media print {
     :global(html) {
       color-scheme: light;
-      font-size: 9.5pt;
+      font-size: 10.5pt;
     }
 
+    /* body가 flex 컨테이너이면 main이 flex 아이템이 되어,
+       Chrome이 페이지 경계에서 내용을 흘리지 못하고 잘라낸다.
+       인쇄에서는 일반 블록 레이아웃으로 되돌린다. */
     :global(body),
     :global(html.dark body) {
+      display: block !important;
+      min-height: 0 !important;
       background: white !important;
       color: #0a0c10 !important;
     }
@@ -77,6 +82,9 @@ const { resume } = Astro.props;
     }
 
     :global(main) {
+      display: block !important;
+      flex: none !important;
+      overflow: visible !important;
       max-width: none !important;
       padding: 10mm 15mm !important;
       -webkit-box-decoration-break: clone;
@@ -98,10 +106,12 @@ const { resume } = Astro.props;
       --diff-add-bg: #dafbe1;
       --diff-add-gutter: #aceebb;
       --diff-add-text: #116329;
+      display: block;
       width: auto;
       max-width: none;
       margin: 0;
       padding: 0;
+      overflow: visible;
     }
 
     @page {
