@@ -225,12 +225,7 @@
   transform: translateY(0);
 }
 
-.project-role {
-  margin: 0;
-}
-
 .project-change {
-  margin-top: 1.5rem;
   overflow: hidden;
   border: 1px solid var(--resume-rule);
   border-radius: 0.35rem;

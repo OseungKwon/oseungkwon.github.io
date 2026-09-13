@@ -1,13 +1,12 @@
 ---
 interface Props {
   label: string;
-  variant?: 'fact' | 'role';
 }
 
-const { label, variant = 'fact' } = Astro.props;
+const { label } = Astro.props;
 ---
 
-<div class:list={['resume-meta-row', `resume-meta-row--${variant}`]}>
+<div class="resume-meta-row">
   <dt>{label}</dt>
   <dd><slot /></dd>
 </div>
@@ -31,13 +30,6 @@ const { label, variant = 'fact' } = Astro.props;
     min-width: 0;
   }
 
-  .resume-meta-row--role dd {
-    font-size: 0.9375rem;
-    line-height: 1.55;
-    color: var(--color-text-secondary);
-    word-break: keep-all;
-  }
-
   @media print {
     .resume-meta-row {
       grid-template-columns: 13mm minmax(0, 1fr);
@@ -45,14 +37,6 @@ const { label, variant = 'fact' } = Astro.props;
     }
 
     dt {
-      font-size: 7.5pt;
-    }
-
-    .resume-meta-row--role {
-      break-inside: avoid;
-    }
-
-    .resume-meta-row--role dd {
       font-size: 7.5pt;
     }
   }

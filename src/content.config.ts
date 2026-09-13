@@ -25,13 +25,15 @@ const careerSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}$/),
   summary: z.string(),
-  roles: z.array(z.string()).min(1),
   technologies: z.array(z.string()).min(1),
-  change: z.object({
-    before: z.string(),
-    after: z.string(),
-    impact: z.string(),
-  }),
+  /** 나열 성격의 카드는 생략할 수 있다 */
+  change: z
+    .object({
+      before: z.string(),
+      after: z.string(),
+      impact: z.string(),
+    })
+    .optional(),
   links: z
     .array(
       z.object({

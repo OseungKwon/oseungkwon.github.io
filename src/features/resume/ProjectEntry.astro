@@ -62,9 +62,13 @@ const formatMonth = (date: string) => date.replace('-', '.');
         </div>
       </div>
       <dl class="project-facts">
-        <ResumeMetaRow label="성과">
-          <strong>{data.change.impact}</strong>
-        </ResumeMetaRow>
+        {
+          data.change && (
+            <ResumeMetaRow label="성과">
+              <strong>{data.change.impact}</strong>
+            </ResumeMetaRow>
+          )
+        }
         <ResumeMetaRow label="기술">
           <ul class="technology-list" aria-label="사용 기술">
             {data.technologies.map((technology) => <li>{technology}</li>)}
@@ -75,24 +79,26 @@ const formatMonth = (date: string) => date.replace('-', '.');
   </summary>
 
   <article class="project-detail">
-    <dl class="project-role">
-      <ResumeMetaRow label="핵심 업무" variant="role">
-        {data.roles.join(' · ')}
-      </ResumeMetaRow>
-    </dl>
-
-    <section class="project-change" aria-label="프로젝트 변화 요약">
-      <div class="diff-line diff-delete">
-        <span class="diff-sign" aria-hidden="true">−</span>
-        <small>before</small>
-        <strong>{data.change.before}</strong>
-      </div>
-      <div class="diff-line diff-add">
-        <span class="diff-sign" aria-hidden="true">+</span>
-        <small>after</small>
-        <strong>{data.change.after}</strong>
-      </div>
-    </section>
+    {
+      data.change && (
+        <section class="project-change" aria-label="프로젝트 변화 요약">
+          <div class="diff-line diff-delete">
+            <span class="diff-sign" aria-hidden="true">
+              −
+            </span>
+            <small>before</small>
+            <strong>{data.change.before}</strong>
+          </div>
+          <div class="diff-line diff-add">
+            <span class="diff-sign" aria-hidden="true">
+              +
+            </span>
+            <small>after</small>
+            <strong>{data.change.after}</strong>
+          </div>
+        </section>
+      )
+    }
 
     <div class="project-content">
       <Content />

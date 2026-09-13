@@ -5,12 +5,11 @@ order: 1
 startDate: '2026-03'
 endDate: '2026-05'
 summary: '요구사항 확인부터 코드 검증까지 AI 개발 과정을 표준화'
-roles: ['워크플로우 설계', '개발 규칙 자동 검증', 'Figma 데이터 후처리']
 technologies:
   ['AI Workflow', 'Linter · Type Checker', 'PostToolUse Hook', 'Harness']
 change:
-  before: '문서와 프롬프트에 의존해 개발 방식과 결과 품질이 작업자마다 달라짐'
-  after: '워크플로우와 하네스 엔지니어링으로 개발 절차와 품질 검증을 표준화'
+  before: '워크플로우가 있어도 단계마다 읽을 문서가 많아 토큰을 낭비하고, AI가 프로젝트 규칙을 벗어나도 걸러내지 못함'
+  after: '단계별로 필요한 문서만 읽도록 절차를 다시 짜고, Linter·PostToolUse Hook으로 규칙 위반을 자동 검증함'
   impact: 'AI 도구 실행 −34% · 작업 시간 −21% · Figma 전달 데이터 최대 −70%'
 links:
   - type: '관련 기술 글'

@@ -5,18 +5,11 @@ order: 6
 startDate: '2024-08'
 endDate: '2025-02'
 summary: '규제 전용 백오피스와 공개 서비스·금융 시스템 분리 구조 구축'
-roles:
-  [
-    '전자금융업 백오피스 구축',
-    '공통 템플릿·검색 상태 설계',
-    '금융 기능 보안 분리',
-    '민감정보 접근 통제',
-  ]
 technologies:
   ['React', 'TypeScript', 'Vite', 'Zustand', 'iframe', 'postMessage', 'CSP']
 change:
-  before: '공개 서비스에서 금융·민감 데이터를 함께 처리해 규제 요건 충족이 어려움'
-  after: '전용 백오피스와 공개 서비스·금융 시스템의 기능·통신 경계 분리'
+  before: '선불수단과 PG 정산 데이터를 공개 서비스에서 함께 다뤄 전자금융거래법 개정 요건을 맞출 수 없음'
+  after: '규제 전용 백오피스를 분리하고, iframe·postMessage·CSP로 공개 서비스와 금융 시스템의 통신 경계를 제한함'
   impact: '전자금융업 등록 요건 충족 · 선불·정산 데이터 분리 운영 기반 마련'
 links: []
 ---
