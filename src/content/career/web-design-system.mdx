@@ -8,17 +8,18 @@ summary: '여러 웹 서비스에서 재사용하는 컴포넌트와 Figma·AI �
 roles:
   ['컴포넌트 정책 정의', '공통 컴포넌트 설계·구현', 'Figma·AI 워크플로우 연계']
 technologies:
-  ['Headless UI', 'Compound Component', 'Figma MCP', 'react-virtual']
+  ['Headless 패턴', 'Compound Component', 'Storybook', 'Design Token', 'Figma MCP', 'Monorepo (pnpm workspace)', 'react-virtual']
 change:
   before: '서비스마다 UI를 중복 구현해 사용 방식과 디자인·코드가 불일치'
   after: 'Headless 공통 컴포넌트와 Figma·코드·AI 연결 기준 구축'
-  impact: 'UI 개발 공수 10%+ 절감 · 2,000건 렌더 약 20배 개선'
+  impact: 'UI 개발 공수 10%+ 절감 · 2,000건 테이블 초기 렌더 2.0s → 0.1s 미만'
 links: []
 ---
 
-사장님 웹, 플랫폼 웹, 백오피스 등의 다양한 웹 서비스에서 비슷한 UI를 각자 구현하면서 서비스마다 컴포넌트의 형태와 사용 방식이 달라지고, 디자인과 코드가 어긋나는 경우도 반복되고 있었습니다.
+레거시 디자인 시스템의 개선 필요성을 제안하고, 디자이너와 컴포넌트 정책과 공통 설계 원칙을 정리했습니다. 이를 바탕으로 공통 컴포넌트를 설계·구현했습니다.
+## 확장 가능한 컴포넌트 구조와 개발 규약
 
-레거시 디자인 시스템의 개선 필요성을 제안하고, 디자이너와 **컴포넌트 정책과 공통 설계 원칙을 정리했습니다.** 이를 바탕으로 Button, TextField, Dialog, Tabs, Table 등의 공통 컴포넌트를 설계·구현했습니다.
+서비스별로 다른 레이아웃과 요구사항을 수용할 수 있도록 상태와 계산은 Hook으로, 렌더링은 하위 컴포넌트 조합으로 분리하는 Headless·Compound Component 구조를 적용했습니다. 
 
 ## 확장 가능한 컴포넌트 구조 설계
 
