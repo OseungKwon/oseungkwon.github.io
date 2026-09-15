@@ -1,0 +1,438 @@
+---
+title: '버블링과 캡처링, React의 이벤트 처리 코드 읽기'
+description: 'DOM 이벤트의 캡처링과 버블링부터 React의 리스너 등록, Fiber 탐색, 합성 이벤트의 전파 중단까지 실제 구현 코드로 살펴봅니다.'
+pubDate: '2026-09-15'
+category: 'tech'
+tags: ['React', 'DOM', '이벤트', '소스 코드 분석']
+draft: true
+---
+
+import Embed from '@components/Embed.astro';
+
+목록 안의 삭제 버튼을 클릭했는데 상세 화면까지 열리는 경우가 있습니다. 버튼의 삭제 핸들러에 이어 부모 항목의 클릭 핸들러도 실행되기 때문입니다.
+
+브라우저는 버튼에서 발생한 클릭 이벤트를 부모에게도 전달합니다. React에서도 부모의 핸들러가 실행되지만, 내부에서 핸들러를 찾고 호출하는 방식은 다릅니다. 이 글에서는 브라우저의 이벤트 전파를 먼저 살펴본 뒤, React의 구현 코드에서 부모 핸들러가 실행되는 이유와 전파를 멈추는 방법을 확인해 보겠습니다.
+
+## 버튼을 클릭했는데 부모의 핸들러가 실행되는 이유
+
+다음 코드에는 버튼과 부모 요소에 각각 클릭 리스너가 등록되어 있습니다.
+
+```html
+<div id="parent">
+  <button id="child">삭제</button>
+</div>
+
+<script>
+  const parent = document.querySelector('#parent');
+  const child = document.querySelector('#child');
+
+  parent.addEventListener('click', () => {
+    console.log('부모 클릭');
+  });
+
+  child.addEventListener('click', () => {
+    console.log('버튼 클릭');
+  });
+</script>
+```
+
+버튼을 클릭하면 `버튼 클릭`, `부모 클릭` 순서로 출력됩니다. 브라우저가 클릭 이벤트를 부모에게 전달하면서 부모에 등록한 리스너도 실행하기 때문입니다.
+
+일반적인 DOM 트리에서 클릭 이벤트의 처리 순서는 다음과 같습니다.
+
+```text
+캡처링: window → document → html → body → 부모
+타깃:   버튼
+버블링: 부모 → body → html → document → window
+```
+
+> **캡처링**(capturing)은 조상에서 타깃을 향해 내려가며 이벤트를 처리하는 단계입니다. **버블링**(bubbling)은 타깃에서 조상 방향으로 올라가며 처리하는 단계입니다.
+
+`addEventListener()`의 `capture` 기본값은 `false`입니다. 앞의 코드에서 부모 리스너는 버블링 단계에 실행되므로 버튼의 리스너보다 나중에 호출됩니다. 부모에서 먼저 이벤트를 처리하려면 `{ capture: true }`를 지정합니다.
+
+```js
+parent.addEventListener('click', () => {
+  console.log('부모 캡처');
+}, { capture: true });
+```
+
+앞의 예제에 이 코드를 추가하면 실행 순서가 다음과 같이 바뀝니다.
+
+```text
+부모 캡처
+버튼 클릭
+부모 클릭
+```
+
+클릭한 버튼 자체에서는 캡처 리스너와 비캡처 리스너가 모두 `AT_TARGET` 단계에 실행됩니다. 이때도 캡처 리스너가 먼저 실행됩니다.
+
+여기까지는 `click`을 기준으로 살펴봤습니다. 다른 이벤트는 버블링하지 않을 수도 있으며, 조상으로 올라가는지는 이벤트의 `bubbles` 값에 따라 달라집니다. [DOM Standard의 이벤트 전파 설명](https://dom.spec.whatwg.org/#introduction-to-dom-events)과 [디스패치 알고리즘](https://dom.spec.whatwg.org/#concept-event-dispatch)에서 이 순서를 확인할 수 있습니다.
+
+## 부모에서 자식의 이벤트 처리하기
+
+이처럼 클릭이 부모에게 전달되므로, 목록의 버튼마다 리스너를 등록할 필요 없이 목록에서 클릭을 받을 수도 있습니다. 다음 코드는 `ul`에 리스너 하나를 등록하고, 클릭한 버튼의 `data-id`를 읽습니다.
+
+```html
+<ul id="list">
+  <li><button data-id="1">첫 번째 항목</button></li>
+  <li><button data-id="2">두 번째 항목</button></li>
+</ul>
+
+<script>
+  const list = document.querySelector('#list');
+
+  list.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-id]');
+    if (!button || !list.contains(button)) return;
+
+    console.log('선택한 항목:', button.dataset.id);
+  });
+</script>
+```
+
+리스너는 `ul`에 등록했지만, `event.target`을 통해 클릭이 발생한 요소를 찾습니다. 이후 목록에 버튼을 추가해도 그 클릭은 같은 `ul`로 전달되므로 기존 리스너에서 처리할 수 있습니다.
+
+> **이벤트 위임**(event delegation)은 자식에서 발생한 이벤트를 조상의 리스너에서 처리하는 방식입니다.
+
+DOM 이벤트 모델에서도 이벤트가 발생한 요소에서 직접 처리하거나, 상위 요소에서 모아 처리할 수 있다고 설명합니다. [W3C DOM Level 2 Events: 이벤트 흐름](https://www.w3.org/TR/2000/REC-DOM-Level-2-Events-20001113/events.html#Events-flow)
+
+### 삭제 버튼의 클릭이 부모에게 전달되는 것을 막기
+
+처음에 언급한 삭제 버튼 예제로 돌아가 보겠습니다. 목록 항목에는 상세 화면을 여는 리스너가 있고, 안쪽 버튼에는 삭제 리스너가 있습니다.
+
+```html
+<div id="item">
+  주문 내역
+  <button id="delete-button">삭제</button>
+</div>
+
+<script>
+  const item = document.querySelector('#item');
+  const deleteButton = document.querySelector('#delete-button');
+
+  item.addEventListener('click', () => {
+    console.log('상세 화면 열기');
+  });
+
+  deleteButton.addEventListener('click', () => {
+    console.log('항목 삭제');
+  });
+</script>
+```
+
+삭제 버튼을 클릭하면 삭제와 상세 화면 열기가 모두 실행됩니다. 삭제 버튼에서 처리한 클릭이 부모 항목으로 올라가기 때문입니다. 삭제 리스너에서 `stopPropagation()`을 호출하면 이후 전파를 중단할 수 있습니다.
+
+```js
+deleteButton.addEventListener('click', (event) => {
+  event.stopPropagation();
+  console.log('항목 삭제');
+});
+```
+
+`stopPropagation()`은 이처럼 이벤트를 더 전달하지 않으려는 경우에 사용하는 메서드입니다. 2000년 11월 DOM Level 2 Events 권고안에 포함되었으며, 캡처링과 버블링 도중 전파를 중단하는 동작을 정의합니다. [W3C DOM Level 2 Events](https://www.w3.org/TR/2000/REC-DOM-Level-2-Events-20001113/events.html#Events-flow-bubbling)
+
+`stopPropagation()`은 호출한 뒤의 전파를 막습니다. 부모의 캡처 리스너는 자식보다 먼저 실행되므로, 자식에서 전파를 중단해도 이미 실행된 결과는 달라지지 않습니다. 링크 이동 같은 기본 동작을 취소하려면 `preventDefault()`를 사용해야 합니다.
+
+| DOM API | 역할 |
+| --- | --- |
+| `stopPropagation()` | 이후 경로로의 전파를 중단합니다. |
+| `stopImmediatePropagation()` | 전파와 현재 타깃의 나머지 리스너 실행을 중단합니다. |
+| `preventDefault()` | 취소 가능한 기본 동작을 취소합니다. `passive: true`인 리스너에서는 취소할 수 없습니다. |
+
+각 메서드의 동작은 DOM 표준에 정의되어 있습니다. [DOM Standard: Event 인터페이스](https://dom.spec.whatwg.org/#interface-event)
+
+## React는 이벤트를 어디에 등록할까
+
+버튼과 부모에 각각 핸들러를 등록하는 코드를 React로 옮기면 다음과 같습니다.
+
+```jsx
+function Example() {
+  return (
+    <div onClick={() => console.log('부모 클릭')}>
+      <button onClick={() => console.log('버튼 클릭')}>
+        삭제
+      </button>
+    </div>
+  );
+}
+```
+
+버튼을 클릭하면 `버튼 클릭`, `부모 클릭` 순서로 출력됩니다. 캡처 단계에서 처리하려면 `onClickCapture`를 사용합니다. [React 공식 문서의 이벤트 전파 예제](https://react.dev/learn/responding-to-events#event-propagation)에서도 같은 동작을 확인할 수 있습니다.
+
+JSX에서는 버튼과 부모에 각각 `onClick`을 지정했습니다. React는 이 핸들러들을 실행하기 위해 루트 컨테이너에 네이티브 리스너를 등록하고, 브라우저가 전달하는 `click`을 받습니다. 이 등록을 담당하는 `listenToAllSupportedEvents()`의 구현은 다음과 같습니다.
+
+> 아래 코드는 React DOM **v19.2.0** 기준입니다. 하이드레이션이 완료된 화면의 일반적인 `click` 처리를 살펴봅니다. 하이드레이션 도중 이벤트를 보류하거나 다시 처리하는 경우와 다른 이벤트 플러그인의 동작은 다루지 않습니다. 읽는 데 필요하지 않은 타입 선언이나 분기는 생략하고 코드에 표시했습니다.
+
+[원문 코드: DOMPluginEventSystem.js의 listenToAllSupportedEvents, 432–459행](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/DOMPluginEventSystem.js#L432-L459)
+
+```js
+// listenToAllSupportedEvents 내부 발췌
+allNativeEvents.forEach(domEventName => {
+  // selectionchange는 별도로 document에 등록합니다.
+  if (domEventName !== 'selectionchange') {
+    if (!nonDelegatedEvents.has(domEventName)) {
+      listenToNativeEvent(domEventName, false, rootContainerElement);
+    }
+    listenToNativeEvent(domEventName, true, rootContainerElement);
+  }
+});
+```
+
+`listenToNativeEvent()`의 두 번째 인자는 캡처 여부입니다. `click`은 `false`와 `true`로 각각 호출하므로 루트에 버블 리스너와 캡처 리스너를 모두 등록합니다.
+
+모든 이벤트를 루트에서 받는 것은 아닙니다. `scroll` 등은 버블 리스너를 타깃에 직접 등록하고, `selectionchange`는 `document`에서 받습니다.
+
+등록한 리스너가 클릭을 받으면 `ReactDOMEventListener.js`의 `dispatchEvent()`로 이어집니다. 이 함수는 이벤트를 바로 처리할 수 있는지 확인한 뒤 `dispatchEventForPluginEventSystem()`을 호출합니다.
+
+[원문 코드: ReactDOMEventListener.js의 dispatchEvent](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/ReactDOMEventListener.js#L157-L178)
+
+```js
+let blockedOn = findInstanceBlockingEvent(nativeEvent);
+if (blockedOn === null) {
+  dispatchEventForPluginEventSystem(
+    domEventName,
+    eventSystemFlags,
+    nativeEvent,
+    return_targetInst,
+    targetContainer,
+  );
+  clearIfContinuousEvent(domEventName, nativeEvent);
+  return;
+}
+```
+
+호출할 때는 원본 이벤트인 `nativeEvent`, 클릭한 요소에 대응하는 `return_targetInst`, 이벤트를 받은 컨테이너인 `targetContainer`를 전달합니다. React는 이 정보로 어느 트리에서 핸들러를 찾을지 정합니다. 이어서 `dispatchEventsForPlugins()`가 이벤트 종류에 맞는 플러그인을 호출해 핸들러를 찾습니다.
+
+## React가 부모의 핸들러를 찾아 실행하는 과정
+
+### Fiber를 따라 핸들러를 찾습니다
+
+`SimpleEventPlugin`은 `click`의 핸들러를 찾기 위해 `accumulateSinglePhaseListeners()`를 호출합니다. 이 함수가 탐색하는 대상은 DOM의 `parentNode`가 아니라 React의 내부 노드인 **Fiber**입니다.
+
+다음 코드에서 `while` 반복문이 부모 Fiber를 따라가며 핸들러를 찾습니다. 타입 선언과 실험적 API, 다른 이벤트를 위한 분기는 생략했습니다.
+
+[원문 코드: DOMPluginEventSystem.js의 accumulateSinglePhaseListeners](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/DOMPluginEventSystem.js#L712-L832)
+
+```js
+// accumulateSinglePhaseListeners의 일반적인 click 경로를 발췌·편집
+const captureName = reactName !== null ? reactName + 'Capture' : null;
+const reactEventName = inCapturePhase ? captureName : reactName;
+let listeners = [];
+let instance = targetFiber;
+let lastHostComponent = null;
+
+while (instance !== null) {
+  const {stateNode, tag} = instance;
+  if (
+    (tag === HostComponent ||
+      tag === HostHoistable ||
+      tag === HostSingleton) &&
+    stateNode !== null
+  ) {
+    lastHostComponent = stateNode;
+    // 실험적 이벤트 핸들 처리 생략
+    if (reactEventName !== null) {
+      const listener = getListener(instance, reactEventName);
+      if (listener != null) {
+        listeners.push(
+          createDispatchListener(instance, listener, lastHostComponent),
+        );
+      }
+    }
+  }
+  // 다른 이벤트와 실험적 API의 처리 생략
+  if (accumulateTargetOnly) {
+    break;
+  }
+  instance = instance.return;
+}
+return listeners;
+```
+
+`reactEventName`에는 현재 단계에 따라 `onClickCapture` 또는 `onClick`이 들어갑니다. 해당 핸들러를 찾으면 `listeners`에 추가하고, `instance.return`으로 부모 Fiber로 이동합니다. 그래서 목록에는 자식의 핸들러가 먼저 들어가고 부모의 핸들러가 그 뒤에 들어갑니다. 각 항목에는 핸들러 함수와 Fiber, 나중에 `currentTarget`으로 사용할 DOM 요소를 함께 저장합니다.
+
+`HostComponent` 등은 DOM 요소에 대응하는 Fiber입니다. 따라서 `<Button onClick={handler} />`처럼 함수 컴포넌트에 넘긴 prop이 이 반복문에서 곧바로 수집되지는 않습니다. `Button`이 내부 DOM 요소에 핸들러를 연결하거나 직접 호출해야 합니다.
+
+부모를 찾을 때 Fiber를 따라간다는 점은 Portal에서도 드러납니다. Portal을 DOM의 다른 위치에 렌더링해도 React 트리의 부모 관계는 유지됩니다. 그래서 Portal 내부를 클릭하면 DOM상으로는 조상이 아닌 React 부모의 핸들러도 실행됩니다. [React: Portal의 이벤트 전파](https://react.dev/reference/react-dom/createPortal#caveats)
+
+### 핸들러 목록과 이벤트 객체를 실행 큐에 넣습니다
+
+이렇게 모은 `listeners`는 호출한 쪽인 `SimpleEventPlugin`으로 반환됩니다. 이 플러그인은 핸들러가 하나라도 있으면 이벤트 객체를 만들고, 목록과 함께 `dispatchQueue`에 넣습니다.
+
+[원문 코드: SimpleEventPlugin.js의 핸들러 수집과 큐 등록](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/plugins/SimpleEventPlugin.js#L211-L229)
+
+```js
+const listeners = accumulateSinglePhaseListeners(
+  targetInst,
+  reactName,
+  nativeEvent.type,
+  inCapturePhase,
+  accumulateTargetOnly,
+  nativeEvent,
+);
+if (listeners.length > 0) {
+  const event = new SyntheticEventCtor(
+    reactName,
+    reactEventType,
+    null,
+    nativeEvent,
+    nativeEventTarget,
+  );
+  dispatchQueue.push({event, listeners});
+}
+```
+
+`SyntheticEventCtor`는 이벤트 종류에 따라 선택한 생성자이며, `click`에는 `SyntheticMouseEvent`를 사용합니다. 여기에 원본 이벤트를 넘겨 **합성 이벤트**(`SyntheticEvent`)를 만듭니다. React 핸들러가 인자로 받는 객체가 이 합성 이벤트이고, 원본은 그 안의 `nativeEvent`에 저장됩니다.
+
+`click`의 캡처 핸들러와 버블 핸들러는 별도로 수집합니다. 루트의 네이티브 캡처 리스너가 실행될 때는 캡처 핸들러를, 네이티브 버블 리스너가 실행될 때는 버블 핸들러를 찾습니다. React 17부터 캡처 이벤트에 실제 브라우저 캡처 리스너를 사용합니다. [React 17의 캡처 처리 변경](https://legacy.reactjs.org/blog/2020/08/10/react-v17-rc.html#aligning-with-browsers)
+
+### 캡처는 부모부터, 버블은 자식부터 호출합니다
+
+실행 큐에 넣은 핸들러는 `processDispatchQueueItemsInOrder()`에서 호출합니다. 목록에는 자식, 부모 순서로 들어 있으므로 캡처에서는 마지막 항목부터 읽어야 부모가 먼저 실행됩니다. 버블에서는 첫 항목부터 읽으면 자식이 먼저 실행됩니다.
+
+[원문 코드: DOMPluginEventSystem.js의 processDispatchQueueItemsInOrder](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/DOMPluginEventSystem.js#L266-L311)
+
+```js
+// 타입 선언과 개발 모드 분기를 생략한 실행 루프
+let previousInstance;
+if (inCapturePhase) {
+  for (let i = dispatchListeners.length - 1; i >= 0; i--) {
+    const {instance, currentTarget, listener} = dispatchListeners[i];
+    if (instance !== previousInstance && event.isPropagationStopped()) {
+      return;
+    }
+    executeDispatch(event, listener, currentTarget);
+    previousInstance = instance;
+  }
+} else {
+  for (let i = 0; i < dispatchListeners.length; i++) {
+    const {instance, currentTarget, listener} = dispatchListeners[i];
+    if (instance !== previousInstance && event.isPropagationStopped()) {
+      return;
+    }
+    executeDispatch(event, listener, currentTarget);
+    previousInstance = instance;
+  }
+}
+```
+
+반복문 안의 `executeDispatch()`는 합성 이벤트의 `currentTarget`을 이번에 호출할 핸들러의 DOM 요소로 설정합니다. 이어서 `listener(event)`를 호출하고, 호출이 끝나면 `currentTarget`을 다시 `null`로 바꿉니다.
+
+[원문 코드: DOMPluginEventSystem.js의 executeDispatch](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/DOMPluginEventSystem.js#L252-L264)
+
+```js
+// executeDispatch 내부 발췌
+event.currentTarget = currentTarget;
+try {
+  listener(event);
+} catch (error) {
+  reportGlobalError(error);
+}
+event.currentTarget = null;
+```
+
+아래 시각화에서 단계를 넘기면 React가 어떤 Fiber를 확인하고, 어떤 핸들러를 목록에 추가하는지 볼 수 있습니다. 캡처와 버블을 바꿔 보면서 목록을 읽는 방향에 따라 호출 순서가 어떻게 달라지는지도 확인해 보세요. 앞의 구현을 설명하기 위한 모형으로, React를 직접 실행한 결과는 아닙니다.
+
+<Embed src="/embeds/react-handler-walkthrough.html" title="React 핸들러 수집과 실행 단계" seamless />
+
+## stopPropagation()은 React의 실행 루프도 중단합니다
+
+버튼의 React 핸들러에서 전파를 중단하는 코드는 다음과 같습니다.
+
+```jsx
+<button
+  onClick={(event) => {
+    event.stopPropagation();
+    console.log('항목 삭제');
+  }}
+>
+  삭제
+</button>
+```
+
+여기서 `event`는 React가 만든 합성 이벤트입니다. 이 객체의 `stopPropagation()` 구현을 보면 네이티브 메서드를 호출한 뒤, React가 확인할 중단 상태도 설정합니다.
+
+[원문 코드: SyntheticEvent.js의 stopPropagation](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/SyntheticEvent.js#L105-L124)
+
+```js
+stopPropagation: function () {
+  const event = this.nativeEvent;
+  if (!event) {
+    return;
+  }
+
+  if (event.stopPropagation) {
+    event.stopPropagation();
+  } else if (typeof event.cancelBubble !== 'unknown') {
+    // 원본의 레거시 브라우저 관련 설명 주석 생략
+    event.cancelBubble = true;
+  }
+
+  this.isPropagationStopped = functionThatReturnsTrue;
+},
+```
+
+`this.nativeEvent`는 브라우저에서 받은 원본 이벤트입니다. 원본의 `stopPropagation()`을 호출해 이후 DOM 전파를 중단하고, 마지막 줄에서 `isPropagationStopped()`가 `true`를 반환하도록 바꿉니다.
+
+앞서 본 실행 루프는 다음 인스턴스의 핸들러를 실행하기 전에 이 값을 확인합니다.
+
+[원문 코드: 핸들러 실행 전 중단 여부 확인](https://github.com/facebook/react/blob/v19.2.0/packages/react-dom-bindings/src/events/DOMPluginEventSystem.js#L291-L297)
+
+```js
+if (instance !== previousInstance && event.isPropagationStopped()) {
+  return;
+}
+```
+
+`isPropagationStopped()`가 `true`이면 다음 인스턴스로 넘어가기 전에 `return`하므로 부모 핸들러를 호출하지 않습니다. 브라우저의 전파를 멈추는 것만으로는 이 반복문이 끝나지 않기 때문에 React에서도 중단 여부를 확인해야 합니다.
+
+원본 이벤트에 직접 호출할 때는 React의 중단 상태를 설정하는 코드가 실행되지 않습니다.
+
+```js
+event.stopPropagation();
+event.nativeEvent.stopPropagation();
+```
+
+`event.stopPropagation()`은 브라우저의 전파를 멈추고 `isPropagationStopped()`도 바꿉니다. `event.nativeEvent.stopPropagation()`만 호출하면 React의 반복문에서는 중단 여부를 알 수 없습니다. 부모의 React 핸들러까지 막으려면 합성 이벤트의 메서드를 호출해야 합니다.
+
+## React 17에서 리스너를 루트로 옮긴 이유
+
+합성 이벤트에서 원본의 `stopPropagation()`까지 호출하더라도, 이벤트가 이미 지나온 경로는 되돌릴 수 없습니다. 이 때문에 React가 이벤트를 어디서 받는지가 중요합니다.
+
+React 16 이하에서는 대부분의 이벤트를 `document`에서 위임받았습니다. React 핸들러가 실행될 때는 네이티브 이벤트가 이미 `document`에 도착한 뒤였습니다.
+
+```text
+버튼 → 부모 → React 루트 → document
+                           └ React 핸들러 실행
+```
+
+이 시점에 `stopPropagation()`을 호출해도 같은 `document`에 등록한 다른 네이티브 리스너는 실행됩니다. React 트리가 중첩된 경우에도 안쪽 트리에서 중단한 이벤트를 바깥쪽 트리가 받는 문제가 있었습니다.
+
+React 17에서는 위임 위치를 각 루트 컨테이너로 변경했습니다.
+
+```text
+버튼 → 부모 → React 루트 → document
+              └ React 핸들러 실행
+                전파를 중단하면 document에 도달하지 않음
+```
+
+루트에서 `stopPropagation()`을 호출하면 이벤트가 `document`의 버블 리스너에 도달하기 전에 멈춥니다. 중첩된 React 트리도 양쪽이 React 17 이상이면 안쪽 루트에서 바깥으로 올라가는 전파를 막을 수 있습니다. 앞에서 본 `rootContainerElement`에 리스너를 등록하는 코드는 이때 바뀐 방식입니다. [React 17: 이벤트 위임 변경](https://legacy.reactjs.org/blog/2020/08/10/react-v17-rc.html#changes-to-event-delegation)
+
+`document`의 캡처 리스너는 여전히 루트보다 먼저 실행됩니다. 루트의 React 핸들러에서 전파를 중단해도 이미 실행된 캡처 리스너의 결과는 남습니다.
+
+## 마치며
+
+처음의 삭제 버튼 예제에서 부모 핸들러가 실행된 이유는 React가 버튼에 이어 부모의 핸들러도 목록에 담았기 때문입니다. 버튼의 `onClick`에서 `event.stopPropagation()`을 호출하면 React는 다음 부모 핸들러를 실행하지 않고, 브라우저도 이후 전파를 멈춥니다.
+
+그런데도 부모에서 어떤 처리가 실행된다면, 그 핸들러가 캡처 단계에 등록되어 있는지 확인해야 합니다. 캡처 핸들러는 버튼의 `onClick`보다 먼저 실행되므로 버튼에서 전파를 중단해도 이미 실행된 처리는 남습니다.
+
+## 참고 자료
+
+- [DOM Standard: 이벤트 전파](https://dom.spec.whatwg.org/#introduction-to-dom-events)
+- [DOM Level 2 Events, 2000년 11월 권고안](https://www.w3.org/TR/2000/REC-DOM-Level-2-Events-20001113/events.html)
+- [React: Responding to Events](https://react.dev/learn/responding-to-events)
+- [React: createPortal](https://react.dev/reference/react-dom/createPortal)
+- [React 17: Changes to Event Delegation](https://legacy.reactjs.org/blog/2020/08/10/react-v17-rc.html#changes-to-event-delegation)
+- [React v19.2.0 이벤트 구현 디렉터리](https://github.com/facebook/react/tree/v19.2.0/packages/react-dom-bindings/src/events)
+
+React 소스 발췌: Copyright (c) Meta Platforms, Inc. and affiliates. [MIT License](https://github.com/facebook/react/blob/v19.2.0/LICENSE).
