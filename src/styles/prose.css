@@ -113,10 +113,17 @@
     @apply my-0 w-max min-w-full border-collapse text-[15px];
   }
 
-  /* 셀 공통: 한글은 글자 단위가 아니라 단어 단위로 줄바꿈해 가독성을 확보한다 */
+  /* 셀 공통: 한글은 글자 단위가 아니라 단어 단위로 줄바꿈해 가독성을 확보한다.
+     패딩을 !important로 두는 이유가 있다. @tailwindcss/typography가
+     thead th:first-child와 tbody td:first-child의 padding-inline-start를 0으로
+     지워서, 첫 열 글자가 표 왼쪽 가장자리에 그대로 붙는다(마지막 열 오른쪽도 같다).
+     플러그인 스타일은 utilities 레이어에 있어 components 레이어의 @apply로는
+     특정도와 무관하게 이길 수 없으므로, 이 파일의 color·border와 같은 방식으로
+     덮는다. */
   .prose .table-wrapper th,
   .prose .table-wrapper td {
-    @apply px-4 py-3 text-left align-top;
+    @apply text-left align-top;
+    padding: 0.75rem 1rem !important;
     word-break: keep-all;
     overflow-wrap: normal;
     border-bottom: 1px solid var(--color-border-primary) !important;
