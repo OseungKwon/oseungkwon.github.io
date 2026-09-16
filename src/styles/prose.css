@@ -14,64 +14,64 @@
   }
 
   /* 제목 스타일 */
-  .prose h1,
-  .prose h2,
-  .prose h3,
-  .prose h4,
-  .prose h5,
-  .prose h6 {
+  .prose h1:not(:where(.not-prose, .not-prose *)),
+  .prose h2:not(:where(.not-prose, .not-prose *)),
+  .prose h3:not(:where(.not-prose, .not-prose *)),
+  .prose h4:not(:where(.not-prose, .not-prose *)),
+  .prose h5:not(:where(.not-prose, .not-prose *)),
+  .prose h6:not(:where(.not-prose, .not-prose *)) {
     @apply font-bold tracking-tight;
     color: var(--color-text-primary) !important;
     /* 헤더 높이만큼 스크롤 오프셋 (h-16 = 64px) */
     scroll-margin-top: 4rem;
   }
 
-  .prose h1 {
+  .prose h1:not(:where(.not-prose, .not-prose *)) {
     @apply text-3xl sm:text-4xl mb-8;
     color: var(--color-text-primary) !important;
   }
 
-  .prose h2 {
+  .prose h2:not(:where(.not-prose, .not-prose *)) {
     @apply text-2xl sm:text-3xl mt-12 mb-6;
     color: var(--color-text-primary) !important;
   }
 
-  .prose h3 {
+  .prose h3:not(:where(.not-prose, .not-prose *)) {
     @apply text-xl sm:text-2xl mt-8 mb-4;
     color: var(--color-text-primary) !important;
   }
 
-  .prose h4 {
+  .prose h4:not(:where(.not-prose, .not-prose *)) {
     color: var(--color-text-primary) !important;
   }
 
-  .prose h5 {
+  .prose h5:not(:where(.not-prose, .not-prose *)) {
     color: var(--color-text-primary) !important;
   }
 
-  .prose h6 {
+  .prose h6:not(:where(.not-prose, .not-prose *)) {
     color: var(--color-text-primary) !important;
   }
 
   /* 본문 스타일 */
-  .prose p {
+  .prose p:not(:where(.not-prose, .not-prose *)) {
     @apply leading-relaxed mb-6 text-[17px];
     white-space: pre-line;
     color: var(--color-text-primary) !important;
   }
 
   /* 링크 스타일 */
-  .prose a {
+  .prose a:not(:where(.not-prose, .not-prose *)) {
     @apply font-medium no-underline transition-colors hover:underline;
     color: var(--color-link) !important;
   }
 
-  .prose a:hover {
+  .prose a:not(:where(.not-prose, .not-prose *)):hover {
     color: var(--color-link-hover) !important;
   }
 
   /* 인라인 코드 스타일 */
-  .prose code {
+  .prose code:not(:where(.not-prose, .not-prose *)) {
     @apply rounded-md px-1.5 py-0.5 text-[13px] font-medium;
     background-color: var(--color-bg-code) !important;
     color: var(--color-text-code) !important;
@@ -90,13 +90,13 @@
   }
 
   /* 코드 블록 스타일 — 긴 코드는 가로 스크롤(모바일에서 잘림 방지) */
-  .prose pre {
+  .prose pre:not(:where(.not-prose, .not-prose *)) {
     @apply my-8 overflow-x-auto rounded-3xl p-5 shadow-sm;
     border: 1px solid var(--color-border-primary) !important;
     background-color: var(--color-bg-code-block) !important;
   }
 
-  .prose pre code {
+  .prose pre code:not(:where(.not-prose, .not-prose *)) {
     @apply bg-transparent! p-0 text-[13px] leading-relaxed;
     background-color: transparent !important;
     color: var(--color-text-code-block) !important;
@@ -139,50 +139,64 @@
   }
 
   /* 이미지 스타일 */
-  .prose img {
+  .prose img:not(:where(.not-prose, .not-prose *)) {
     @apply my-12 rounded-3xl shadow-sm;
   }
 
   /* 인용구 스타일 */
-  .prose blockquote {
-    @apply pl-6 italic;
-    border-left: 3px solid var(--color-accent) !important;
+  /* 인용문은 한쪽 변에 굵은 선을 긋는 대신 옅게 채운 덩어리로 둔다.
+     '내 말이 아니다'라는 신호는 표면색만으로 충분하고, 블로그의 다른 표면
+     (코드 블록·카드)과 같은 언어가 된다.
+     italic은 뺀다. 한글 폰트에는 이탤릭 자형이 없어 브라우저가 기울여 그리는데,
+     그 가짜 기울임이 본문보다 읽기 나빠진다. */
+  .prose blockquote:not(:where(.not-prose, .not-prose *)) {
+    @apply my-6 rounded-2xl px-5 py-4 not-italic;
+    /* @tailwindcss/typography가 blockquote에 좌측 보더와 italic을 기본으로
+       넣는다. 지우지 않으면 플러그인 기본값이 그대로 남는다. */
+    border-left-width: 0 !important;
+    background-color: var(--color-bg-tertiary) !important;
     color: var(--color-text-secondary) !important;
+    font-style: normal !important;
+  }
+
+  /* 인용문 안의 마지막 문단은 아래 여백을 지워 블록이 아래로 뜨지 않게 한다. */
+  .prose blockquote:not(:where(.not-prose, .not-prose *)) > p:last-child {
+    margin-bottom: 0 !important;
   }
 
   /* blockquote 내부 따옴표 제거 */
-  .prose blockquote p::before,
-  .prose blockquote p::after {
+  .prose blockquote p:not(:where(.not-prose, .not-prose *))::before,
+  .prose blockquote p:not(:where(.not-prose, .not-prose *))::after {
     content: '' !important;
   }
 
   /* 리스트 스타일 */
-  .prose ul {
+  .prose ul:not(:where(.not-prose, .not-prose *)) {
     @apply list-disc pl-6 mb-6 space-y-2;
     color: var(--color-text-secondary) !important;
   }
 
-  .prose ol {
+  .prose ol:not(:where(.not-prose, .not-prose *)) {
     @apply list-decimal pl-6 mb-6 space-y-2;
     color: var(--color-text-secondary) !important;
   }
 
-  .prose li {
+  .prose li:not(:where(.not-prose, .not-prose *)) {
     color: var(--color-text-secondary) !important;
   }
 
   /* 강조 스타일 */
-  .prose strong {
+  .prose strong:not(:where(.not-prose, .not-prose *)) {
     color: var(--color-text-primary) !important;
     font-weight: 600;
   }
 
-  .prose em {
+  .prose em:not(:where(.not-prose, .not-prose *)) {
     color: var(--color-text-secondary) !important;
   }
 
   /* 구분선 스타일 */
-  .prose hr {
+  .prose hr:not(:where(.not-prose, .not-prose *)) {
     border-color: var(--color-border-primary) !important;
   }
 }

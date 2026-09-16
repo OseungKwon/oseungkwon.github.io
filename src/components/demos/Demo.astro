@@ -1,0 +1,74 @@
+---
+/**
+ * Demo — 본문에 들어가는 인터랙티브 시각화의 공통 껍데기.
+ *
+ * 데모마다 제목·조작부·무대를 새로 조립하면 글마다 모양이 달라지므로,
+ * 바깥 틀은 여기서 한 번만 정의한다. 각 데모 컴포넌트는 조작 요소와
+ * 무대 내용만 슬롯으로 넘긴다.
+ *
+ * .prose 안에 놓이기 때문에 not-prose로 감싼다. 이게 없으면 본문 타이포그래피
+ * (p의 margin-bottom 1.5rem, white-space: pre-line 등)가 데모 내부까지 먹는다.
+ *
+ * 사용법:
+ *   <Demo title="..." hint="..." caption="...">
+ *     <Fragment slot="controls"> ...버튼·토글... </Fragment>
+ *     ...무대 내용...
+ *   </Demo>
+ */
+interface Props {
+  /** 무엇을 보여주는 데모인지 (한 줄) */
+  title?: string;
+  /** 독자가 무엇을 조작하면 되는지 */
+  hint?: string;
+  /** 무대 아래 캡션 */
+  caption?: string;
+  /** 조작부를 무대 아래에 둔다 */
+  controlsBottom?: boolean;
+  /** 무대 기본 여백을 없앤다 (캔버스처럼 가장자리까지 채우는 경우) */
+  bare?: boolean;
+}
+
+const { title, hint, caption, controlsBottom = false, bare = false } = Astro.props;
+const hasControls = Astro.slots.has('controls');
+---
+
+<figure class="demo not-prose">
+  {
+    (title || hint) && (
+      <div class="demo__head">
+        {title && <div class="demo__title">{title}</div>}
+        {hint && <p class="demo__hint">{hint}</p>}
+      </div>
+    )
+  }
+
+  <div class="demo__body">
+    {
+      hasControls && !controlsBottom && (
+        <div class="demo__controls">
+          <slot name="controls" />
+        </div>
+      )
+    }
+
+    <div class:list={['demo__stage', bare && 'demo__stage--bare']}>
+      <slot />
+    </div>
+
+    {
+      hasControls && controlsBottom && (
+        <div class="demo__controls demo__controls--bottom">
+          <slot name="controls" />
+        </div>
+      )
+    }
+  </div>
+
+  {caption && <figcaption class="demo__caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  .demo__stage--bare {
+    padding: 0;
+  }
+</style>

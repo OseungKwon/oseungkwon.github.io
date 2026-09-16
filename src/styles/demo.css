@@ -1,0 +1,325 @@
+/**
+ * 인터랙티브 데모 — 공용 어휘
+ *
+ * 본문 중간에 들어가는 조작 가능한 시각화(아일랜드)가 쓰는 클래스 모음이다.
+ * 데모마다 색과 버튼을 새로 정의하면 글마다 다른 UI가 생기므로, 표면·버튼·
+ * 토글·수치 readout처럼 모든 데모에 공통으로 필요한 것은 여기서 한 번만
+ * 정의하고 토큰(tokens.css)에서 색을 받는다. 데모 고유의 무대(stage) 표현만
+ * 각 컴포넌트의 scoped style에서 만든다.
+ *
+ * 데모는 .prose 안에 놓이므로 바깥은 항상 not-prose로 감싼다(Demo.astro가 처리).
+ */
+
+@layer components {
+  .demo {
+    margin: 2.5rem 0;
+    font-family: var(--font-sans);
+    color: var(--color-text-primary);
+
+    /* 역할 색 — 데모 안에서 두세 주체(요소·스레드·경로)를 구분해야 할 때 쓴다.
+       이 블로그의 시그니처는 블루 하나뿐이라, 데모마다 보라·주황을 새로
+       들이면 글 전체의 색 언어가 무너진다. 대신 '주인공은 블루, 상대는
+       뉴트럴'로 나눈다. 색상환을 넓히지 않으면서도 시선이 어디로 가야 하는지
+       분명해지고, 라이트·다크 양쪽에서 대비가 무너지지 않는다.
+
+       warn은 '멈춤·유실·실패'에만 쓴다. 남발하면 경고의 의미가 사라진다. */
+    --demo-a: var(--color-accent);
+    --demo-a-soft: var(--color-accent-soft);
+    --demo-b: var(--color-text-secondary);
+    --demo-b-soft: var(--color-bg-tertiary);
+    --demo-idle: var(--color-text-tertiary);
+    --demo-warn: #d92d20;
+    --demo-warn-soft: rgba(217, 45, 32, 0.1);
+  }
+
+  .dark .demo {
+    --demo-warn: #ff7b72;
+    --demo-warn-soft: rgba(255, 123, 114, 0.14);
+  }
+
+  /* ── 헤더: 무엇을 보여주는 데모인지 + 어떻게 조작하는지 ── */
+  .demo__head {
+    margin-bottom: 0.75rem;
+  }
+
+  .demo__title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+  }
+
+  .demo__hint {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+
+  /* ── 본체: 조작부와 무대를 담는 하나의 표면 ── */
+  .demo__body {
+    overflow: hidden;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 1.25rem;
+    background-color: var(--surface-bg);
+  }
+
+  .demo__caption {
+    margin-top: 0.75rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+    color: var(--color-text-tertiary);
+  }
+
+  /* 조작부는 무대와 붙어 있되 옅은 배경으로 역할을 구분한다. */
+  .demo__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--color-border-tertiary);
+    background-color: var(--color-bg-tertiary);
+  }
+
+  /* 조작부가 무대 아래로 갈 때 */
+  .demo__controls--bottom {
+    border-top: 1px solid var(--color-border-tertiary);
+    border-bottom: 0;
+  }
+
+  .demo__spacer {
+    flex: 1 1 auto;
+  }
+
+  .demo__stage {
+    position: relative;
+    padding: 1.25rem 1rem;
+  }
+
+  /* ── 버튼 ── */
+  .demo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0 0.875rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    background-color: var(--surface-bg);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .demo-btn:hover:not(:disabled) {
+    background-color: var(--color-bg-hover);
+    border-color: var(--color-border-hover);
+  }
+
+  .demo-btn--primary {
+    border-color: transparent;
+    background-color: var(--color-accent);
+    color: #ffffff;
+  }
+
+  .demo-btn--primary:hover:not(:disabled) {
+    background-color: var(--color-link-hover);
+    border-color: transparent;
+  }
+
+  .demo-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  /* ── 세그먼트 토글: 같은 작업을 두 방식으로 대조할 때 ──
+     데모의 핵심 조작이다. 독자가 A/B를 직접 전환해 차이를 만든다. */
+  .demo-seg {
+    display: inline-flex;
+    padding: 0.1875rem;
+    border-radius: 9999px;
+    background-color: var(--color-bg-tertiary);
+    box-shadow: inset 0 0 0 1px var(--color-border-tertiary);
+  }
+
+  .demo-seg__opt {
+    padding: 0.3125rem 0.75rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .demo-seg__opt:hover {
+    color: var(--color-text-primary);
+  }
+
+  .demo-seg__opt[aria-pressed='true'],
+  .demo-seg__opt[aria-selected='true'] {
+    background-color: var(--surface-bg);
+    color: var(--color-link);
+    box-shadow: var(--surface-shadow);
+  }
+
+  /* ── 수치 readout: "느려 보인다"가 아니라 실제 측정값을 띄운다 ── */
+  .demo-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+  }
+
+  .demo-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  .demo-stat__value {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    /* 숫자가 바뀔 때 폭이 흔들리지 않도록 고정폭 숫자를 쓴다. */
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+  }
+
+  .demo-stat__value--accent {
+    color: var(--color-link);
+  }
+
+  .demo-stat__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  /* ── 게이지: 비율·진행도 ── */
+  .demo-meter {
+    overflow: hidden;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .demo-meter__fill {
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--color-accent);
+    transition: width 0.12s linear;
+  }
+
+  /* ── 슬라이더 ──
+     네이티브 range는 트랙과 손잡이를 OS 액센트 색으로 칠한다. 데모 안에서
+     혼자 다른 색이 되므로 토큰으로 다시 칠한다. */
+  .demo-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 9rem;
+    max-width: 100%;
+    height: 1.125rem;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .demo-range::-webkit-slider-runnable-track {
+    height: 0.25rem;
+    border-radius: 9999px;
+    background-color: var(--color-border-secondary);
+  }
+
+  .demo-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    /* 트랙(0.25rem) 중앙에 손잡이(0.875rem)를 올린다. */
+    margin-top: -0.3125rem;
+    border: 2px solid var(--surface-bg);
+    border-radius: 9999px;
+    background-color: var(--color-accent);
+  }
+
+  .demo-range::-moz-range-track {
+    height: 0.25rem;
+    border-radius: 9999px;
+    background-color: var(--color-border-secondary);
+  }
+
+  .demo-range::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid var(--surface-bg);
+    border-radius: 9999px;
+    background-color: var(--color-accent);
+  }
+
+  /* ── 라벨·배지·안내문 ── */
+  .demo-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .demo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    background-color: var(--color-accent-soft);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-link);
+  }
+
+  .demo-note {
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+  }
+
+  .demo-code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+  }
+
+  /* 데모 안의 모든 조작 요소는 키보드 포커스가 또렷하게 보여야 한다.
+     마우스로만 쓰는 장치가 아니라 본문의 일부이기 때문이다. */
+  .demo :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* 움직임을 줄이도록 설정한 독자에게는 전환 효과를 걷어낸다.
+     데모의 내용(수치·상태)은 그대로 전달되므로 정보 손실은 없다. */
+  @media (prefers-reduced-motion: reduce) {
+    .demo *,
+    .demo *::before,
+    .demo *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}

@@ -4,10 +4,10 @@ description: 'React가 클릭한 버튼에서 부모까지 핸들러를 찾아 �
 pubDate: '2026-09-15'
 category: 'tech'
 tags: ['React', 'DOM', '이벤트', '소스 코드 분석']
-draft: true
+draft: false
 ---
 
-import Embed from '@components/Embed.astro';
+import ReactHandlerWalkthrough from '@components/demos/ReactHandlerWalkthrough.astro';
 
 목록 안의 삭제 버튼을 눌렀는데 상세 화면까지 열리는 경우가 있습니다. 다음 코드처럼 버튼과 부모 항목에 각각 `onClick`을 지정하면 두 핸들러가 모두 실행됩니다.
 
@@ -228,7 +228,7 @@ event.currentTarget = null;
 
 아래 시각화는 버튼에서 부모로 이동하며 핸들러를 모으고 호출하는 과정을 보여줍니다. 캡처와 버블을 선택하면 같은 순서로 수집한 핸들러를 각각 어떤 순서로 호출하는지 비교할 수 있습니다. 앞의 코드를 설명하기 위한 모형이며, React를 직접 실행한 결과는 아닙니다.
 
-<Embed src="/embeds/react-handler-walkthrough.html" title="React 핸들러 수집과 실행 단계" seamless />
+<ReactHandlerWalkthrough />
 
 ### stopPropagation()은 React의 실행 루프도 중단합니다
 

@@ -1,0 +1,492 @@
+---
+/**
+ * React가 부모 핸들러를 찾는 과정 — 단계 진행형 데모.
+ *
+ * 글(react-event-propagation)의 accumulateSinglePhaseListeners →
+ * dispatchQueue → processDispatchQueueItemsInOrder 흐름을 독자가 한 단계씩
+ * 넘기며 본다.
+ *
+ * 상태는 문장이 아니라 위치와 번호로 말한다. 커서가 어느 노드 옆에 있는지가
+ * '지금 어디를 보는 중인지'이고, 슬롯에 붙는 ①② 배지가 '어떤 순서로
+ * 호출되는지'다. 버블과 캡처를 토글하면 배열은 그대로인데 번호만 뒤바뀌는데,
+ * 그 한 장면이 이 글의 요지라서 설명 문단을 대신한다.
+ */
+import Demo from './Demo.astro';
+
+const STAGES = ['타깃에서 찾기', '부모까지 수집', '순서대로 호출'];
+---
+
+<Demo
+  title="React가 부모 핸들러를 찾는 과정"
+  hint="단계를 넘겨 보세요. 버블과 캡처를 전환하면 배열은 그대로인데 호출 번호만 뒤바뀝니다."
+  caption="React v19.2.0의 click 처리 설명용 모형입니다. 전파 중단이 없는 경우를 보여주며, 실제 React 실행 결과는 아닙니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="비교할 단계">
+      <button class="demo-seg__opt" type="button" data-phase="bubble" aria-pressed="true">
+        onClick
+      </button>
+      <button class="demo-seg__opt" type="button" data-phase="capture" aria-pressed="false">
+        onClickCapture
+      </button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn" type="button" data-act="back">이전</button>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음</button>
+    <span class="rh-count demo-code" data-el="count"></span>
+  </Fragment>
+
+  <div class="rh" data-demo="react-handler">
+    <ol class="rh-phases">
+      {
+        STAGES.map((label, i) => (
+          <li data-stage={i}>
+            <span class="rh-phases__dot" aria-hidden="true" />
+            {label}
+          </li>
+        ))
+      }
+    </ol>
+
+    <p class="rh-headline" data-el="headline" aria-live="polite"></p>
+
+    <div class="rh-scene">
+      <div class="rh-tree">
+        <div class="rh-node rh-node--parent" data-el="parent">
+          <span class="rh-cursor" aria-hidden="true"></span>
+          <span class="rh-node__tag">&lt;div&gt;</span>
+          <code class="rh-node__fn" data-el="parentHandler"></code>
+
+          <button class="rh-node rh-node--target" type="button" data-el="target">
+            <span class="rh-cursor" aria-hidden="true"></span>
+            <span class="rh-node__tag">&lt;button&gt;</span>
+            <code class="rh-node__fn" data-el="childHandler"></code>
+          </button>
+        </div>
+      </div>
+
+      <span class="rh-flow" aria-hidden="true"></span>
+
+      <div class="rh-collected">
+        <code class="rh-collected__name">listeners</code>
+        <ol class="rh-array">
+          <li class="rh-slot" data-owner="a" data-el="q0">
+            <span class="rh-slot__i">0</span>
+            <code class="rh-slot__fn">handleDelete</code>
+            <span class="rh-slot__order" data-el="order0" hidden></span>
+          </li>
+          <li class="rh-slot" data-owner="b" data-el="q1">
+            <span class="rh-slot__i">1</span>
+            <code class="rh-slot__fn">handleParent</code>
+            <span class="rh-slot__order" data-el="order1" hidden></span>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="rh-code">
+      <code class="rh-code__line" data-el="source"></code>
+      <span class="rh-code__fn" data-el="function"></span>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  /* ── 국면: 점 세 개. 지나온 곳과 남은 곳이 한눈에 보이면 라벨을 길게 쓸 필요가 없다. ── */
+  .rh-phases {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rh-phases li {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+    font-size: 0.75rem;
+    color: var(--demo-idle);
+    transition: color 0.16s ease;
+  }
+
+  .rh-phases__dot {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 9999px;
+    background-color: currentColor;
+    opacity: 0.45;
+  }
+
+  .rh-phases li[data-done] {
+    color: var(--color-text-tertiary);
+  }
+
+  .rh-phases li[data-active] {
+    font-weight: 700;
+    color: var(--demo-a);
+  }
+
+  .rh-phases li[data-active] .rh-phases__dot,
+  .rh-phases li[data-done] .rh-phases__dot {
+    opacity: 1;
+  }
+
+  .rh-headline {
+    margin: 0 0 1.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+  }
+
+  /* ── 무대 ── */
+  .rh-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) 1.25rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .rh-tree {
+    padding-left: 0.875rem;
+  }
+
+  /* 노드는 채움과 테두리 전체로 상태를 말한다. 한쪽 변만 굵게 긋지 않는다. */
+  .rh-node {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.75rem;
+    background-color: transparent;
+    text-align: left;
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .rh-node--parent {
+    color: var(--demo-b);
+  }
+
+  .rh-node--target {
+    margin-top: 0.75rem;
+    font: inherit;
+    color: var(--demo-a);
+    cursor: pointer;
+  }
+
+  .rh-node[data-current] {
+    border-color: currentColor;
+    background-color: var(--demo-a-soft);
+  }
+
+  .rh-node--parent[data-current] {
+    background-color: var(--demo-b-soft);
+  }
+
+  .rh-node__tag {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .rh-node__fn {
+    display: block;
+    margin-top: 0.1875rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+    overflow-wrap: anywhere;
+  }
+
+  /* 커서 — "현재 확인 중: 버튼 Fiber"라는 문장을 대신한다. */
+  .rh-cursor {
+    position: absolute;
+    top: 0.875rem;
+    left: -0.8125rem;
+    width: 0;
+    height: 0;
+    border-top: 0.3125rem solid transparent;
+    border-bottom: 0.3125rem solid transparent;
+    border-left: 0.375rem solid currentColor;
+    opacity: 0;
+    transition: opacity 0.16s ease;
+  }
+
+  .rh-node[data-current] > .rh-cursor {
+    opacity: 1;
+  }
+
+  .rh-flow {
+    justify-self: center;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-top: 1.5px solid var(--demo-idle);
+    border-right: 1.5px solid var(--demo-idle);
+    transform: rotate(45deg);
+  }
+
+  .rh-collected__name {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .rh-array {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* 빈 자리는 점선으로 둔다. 배열이 '채워진다'는 게 보여야 수집이 읽힌다. */
+  .rh-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px dashed var(--color-border-secondary);
+    border-radius: 0.625rem;
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .rh-slot__i {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--demo-idle);
+  }
+
+  .rh-slot__fn {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--demo-idle);
+    overflow-wrap: anywhere;
+  }
+
+  .rh-slot[data-filled] {
+    border-style: solid;
+  }
+
+  .rh-slot[data-filled] .rh-slot__i {
+    color: var(--color-text-tertiary);
+  }
+
+  .rh-slot[data-owner='a'][data-filled] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  .rh-slot[data-owner='a'][data-filled] .rh-slot__fn {
+    color: var(--demo-a);
+  }
+
+  .rh-slot[data-owner='b'][data-filled] {
+    border-color: var(--demo-b);
+    background-color: var(--demo-b-soft);
+  }
+
+  .rh-slot[data-owner='b'][data-filled] .rh-slot__fn {
+    color: var(--demo-b);
+  }
+
+  /* 호출 순서 배지 — 토글하면 이 번호만 뒤바뀐다. 이 데모의 요점. */
+  .rh-slot__order {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 1.5px solid currentColor;
+    border-radius: 9999px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .rh-slot__order[data-done] {
+    border-color: transparent;
+    background-color: currentColor;
+  }
+
+  .rh-slot__order[data-done]::after {
+    content: attr(data-n);
+    color: var(--surface-bg);
+  }
+
+  .rh-slot__order:not([data-done])::after {
+    content: attr(data-n);
+  }
+
+  /* ── 소스 한 줄 — 채운 블록으로 둔다 ── */
+  .rh-code {
+    margin-top: 1.25rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: 0.625rem;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .rh-code__line {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+  }
+
+  .rh-code__fn {
+    display: block;
+    margin-top: 0.3125rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+    overflow-wrap: anywhere;
+  }
+
+  .rh-count {
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 좁은 화면에서는 트리와 배열을 위아래로 세운다. 가로 3열을 유지하면
+     각 열이 좁아져 핸들러 이름이 글자 단위로 줄바꿈된다. */
+  @media (max-width: 34rem) {
+    .rh-scene {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.75rem;
+    }
+
+    .rh-flow {
+      transform: rotate(135deg);
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-demo="react-handler"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) => shell.querySelector<T>(`[data-el="${name}"]`);
+    const stages = root.querySelectorAll<HTMLElement>('[data-stage]');
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-phase]');
+    const nextBtn = shell.querySelector<HTMLButtonElement>('[data-act="next"]');
+    const backBtn = shell.querySelector<HTMLButtonElement>('[data-act="back"]');
+
+    const LAST = 5;
+    let step = 0;
+    let capture = false;
+
+    // [한 줄 상태, 이 단계의 React 소스 한 줄, 그 코드가 있는 함수]
+    const ACCUM = 'accumulateSinglePhaseListeners';
+    const EXTRACT = 'SimpleEventPlugin.extractEvents';
+    const DISPATCH = 'processDispatchQueueItemsInOrder';
+
+    const scriptFor = (capture: boolean): [string, string, string][] => [
+      ['버튼 Fiber에서 탐색을 시작합니다', 'let instance = targetFiber;', ACCUM],
+      ['버튼 핸들러를 listeners[0]에 담습니다', 'listeners.push(createDispatchListener(...));', ACCUM],
+      ['instance.return을 따라 부모로 올라갑니다', 'instance = instance.return;', ACCUM],
+      ['부모 핸들러를 listeners[1]에 담습니다', 'dispatchQueue.push({ event, listeners });', EXTRACT],
+      [
+        capture ? '뒤에서부터 읽어 부모를 호출합니다' : '앞에서부터 읽어 버튼을 호출합니다',
+        capture
+          ? 'for (let i = dispatchListeners.length - 1; i >= 0; i--)'
+          : 'for (let i = 0; i < dispatchListeners.length; i++)',
+        DISPATCH,
+      ],
+      [
+        capture ? '부모 다음에 버튼을 호출했습니다' : '버튼 다음에 부모를 호출했습니다',
+        'executeDispatch(event, listener, currentTarget);',
+        DISPATCH,
+      ],
+    ];
+
+    const setFlag = (node: Element | null, name: string, on: boolean) => {
+      if (!node) return;
+      if (on) node.setAttribute(name, '');
+      else node.removeAttribute(name);
+    };
+
+    const render = () => {
+      const prop = capture ? 'onClickCapture' : 'onClick';
+      // 캡처는 배열을 뒤에서부터 읽으므로 1번(부모)이 먼저 호출된다.
+      const callOrder = capture ? [1, 0] : [0, 1];
+      const [headline, source, fnName] = scriptFor(capture)[step];
+
+      el('headline')!.textContent = headline;
+      el('source')!.textContent = source;
+      el('function')!.textContent = fnName;
+      el('count')!.textContent = `${step + 1} / ${LAST + 1}`;
+      if (nextBtn) nextBtn.disabled = step === LAST;
+      if (backBtn) backBtn.disabled = step === 0;
+
+      const activeStage = step < 2 ? 0 : step < 4 ? 1 : 2;
+      stages.forEach((node, i) => {
+        setFlag(node, 'data-active', i === activeStage);
+        setFlag(node, 'data-done', i < activeStage);
+      });
+
+      el('parentHandler')!.textContent = `${prop}={handleParent}`;
+      el('childHandler')!.textContent = `${prop}={handleDelete}`;
+
+      // 커서는 탐색 중에만 노드를 가리킨다. 호출 단계에서는 배열로 무대가 옮겨간다.
+      setFlag(el('target'), 'data-current', step < 2);
+      setFlag(el('parent'), 'data-current', step === 2 || step === 3);
+
+      for (let i = 0; i < 2; i++) {
+        const slot = el(`q${i}`);
+        const badge = el(`order${i}`);
+        if (!slot || !badge) continue;
+
+        // 0번(버튼)은 1단계에서, 1번(부모)은 3단계에서 채워진다.
+        setFlag(slot, 'data-filled', step >= (i === 0 ? 1 : 3));
+
+        const rank = callOrder.indexOf(i);
+        const showOrder = step >= 4;
+        badge.hidden = !showOrder;
+        if (showOrder) {
+          badge.dataset.n = String(rank + 1);
+          // 4단계에선 첫 번째만 호출된 상태, 5단계에선 둘 다 호출됐다.
+          setFlag(badge, 'data-done', step === LAST || rank === 0);
+        }
+      }
+    };
+
+    nextBtn?.addEventListener('click', () => {
+      if (step < LAST) step++;
+      render();
+    });
+    backBtn?.addEventListener('click', () => {
+      if (step > 0) step--;
+      render();
+    });
+    // 버튼을 직접 눌러보는 독자가 있다. 그 클릭이 처음부터 다시 보기가 되게 한다.
+    el('target')?.addEventListener('click', () => {
+      step = 0;
+      render();
+    });
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        capture = btn.dataset.phase === 'capture';
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        step = 0;
+        render();
+      });
+    });
+
+    render();
+  });
+</script>

@@ -21,9 +21,12 @@
 
     if (!toc || !tocList || !content) return;
 
-    const headings = Array.from(
-      content.querySelectorAll('h1, h2, h3'),
-    ) as HTMLElement[];
+    // not-prose 영역(인터랙티브 데모 등)의 헤딩은 본문 목차가 아니다.
+    // 데모 안에서 상태 제목을 h3로 쓰면 목차에 '버튼에서 탐색을 시작합니다.'
+    // 같은 항목이 끼어들므로, 글의 구조만 남도록 여기서 걸러 낸다.
+    const headings = (
+      Array.from(content.querySelectorAll('h1, h2, h3')) as HTMLElement[]
+    ).filter((heading) => !heading.closest('.not-prose'));
 
     if (headings.length === 0) {
       toc.style.display = 'none';
