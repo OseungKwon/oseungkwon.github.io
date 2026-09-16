@@ -33,7 +33,7 @@ const dateLabel = post.data.pubDate.toLocaleDateString('en-us', {
   readingProgress
 >
   <div class="mx-auto mt-6 flex max-w-4xl gap-10 sm:mt-10 xl:max-w-6xl">
-    <article class="surface min-w-0 flex-1 rounded-3xl px-5 py-8 sm:px-10 sm:py-12">
+    <article class="surface post-sheet min-w-0 flex-1 rounded-3xl px-5 py-8 sm:px-10 sm:py-12">
       <PostBackButton />
 
       <div class="mt-6 flex flex-wrap items-center gap-3">
@@ -83,3 +83,18 @@ const dateLabel = post.data.pubDate.toLocaleDateString('en-us', {
     <TableOfContents />
   </div>
 </SiteLayout>
+
+<style>
+  @media (max-width: 639px) {
+    .post-sheet {
+      /* main px-4(1rem) 상쇄 → 좌우 풀블리드 */
+      margin-inline: -1rem;
+      /* main pb-6(1.5rem) 상쇄 → 푸터와 맞닿음 */
+      margin-block-end: -1.5rem;
+      border-radius: 0;
+      border-inline-width: 0;
+      border-block-end-width: 0;
+      box-shadow: none;
+    }
+  }
+</style>
