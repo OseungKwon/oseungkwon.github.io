@@ -150,25 +150,79 @@
     @apply my-12 rounded-3xl shadow-sm;
   }
 
-  /* 인용구 스타일 */
-  /* 인용문은 한쪽 변에 굵은 선을 긋는 대신 옅게 채운 덩어리로 둔다.
-     '내 말이 아니다'라는 신호는 표면색만으로 충분하고, 블로그의 다른 표면
-     (코드 블록·카드)과 같은 언어가 된다.
-     italic은 뺀다. 한글 폰트에는 이탤릭 자형이 없어 브라우저가 기울여 그리는데,
-     그 가짜 기울임이 본문보다 읽기 나빠진다. */
+  /* ── 곁텍스트(blockquote) ──
+     이 블로그에서 `>` 블록은 대부분 인용이 아니라 '본문에서 잠깐 빠져나와
+     용어를 정의하거나 글의 전제를 밝히는 곁텍스트'다(**가상화란?**,
+     **예제에 대하여** 같은 패턴). 그래서 인용구가 아니라 곁텍스트로 설계한다.
+
+     채움을 액센트 계열로 두는 이유: --color-bg-tertiary는 --color-bg-code와
+     같은 #f1f4f8이라, 회색 채움은 이 블로그에서 이미 '코드 조각'과 '표 헤더'를
+     뜻한다. 같은 색을 쓰면 곁텍스트가 배경만 깔린 본문으로 읽힌다. 남은 자리는
+     시그니처 블루뿐이고, 색상환을 넓히지 않으면서 역할이 구분된다.
+
+     한쪽 변에 굵은 선을 긋는 전형적인 인용구 처리는 쓰지 않는다. 이 블로그의
+     표면 언어는 '둥근 모서리 + 옅은 채움 + 얇은 전체 테두리'이고, 한 변만 굵은
+     막대는 그 언어에 없는 형태다.
+
+     italic도 뺀다. 한글 폰트에는 이탤릭 자형이 없어 브라우저가 기울여 그리는데,
+     그 가짜 기울임이 본문보다 읽기 나빠진다.
+
+     패딩·여백·굵기를 !important로 두는 이유는 표 셀과 같다. @tailwindcss/
+     typography가 padding-inline-start: 1em, font-weight: 500, margin 등을
+     utilities 레이어에서 넣어, components 레이어의 @apply로는 이길 수 없다.
+     특히 padding-inline-start만 덮어써서 좌우 여백이 비대칭이 된다. */
   .prose blockquote:not(:where(.not-prose, .not-prose *)) {
-    @apply my-6 rounded-2xl px-5 py-4 not-italic;
-    /* @tailwindcss/typography가 blockquote에 좌측 보더와 italic을 기본으로
-       넣는다. 지우지 않으면 플러그인 기본값이 그대로 남는다. */
-    border-left-width: 0 !important;
-    background-color: var(--color-bg-tertiary) !important;
-    color: var(--color-text-secondary) !important;
+    --prose-aside-bg: rgba(0, 111, 255, 0.055);
+    --prose-aside-border: rgba(0, 111, 255, 0.16);
+
+    @apply rounded-2xl;
+    margin: 2rem 0 !important;
+    padding: 1.125rem 1.25rem !important;
+    border: 1px solid var(--prose-aside-border) !important;
+    background-color: var(--prose-aside-bg) !important;
     font-style: normal !important;
+    font-weight: 400 !important;
   }
 
-  /* 인용문 안의 마지막 문단은 아래 여백을 지워 블록이 아래로 뜨지 않게 한다. */
+  .dark .prose blockquote:not(:where(.not-prose, .not-prose *)) {
+    --prose-aside-bg: rgba(77, 151, 255, 0.08);
+    --prose-aside-border: rgba(77, 151, 255, 0.2);
+  }
+
+  /* 본문(17px)보다 한 단계 작게 둔다. 같은 크기로 두면 곁텍스트가 본문인 척하게
+     되고, 어디까지가 흐름이고 어디부터가 곁가지인지 흐려진다. */
+  .prose blockquote p:not(:where(.not-prose, .not-prose *)) {
+    @apply text-[15px];
+    line-height: 1.75;
+    color: var(--color-text-secondary) !important;
+  }
+
+  /* 첫 문단의 윗여백은 플러그인이 넣은 것으로, 지우지 않으면 글자가 박스 안에서
+     아래로 밀려 위아래 여백이 어긋난다. */
+  .prose blockquote:not(:where(.not-prose, .not-prose *)) > p:first-child {
+    margin-top: 0 !important;
+  }
+
   .prose blockquote:not(:where(.not-prose, .not-prose *)) > p:last-child {
     margin-bottom: 0 !important;
+  }
+
+  /* 문단이 여럿이면 본문 간격(24px)은 작은 곁텍스트 안에서 과하다. */
+  .prose blockquote:not(:where(.not-prose, .not-prose *)) > p + p {
+    margin-top: 0.75rem !important;
+  }
+
+  /* '**가상화란?**' 같은 첫 줄은 내용이 실제로 제목 역할을 한다. 그 줄만
+     본문색으로 두면 제목과 설명의 위계가 색으로 드러난다. */
+  .prose blockquote strong:not(:where(.not-prose, .not-prose *)) {
+    color: var(--color-text-primary) !important;
+    font-weight: 600 !important;
+  }
+
+  /* 코드 칩의 회색 배경은 옅은 파랑 위에서 따로 논다. 표면색으로 바꿔 곁텍스트
+     안의 요소로 보이게 한다. */
+  .prose blockquote code:not(:where(.not-prose, .not-prose *)) {
+    background-color: var(--surface-bg) !important;
   }
 
   /* blockquote 내부 따옴표 제거 */
