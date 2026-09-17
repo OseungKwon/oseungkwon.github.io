@@ -1,0 +1,463 @@
+---
+/**
+ * 순차 조회와 병렬 조회 — 대조 토글형 데모.
+ *
+ * 글(nextjs-docs-performance)의 "이 두 대기는 데이터의 의존 관계 때문에 생긴
+ * 것이 아닙니다"를 대신한다. 두 방식의 조회 네 개와 지연은 완전히 같고,
+ * 시작 시점만 다르다. 그래서 막대의 길이 합은 그대로인데 막대 앞의 빈 구간만
+ * 사라지는 장면이 나온다.
+ *
+ * 눈금은 두 방식이 1,600ms로 고정 공유한다. 방식마다 축을 다시 맞추면 막대가
+ * 화면을 꽉 채워 차이가 지워진다.
+ *
+ * 숫자는 미리 정해 둔 값이 아니라 브라우저에서 setTimeout으로 실행한 뒤
+ * performance.now()로 잰 값이다.
+ */
+import Demo from './Demo.astro';
+
+const AXIS = 1600;
+
+const QUERIES = [
+  { key: 'user', fn: 'queryUser()', label: '사용자 정보', ms: 300 },
+  { key: 'catalog', fn: 'queryCatalog()', label: '상품 목록', ms: 500 },
+  { key: 'popularProducts', fn: 'queryPopularProducts()', label: '인기 상품', ms: 400 },
+  { key: 'orders', fn: 'queryOrders(user.id)', label: '주문 내역', ms: 250, dep: 'user' },
+];
+
+const TICKS = [0, 400, 800, 1200, 1600];
+---
+
+<Demo
+  title="쇼핑몰 데이터의 순차·병렬 조회"
+  hint="조회 방식을 선택하고 실행을 누르면 각 요청의 시작과 종료 시점을 비교할 수 있습니다. 주문 내역은 사용자 ID를 받은 뒤 조회합니다."
+  caption="각 조회에 고정 지연을 넣은 브라우저 예시입니다. 표시된 시간에는 서버·네트워크 대기가 포함되지 않습니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="조회 방식">
+      <button class="demo-seg__opt" type="button" data-mode="sequential" aria-pressed="true">
+        순차 조회
+      </button>
+      <button class="demo-seg__opt" type="button" data-mode="parallel" aria-pressed="false">
+        병렬 조회
+      </button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="run">실행</button>
+  </Fragment>
+
+  <div class="wf" data-demo="waterfall">
+    <div class="demo-stats" aria-live="polite">
+      <div class="demo-stat">
+        <span class="demo-stat__value demo-stat__value--accent" data-el="total">—</span>
+        <span class="demo-stat__label">전체 조회 시간</span>
+      </div>
+      <div class="demo-stat">
+        <span class="demo-stat__value" data-el="idle">—</span>
+        <span class="demo-stat__label">불필요한 대기 합계</span>
+      </div>
+    </div>
+
+    <ul class="wf-legend">
+      <li data-kind="dep">사용자 정보 대기</li>
+      <li data-kind="idle">불필요한 대기</li>
+      <li data-kind="run">조회 실행</li>
+    </ul>
+
+    <div class="wf-plot">
+      {
+        QUERIES.map((q) => (
+          <Fragment>
+            <div class="wf-name">
+              <span class="wf-name__fn" title={q.fn}>{q.label}</span>
+              <span class="wf-name__ms">{q.ms}ms</span>
+            </div>
+            <div class="wf-track">
+              <span class="wf-seg wf-seg--dep" data-el={`dep-${q.key}`} />
+              <span class="wf-seg wf-seg--idle" data-el={`idle-${q.key}`} />
+              <span class="wf-bar" data-el={`bar-${q.key}`}>
+                <span class="wf-bar__fill" data-el={`fill-${q.key}`} />
+              </span>
+            </div>
+          </Fragment>
+        ))
+      }
+
+      <div aria-hidden="true"></div>
+      <div class="wf-axis" aria-hidden="true">
+        <div class="wf-axis__ticks">
+          {TICKS.map((t) => <span>{t.toLocaleString('en-US')}</span>)}
+        </div>
+        <span class="wf-finish" data-el="finish" hidden>
+          <span class="wf-finish__ms" data-el="finishMs"></span>
+        </span>
+      </div>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  /* ── 범례: 세 구간의 뜻을 한 줄로. 막대 안에 글자를 넣는 대신 여기서 한 번만 말한다. ── */
+  .wf-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.875rem;
+    margin: 1rem 0 0.875rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .wf-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .wf-legend li::before {
+    content: '';
+    width: 0.875rem;
+    height: 0.625rem;
+    border-radius: 0.1875rem;
+  }
+
+  .wf-legend li[data-kind='dep']::before {
+    background-color: var(--demo-b-soft);
+    box-shadow: inset 0 0 0 1px var(--color-border-tertiary);
+  }
+
+  .wf-legend li[data-kind='idle']::before {
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--color-border-secondary) 0 1px,
+      transparent 1px 5px
+    );
+  }
+
+  .wf-legend li[data-kind='run']::before {
+    background-color: var(--demo-a);
+  }
+
+  /* ── 타임라인 ── */
+  .wf-plot {
+    display: grid;
+    grid-template-columns: 11rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+    align-items: center;
+  }
+
+  .wf-name {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .wf-name__fn {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+  }
+
+  .wf-name__ms {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 눈금선은 트랙 배경으로 그린다. 400ms마다(= 폭의 25%) 한 줄. */
+  .wf-track {
+    position: relative;
+    height: 1.5rem;
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--color-border-tertiary) 0 1px,
+      transparent 1px 25%
+    );
+  }
+
+  .wf-seg {
+    position: absolute;
+    top: 50%;
+    height: 0.75rem;
+    transform: translateY(-50%);
+    border-radius: 0.1875rem;
+    width: 0;
+  }
+
+  /* 의존 대기 — 앞선 조회의 결과가 있어야 시작할 수 있는 구간. 줄일 수 없다. */
+  .wf-seg--dep {
+    left: 0;
+    background-color: var(--demo-b-soft);
+    box-shadow: inset 0 0 0 1px var(--color-border-tertiary);
+  }
+
+  /* 불필요한 대기 — 이 데모가 지우려는 구간. */
+  .wf-seg--idle {
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--color-border-secondary) 0 1px,
+      transparent 1px 5px
+    );
+  }
+
+  /* 실행 예정 구간은 점선 윤곽으로 미리 그려 둔다. 아무것도 누르지 않은
+     독자도 두 방식의 모양 차이를 볼 수 있어야 한다. */
+  .wf-bar {
+    position: absolute;
+    top: 50%;
+    height: 1.125rem;
+    transform: translateY(-50%);
+    border: 1px dashed var(--color-border-secondary);
+    border-radius: 0.3125rem;
+    overflow: hidden;
+    transition: border-color 0.16s ease;
+  }
+
+  .wf-bar[data-active] {
+    border-color: transparent;
+  }
+
+  .wf-bar__fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 0.25rem;
+    background-color: var(--demo-a);
+  }
+
+  /* ── 눈금 라벨과 완료 지점 ── */
+  .wf-axis {
+    position: relative;
+    margin-top: 0.125rem;
+    padding-bottom: 1.375rem;
+  }
+
+  .wf-axis__ticks {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wf-finish {
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .wf-finish::before {
+    content: '';
+    width: 1px;
+    height: 0.375rem;
+    background-color: var(--demo-a);
+  }
+
+  .wf-finish__ms {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-link);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wf-finish[hidden] {
+    display: none;
+  }
+
+  /* 좁은 화면에서는 함수 이름을 트랙 위로 올린다. 11rem 라벨 열을 유지하면
+     트랙이 손톱만 해져 구간 비교가 불가능해진다. */
+  @media (max-width: 34rem) {
+    .wf-plot {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 0.125rem;
+    }
+
+    .wf-name {
+      margin-top: 0.5rem;
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-demo="waterfall"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) =>
+      shell.querySelector<T>(`[data-el="${name}"]`);
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const runBtn = shell.querySelector<HTMLButtonElement>('[data-act="run"]');
+
+    /** 눈금 최대치. 두 방식이 같은 축을 쓰게 하려고 고정한다. */
+    const AXIS = 1600;
+
+    const QUERIES = [
+      { key: 'user', ms: 300, dep: '' },
+      { key: 'catalog', ms: 500, dep: '' },
+      { key: 'popularProducts', ms: 400, dep: '' },
+      { key: 'orders', ms: 250, dep: 'user' },
+    ];
+
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let mode = 'sequential';
+    let running = false;
+    let raf = 0;
+
+    const pct = (ms: number) => `${Math.max(0, Math.min(100, (ms / AXIS) * 100))}%`;
+    const ms = (value: number) => Math.round(value).toLocaleString('en-US');
+
+    /** 방식별 계획 시작 시각. 정지 화면의 윤곽과 실행의 순서가 여기서 나온다. */
+    const plan = () => {
+      const start: Record<string, number> = {};
+      if (mode === 'sequential') {
+        let t = 0;
+        for (const q of QUERIES) {
+          start[q.key] = t;
+          t += q.ms;
+        }
+      } else {
+        start.user = 0;
+        start.catalog = 0;
+        start.popularProducts = 0;
+        start.orders = QUERIES[0].ms;
+      }
+      return start;
+    };
+
+    /** 한 행의 세 구간(의존 대기 · 불필요한 대기 · 실행)을 시작 시각으로부터 그린다. */
+    const drawRow = (key: string, startAt: number, depEnd: number, duration: number) => {
+      const dep = el(`dep-${key}`);
+      const idle = el(`idle-${key}`);
+      const bar = el(`bar-${key}`);
+      if (!dep || !idle || !bar) return;
+
+      dep.style.width = pct(depEnd);
+      idle.style.left = pct(depEnd);
+      idle.style.width = pct(Math.max(0, startAt - depEnd));
+      bar.style.left = pct(startAt);
+      bar.style.width = pct(duration);
+    };
+
+    const reset = () => {
+      const start = plan();
+      for (const q of QUERIES) {
+        const depEnd = q.dep ? QUERIES[0].ms : 0;
+        drawRow(q.key, start[q.key], depEnd, q.ms);
+        const fill = el(`fill-${q.key}`);
+        const bar = el(`bar-${q.key}`);
+        if (fill) fill.style.width = '0';
+        bar?.removeAttribute('data-active');
+      }
+      const total = el('total');
+      const idle = el('idle');
+      if (total) total.textContent = '—';
+      if (idle) idle.textContent = '—';
+      el('finish')?.setAttribute('hidden', '');
+    };
+
+    const run = async () => {
+      if (running) return;
+      running = true;
+      reset();
+      runBtn?.setAttribute('disabled', '');
+      segs.forEach((seg) => seg.setAttribute('disabled', ''));
+
+      const t0 = performance.now();
+      const started: Record<string, number> = {};
+      const ended: Record<string, number> = {};
+
+      /** 실제로 지연을 겪게 하고, 시작·종료 시각을 그때그때 기록한다. */
+      const query = (q: (typeof QUERIES)[number]) =>
+        new Promise<void>((resolve) => {
+          const at = performance.now() - t0;
+          started[q.key] = at;
+          const depEnd = q.dep ? (ended[q.dep] ?? 0) : 0;
+          drawRow(q.key, at, depEnd, q.ms);
+          el(`bar-${q.key}`)?.setAttribute('data-active', '');
+          setTimeout(() => {
+            const done = performance.now() - t0;
+            ended[q.key] = done;
+            drawRow(q.key, at, depEnd, done - at);
+            const fill = el(`fill-${q.key}`);
+            if (fill) fill.style.width = '100%';
+            resolve();
+          }, q.ms);
+        });
+
+      // 진행 중인 막대를 실시간으로 채운다. 움직임을 줄이도록 설정한 독자에게는
+      // 시작·종료 시점의 갱신만 남기고 이 루프를 돌리지 않는다.
+      const tick = () => {
+        const now = performance.now() - t0;
+        for (const q of QUERIES) {
+          if (started[q.key] === undefined || ended[q.key] !== undefined) continue;
+          const fill = el(`fill-${q.key}`);
+          if (fill) fill.style.width = `${Math.min(100, ((now - started[q.key]) / q.ms) * 100)}%`;
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      if (!calm) raf = requestAnimationFrame(tick);
+
+      if (mode === 'sequential') {
+        for (const q of QUERIES) await query(q);
+      } else {
+        const user = query(QUERIES[0]);
+        const catalog = query(QUERIES[1]);
+        const popularProducts = query(QUERIES[2]);
+        const orders = user.then(() => query(QUERIES[3]));
+        await Promise.all([user, catalog, popularProducts, orders]);
+      }
+
+      cancelAnimationFrame(raf);
+
+      const total = performance.now() - t0;
+      // 의존 관계가 풀린 뒤에도 그냥 기다린 시간만 모은다.
+      const idleSum = QUERIES.reduce((sum, q) => {
+        const depEnd = q.dep ? (ended[q.dep] ?? 0) : 0;
+        return sum + Math.max(0, started[q.key] - depEnd);
+      }, 0);
+
+      const totalEl = el('total');
+      const idleEl = el('idle');
+      if (totalEl) totalEl.textContent = `${ms(total)}ms`;
+      if (idleEl) idleEl.textContent = `${ms(idleSum)}ms`;
+
+      const finish = el('finish');
+      const finishMs = el('finishMs');
+      if (finish && finishMs) {
+        finish.style.left = pct(total);
+        finishMs.textContent = `${ms(total)}ms`;
+        finish.removeAttribute('hidden');
+      }
+
+      runBtn?.removeAttribute('disabled');
+      segs.forEach((seg) => seg.removeAttribute('disabled'));
+      running = false;
+    };
+
+    segs.forEach((seg) => {
+      seg.addEventListener('click', () => {
+        if (running) return;
+        mode = seg.dataset.mode ?? 'sequential';
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === seg)));
+        reset();
+      });
+    });
+
+    runBtn?.addEventListener('click', run);
+
+    reset();
+  });
+</script>

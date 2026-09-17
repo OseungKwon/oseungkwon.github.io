@@ -1,0 +1,817 @@
+---
+/**
+ * cacheLife('hours')의 stale · revalidate · expire — 재생형 데모.
+ *
+ * 글(nextjs-docs-performance)의 "한 시간이 지나도 아무도 요청하지 않으면 새
+ * 조회는 시작되지 않습니다"를 보여준다. 경과 시간과 요청을 번갈아 진행하고,
+ * 조회 횟수는 요청이 있을 때만 늘어난다.
+ *
+ * 슬라이더와 요청 버튼을 따로 조작하는 방식은 순서를 알기 어려워서, 다섯 경우를
+ * 이어서 재생하고 번호를 누르면 한 경우만 다시 재생하도록 바꿨다.
+ *
+ * 시간은 두 가지로 보여준다. 현재 시각은 앞으로만 가고, 띠는 저장 후 경과
+ * 시간이라 새 결과가 저장되면 0으로 돌아간다. 요청이 어디서 응답됐는지는
+ * 브라우저 → 서버 → DB 경로에 표시한다.
+ *
+ * 프리셋 값은 Next.js의 hours 기본값(stale 5분 · revalidate 1시간 · expire 1일)이다.
+ */
+import Demo from './Demo.astro';
+
+// 경계(5분 · 1시간 · 1일)가 눈금 위에서 정확히 떨어지도록 고른 값들이다.
+// 재생할 때 이 배열의 인덱스를 한 칸씩 옮기고, 띠 위의 위치도 같은 인덱스를 쓴다.
+const STOPS = [
+  '방금',
+  '1분',
+  '3분',
+  '5분',
+  '10분',
+  '30분',
+  '1시간',
+  '3시간',
+  '8시간',
+  '20시간',
+  '1일',
+  '36시간',
+  '2일',
+];
+
+const ZONES = [
+  { key: 'fresh', span: 3 },
+  { key: 'served', span: 3 },
+  { key: 'revalidate', span: 4 },
+  { key: 'expired', span: 2 },
+];
+
+const MARKS = [
+  { at: 3, name: 'stale', value: '5분' },
+  { at: 6, name: 'revalidate', value: '1시간' },
+  { at: 10, name: 'expire', value: '1일' },
+];
+
+/** 경우 이름. 스크립트의 CASES와 순서가 같아야 한다. */
+const CASES = ['09:03 요청', '09:30 요청', '12:00까지 요청 없음', '12:00 요청', 'D+2 12:00 요청'];
+
+const NODES = [
+  { key: 'client', name: '브라우저', sub: '클라이언트 캐시' },
+  { key: 'server', name: '서버', sub: '서버 캐시' },
+  { key: 'db', name: 'DB', sub: '상품 조회 800ms' },
+];
+---
+
+<Demo
+  title="cacheLife('hours')의 캐시 재사용과 갱신"
+  hint="재생하면 다섯 경우가 차례로 진행됩니다. 번호를 누르면 해당 경우만 재생합니다."
+  caption="hours 기본값(stale 5분 · revalidate 1시간 · expire 1일)을 적용한 브라우저 예시입니다. Next.js 캐시 저장소에 연결되지는 않습니다."
+>
+  <Fragment slot="controls">
+    <button class="demo-btn demo-btn--primary" type="button" data-act="play">재생</button>
+    <button class="demo-btn" type="button" data-act="reset">처음으로</button>
+  </Fragment>
+
+  <div class="cl" data-demo="cache-life">
+    <ol class="cl-cases" aria-label="재생할 경우">
+      {
+        CASES.map((label, i) => (
+          <li>
+            <button class="cl-case" type="button" data-case={i}>
+              <span class="cl-case__no">{i + 1}</span>
+              {label}
+            </button>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="demo-stats" aria-live="polite">
+      <div class="demo-stat">
+        <span class="demo-stat__value" data-el="now">09:00</span>
+        <span class="demo-stat__label">현재 시각</span>
+      </div>
+      <div class="demo-stat">
+        <span class="demo-stat__value" data-el="latency">—</span>
+        <span class="demo-stat__label">응답 대기</span>
+      </div>
+      <div class="demo-stat">
+        <span class="demo-stat__value demo-stat__value--accent" data-el="count">0</span>
+        <span class="demo-stat__label">새로 조회한 횟수</span>
+      </div>
+    </div>
+
+    <div class="cl-path">
+      {
+        NODES.map((n, i) => (
+          <Fragment>
+            {i > 0 && <span class="cl-link" data-link={n.key} aria-hidden="true" />}
+            <div class="cl-node" data-node={n.key}>
+              <span class="cl-node__name">{n.name}</span>
+              <span class="cl-node__sub">
+                {n.sub}
+                {n.key === 'server' && (
+                  <>
+                    {' · '}
+                    <span data-el="saved">09:00</span> 저장
+                  </>
+                )}
+              </span>
+              <span class="cl-node__tag" data-tag={n.key}>—</span>
+            </div>
+          </Fragment>
+        ))
+      }
+    </div>
+
+    <p class="cl-line" data-el="line" aria-live="polite">재생 전</p>
+
+    <div class="cl-band" data-el="band">
+      <div class="cl-band__label">
+        저장 후 경과 <span class="demo-badge" data-el="elapsed">방금</span>
+      </div>
+      <div class="cl-band__track">
+        <div class="cl-band__zones">
+          {ZONES.map((z) => <span data-zone={z.key} style={`flex: ${z.span}`} />)}
+        </div>
+
+        <span class="cl-head" data-el="head" style="left: 0%"></span>
+
+        {
+          MARKS.map((m) => (
+            <span class="cl-mark" style={`left: ${(m.at / (STOPS.length - 1)) * 100}%`}>
+              <span class="cl-mark__name">{m.name}</span>
+              <span class="cl-mark__value">{m.value}</span>
+            </span>
+          ))
+        }
+      </div>
+    </div>
+
+    <dl class="cl-readout" data-el="readout">
+      <div class="cl-readout__head">이 시점에 요청하면</div>
+      <div class="cl-readout__row">
+        <dt>응답 대기</dt>
+        <dd data-el="answer"></dd>
+      </div>
+      <div class="cl-readout__row">
+        <dt>반환할 데이터</dt>
+        <dd data-el="data"></dd>
+      </div>
+      <div class="cl-readout__row">
+        <dt>상품 조회</dt>
+        <dd data-el="work"></dd>
+      </div>
+    </dl>
+  </div>
+</Demo>
+
+<style>
+  /* ── 경우 목록 ── */
+  .cl-cases {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0 0 0.875rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cl-case {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem 0.25rem 0.25rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    background-color: transparent;
+    font: inherit;
+    font-size: 0.75rem;
+    color: var(--demo-idle);
+    cursor: pointer;
+    transition:
+      color 0.16s ease,
+      border-color 0.16s ease;
+  }
+
+  .cl-case__no {
+    display: inline-grid;
+    place-items: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 9999px;
+    background-color: var(--color-bg-tertiary);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 700;
+  }
+
+  .cl-case:hover,
+  .cl-case[data-done] {
+    color: var(--color-text-secondary);
+  }
+
+  .cl-case[data-active] {
+    border-color: var(--demo-a);
+    font-weight: 700;
+    color: var(--demo-a);
+  }
+
+  .cl-case[data-active] .cl-case__no {
+    background-color: var(--demo-a-soft);
+  }
+
+  /* ── 요청 경로 ── */
+  .cl-path {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1.25rem minmax(0, 1fr) 1.25rem minmax(0, 1fr);
+    align-items: center;
+    margin: 1.25rem 0 0.75rem;
+  }
+
+  .cl-node {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.75rem;
+    color: var(--demo-idle);
+    transition:
+      color 0.16s ease,
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .cl-node__name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .cl-node__sub {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-node__tag {
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    visibility: hidden;
+  }
+
+  /* 요청이 지나간 칸 */
+  .cl-node[data-state] {
+    color: var(--color-text-primary);
+  }
+
+  .cl-node[data-state] .cl-node__tag {
+    visibility: visible;
+  }
+
+  /* 캐시로 응답한 칸 */
+  .cl-node[data-state='hit'] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  .cl-node[data-state='hit'] .cl-node__tag {
+    color: var(--demo-a);
+  }
+
+  /* 조회 중인 칸. 백그라운드 조회는 점선으로 구분한다. */
+  .cl-node[data-state='work'],
+  .cl-node[data-state='bg'] {
+    border-color: var(--color-text-secondary);
+    animation: cl-pulse 0.9s ease-in-out infinite;
+  }
+
+  .cl-node[data-state='bg'] {
+    border-style: dashed;
+  }
+
+  .cl-node[data-state='done'] .cl-node__tag {
+    color: var(--color-text-secondary);
+  }
+
+  .cl-link {
+    height: 2px;
+    margin: 0 0.1875rem;
+    border-radius: 9999px;
+    background-color: var(--color-border-secondary);
+    transition: background-color 0.16s ease;
+  }
+
+  .cl-link[data-on] {
+    background-color: var(--demo-a);
+  }
+
+  .cl-link[data-on='bg'] {
+    background: repeating-linear-gradient(
+      90deg,
+      var(--color-text-secondary) 0 4px,
+      transparent 4px 7px
+    );
+  }
+
+  .cl-line {
+    min-height: 1.5rem;
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+  }
+
+  /* ── 시간 띠 ── */
+  .cl-band {
+    margin: 1.25rem 0 0;
+  }
+
+  .cl-band__label {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.625rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .cl-band__track {
+    position: relative;
+    padding-bottom: 2.25rem;
+  }
+
+  .cl-band__zones {
+    display: flex;
+    gap: 2px;
+    height: 2.25rem;
+  }
+
+  .cl-band__zones span {
+    border-radius: 0.3125rem;
+    background-color: var(--color-bg-tertiary);
+    box-shadow: inset 0 0 0 1px transparent;
+    transition:
+      background-color 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+
+  /* 현재 구간만 색을 칠한다. */
+  .cl-band__zones span[data-active][data-zone='fresh'],
+  .cl-band__zones span[data-active][data-zone='served'] {
+    background-color: var(--demo-b-soft);
+    box-shadow: inset 0 0 0 1px var(--color-border-secondary);
+  }
+
+  .cl-band__zones span[data-active][data-zone='revalidate'] {
+    background-color: var(--demo-a-soft);
+    box-shadow: inset 0 0 0 1px var(--demo-a);
+  }
+
+  .cl-band__zones span[data-active][data-zone='expired'] {
+    background-color: var(--demo-warn-soft);
+    box-shadow: inset 0 0 0 1px var(--demo-warn);
+  }
+
+  /* 조회가 진행되는 동안 현재 구간을 깜빡인다. */
+  .cl-band[data-refreshing] .cl-band__zones span[data-active] {
+    animation: cl-pulse 0.9s ease-in-out infinite;
+  }
+
+  /* 새 결과가 저장되어 경과 시간이 0으로 돌아갈 때 */
+  .cl-band[data-saved] .cl-band__label .demo-badge {
+    outline: 2px solid var(--demo-a);
+  }
+
+  @keyframes cl-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  .cl-head {
+    position: absolute;
+    top: -0.3125rem;
+    height: 2.875rem;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 9999px;
+    background-color: var(--color-text-primary);
+    transition:
+      left 0.22s ease,
+      background-color 0.16s ease;
+  }
+
+  /* 요청 시점에 커서 색을 바꾸고 원형 표시를 한 번 띄운다. */
+  .cl-band[data-request] .cl-head,
+  .cl-band[data-request] .cl-head::before {
+    background-color: var(--demo-a);
+  }
+
+  .cl-band[data-request] .cl-head::after {
+    content: '';
+    position: absolute;
+    top: -0.4375rem;
+    left: 50%;
+    width: 0.9375rem;
+    height: 0.9375rem;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    box-shadow: 0 0 0 2px var(--demo-a);
+    animation: cl-ping 0.6s ease-out forwards;
+  }
+
+  @keyframes cl-ping {
+    to {
+      opacity: 0;
+      transform: translateX(-50%) scale(2);
+    }
+  }
+
+  .cl-head::before {
+    content: '';
+    position: absolute;
+    top: -0.1875rem;
+    left: 50%;
+    width: 0.4375rem;
+    height: 0.4375rem;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    background-color: var(--color-text-primary);
+  }
+
+  /* 경계 눈금: 이름과 값을 두 줄로 쌓아 좁은 화면에서도 서로 겹치지 않게 한다. */
+  .cl-mark {
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .cl-mark::before {
+    content: '';
+    width: 1px;
+    height: 0.375rem;
+    margin-bottom: 0.1875rem;
+    background-color: var(--color-border-secondary);
+  }
+
+  .cl-mark__name {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .cl-mark__value {
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+
+  /* ── 예고 ── */
+  .cl-readout {
+    margin: 0.5rem 0 0;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .cl-readout__head {
+    margin-bottom: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-readout__row {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+  }
+
+  .cl-readout__row dt {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-readout__row dd {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  /* 실제로 조회가 일어나는 경우만 강조한다. 이 데모가 세는 것이 그것이다. */
+  .cl-readout__row dd[data-work] {
+    color: var(--color-link);
+  }
+
+  @media (max-width: 34rem) {
+    .cl-path {
+      grid-template-columns: minmax(0, 1fr) 0.625rem minmax(0, 1fr) 0.625rem minmax(0, 1fr);
+    }
+
+    .cl-node {
+      padding: 0.5rem;
+    }
+
+    .cl-readout__row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.0625rem;
+    }
+  }
+</style>
+
+<script>
+  type NodeKey = 'client' | 'server' | 'db';
+  type NodeState = 'pass' | 'hit' | 'work' | 'bg' | 'done';
+  type Case = {
+    /** 이 경우를 따로 재생할 때의 시작 상태 */
+    saved: number;
+    from: number;
+    count: number;
+    /** 요청 시점의 경과 시간(STOPS 인덱스) */
+    to: number;
+    request: boolean;
+    line: string;
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="cache-life"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) =>
+      shell.querySelector<T>(`[data-el="${name}"]`)!;
+    const playBtn = shell.querySelector<HTMLButtonElement>('[data-act="play"]');
+    const resetBtn = shell.querySelector<HTMLButtonElement>('[data-act="reset"]');
+    const chips = root.querySelectorAll<HTMLButtonElement>('[data-case]');
+    const zones = root.querySelectorAll<HTMLElement>('[data-zone]');
+    const nodes = root.querySelectorAll<HTMLElement>('[data-node]');
+    const links = root.querySelectorAll<HTMLElement>('[data-link]');
+    const band = el('band');
+
+    const STOPS = [
+      '방금',
+      '1분',
+      '3분',
+      '5분',
+      '10분',
+      '30분',
+      '1시간',
+      '3시간',
+      '8시간',
+      '20시간',
+      '1일',
+      '36시간',
+      '2일',
+    ];
+    /** STOPS를 분 단위로 옮긴 값 */
+    const STOP_MIN = [0, 1, 3, 5, 10, 30, 60, 180, 480, 1200, 1440, 2160, 2880];
+    const LAST = STOPS.length - 1;
+    /** 처음 저장한 시각(09:00)을 0분으로 센다. */
+    const BASE_MIN = 9 * 60;
+    /** 상품 조회 지연. 글의 lib/db.ts와 같은 값이다. */
+    const QUERY_MS = 800;
+    /** 경과 시간을 한 칸 옮기는 간격 */
+    const TICK_MS = 260;
+    /** 시간이 멈춘 뒤 요청하기까지 */
+    const BEAT_MS = 600;
+    /** 결과를 보여주는 시간 */
+    const HOLD_MS = 1800;
+
+    // 각 경우는 앞 경우가 끝난 상태에서 이어진다. 4번에서 12:00에 새 결과가
+    // 저장되므로 5번은 저장 시각 12:00, 경과 0에서 시작한다.
+    const CASES: Case[] = [
+      { saved: 0, from: 0, count: 0, to: 2, request: true, line: '브라우저 캐시로 응답, 서버 요청 없음' },
+      { saved: 0, from: 2, count: 0, to: 5, request: true, line: '서버 캐시로 응답, 조회 없음' },
+      { saved: 0, from: 5, count: 0, to: 7, request: false, line: '요청이 없어 조회도 없음' },
+      { saved: 0, from: 7, count: 0, to: 7, request: true, line: '서버 캐시로 먼저 응답하고 백그라운드에서 조회' },
+      { saved: 180, from: 0, count: 1, to: 12, request: true, line: '조회가 끝난 뒤 새 결과로 응답' },
+    ];
+
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /** 경과 시간이 어느 구간에 있는지. 경계값은 아직 지나지 않은 것으로 센다. */
+    const zoneOf = (i: number) => (i <= 3 ? 0 : i <= 6 ? 1 : i <= 10 ? 2 : 3);
+
+    const clock = (min: number) => {
+      const total = BASE_MIN + min;
+      const day = Math.floor(total / 1440);
+      const hh = String(Math.floor((total % 1440) / 60)).padStart(2, '0');
+      const mm = String(total % 60).padStart(2, '0');
+      return day > 0 ? `D+${day} ${hh}:${mm}` : `${hh}:${mm}`;
+    };
+
+    let saved = 0;
+    let index = 0;
+    let count = 0;
+    /** 재생 번호. 새로 재생하거나 초기화하면 늘어나고, 이전 재생은 멈춘다. */
+    let run = 0;
+
+    const paint = () => {
+      const zone = zoneOf(index);
+      const age = STOPS[index];
+
+      el('now').textContent = clock(saved + STOP_MIN[index]);
+      el('saved').textContent = clock(saved);
+      el('elapsed').textContent = age;
+      el('count').textContent = String(count);
+      el('head').style.left = `${(index / LAST) * 100}%`;
+      zones.forEach((z, i) => z.toggleAttribute('data-active', i === zone));
+
+      // stale 이내에는 서버에 확인하지 않는다. revalidate 이전이면 서버가
+      // 저장된 결과를 반환하고, 두 경우 모두 조회하지 않는다.
+      el('answer').textContent =
+        zone === 0
+          ? '없음 · 클라이언트 캐시 사용'
+          : zone === 3
+            ? `${QUERY_MS}ms · 새 조회 완료 후 응답`
+            : '없음 · 서버 캐시 사용';
+
+      el('data').textContent =
+        zone === 3 ? '새로 조회한 결과' : index === 0 ? '방금 저장된 결과' : `${age} 전에 저장한 결과`;
+
+      const work = el('work');
+      work.textContent =
+        zone === 2 ? '백그라운드에서 실행' : zone === 3 ? '새 결과를 기다린 뒤 반환' : '실행하지 않음';
+      work.toggleAttribute('data-work', zone >= 2);
+    };
+
+    const setNode = (key: NodeKey, state: NodeState | null, tag = '') => {
+      nodes.forEach((n) => {
+        if (n.dataset.node !== key) return;
+        if (state) n.dataset.state = state;
+        else delete n.dataset.state;
+        n.querySelector('[data-tag]')!.textContent = tag || '—';
+      });
+    };
+
+    const setLink = (key: NodeKey, on: '' | 'bg' | null) => {
+      links.forEach((l) => {
+        if (l.dataset.link !== key) return;
+        if (on === null) l.removeAttribute('data-on');
+        else l.setAttribute('data-on', on);
+      });
+    };
+
+    const clearPath = () => {
+      (['client', 'server', 'db'] as const).forEach((k) => {
+        setNode(k, null);
+        setLink(k, null);
+      });
+    };
+
+    const markCase = (active: number, doneUntil: number) => {
+      chips.forEach((chip, i) => {
+        chip.toggleAttribute('data-active', i === active);
+        chip.toggleAttribute('data-done', i < doneUntil && i !== active);
+        if (i === active) chip.setAttribute('aria-current', 'step');
+        else chip.removeAttribute('aria-current');
+      });
+    };
+
+    const setPlaying = (on: boolean, label: string) => {
+      if (!playBtn) return;
+      playBtn.disabled = on;
+      playBtn.textContent = label;
+    };
+
+    /** 대기 중에 run이 바뀌면 false를 반환한다. */
+    const wait = (ms: number, token: number) =>
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(token === run), ms));
+
+    const flash = (attr: string) => {
+      band.removeAttribute(attr);
+      void band.offsetWidth; // 애니메이션을 다시 시작하기 위한 리플로우
+      band.setAttribute(attr, '');
+      setTimeout(() => band.removeAttribute(attr), 900);
+    };
+
+    /** 경과 시간을 한 칸씩 옮긴다. 조회 횟수는 바꾸지 않는다. */
+    const flow = async (to: number, token: number) => {
+      if (calm) {
+        index = to;
+        paint();
+        return wait(BEAT_MS, token);
+      }
+      while (index !== to) {
+        index += 1;
+        paint();
+        if (!(await wait(TICK_MS, token))) return false;
+      }
+      return true;
+    };
+
+    const request = async (token: number) => {
+      const zone = zoneOf(index);
+      flash('data-request');
+
+      if (zone === 0) {
+        el('latency').textContent = '0ms';
+        setNode('client', 'hit', '캐시로 응답');
+        return true;
+      }
+
+      setNode('client', 'pass', '서버에 요청');
+      setLink('server', '');
+
+      if (zone === 1) {
+        el('latency').textContent = '0ms';
+        setNode('server', 'hit', '캐시로 응답');
+        return true;
+      }
+
+      count += 1;
+      paint();
+      band.setAttribute('data-refreshing', '');
+      const t0 = performance.now();
+
+      if (zone === 2) {
+        // 저장된 결과로 바로 응답하고, 조회는 뒤에서 진행한다.
+        el('latency').textContent = '0ms';
+        setNode('server', 'hit', '캐시로 응답');
+        setLink('db', 'bg');
+        setNode('db', 'bg', '백그라운드 조회');
+      } else {
+        el('latency').textContent = '…';
+        setNode('server', 'pass', '조회 결과 대기');
+        setLink('db', '');
+        setNode('db', 'work', '조회 중');
+      }
+
+      const ok = await wait(QUERY_MS, token);
+      band.removeAttribute('data-refreshing');
+      if (!ok) return false;
+
+      if (zone === 3) {
+        el('latency').textContent = `${Math.round(performance.now() - t0)}ms`;
+        setNode('server', 'hit', '새 결과로 응답');
+      }
+      setNode('db', 'done', '조회 완료');
+
+      // 새 결과가 저장됐으므로 저장 시각을 현재 시각으로 옮기고 경과 시간을 0으로 되돌린다.
+      saved += STOP_MIN[index];
+      index = 0;
+      paint();
+      flash('data-saved');
+      return true;
+    };
+
+    const playCase = async (i: number, token: number) => {
+      const c = CASES[i];
+      markCase(i, i);
+      clearPath();
+      el('line').textContent = c.line;
+      if (!(await flow(c.to, token))) return false;
+      if (c.request) {
+        if (!(await wait(BEAT_MS, token))) return false;
+        if (!(await request(token))) return false;
+      }
+      return wait(HOLD_MS, token);
+    };
+
+    const load = (c: Pick<Case, 'saved' | 'from' | 'count'>) => {
+      band.removeAttribute('data-refreshing');
+      saved = c.saved;
+      index = c.from;
+      count = c.count;
+      el('latency').textContent = '—';
+      clearPath();
+      paint();
+    };
+
+    /** from번 경우부터 재생한다. only가 true면 그 경우만 재생한다. */
+    const play = async (from: number, only: boolean) => {
+      const token = ++run;
+      load(CASES[from]);
+      setPlaying(true, '재생 중');
+
+      if (!(await wait(BEAT_MS, token))) return;
+      const last = only ? from : CASES.length - 1;
+      for (let i = from; i <= last; i++) {
+        if (!(await playCase(i, token))) return;
+      }
+
+      markCase(-1, only ? -1 : CASES.length);
+      setPlaying(false, '다시 재생');
+    };
+
+    const reset = () => {
+      run++;
+      load(CASES[0]);
+      el('line').textContent = '재생 전';
+      markCase(-1, -1);
+      setPlaying(false, '재생');
+    };
+
+    playBtn?.addEventListener('click', () => play(0, false));
+    resetBtn?.addEventListener('click', reset);
+    chips.forEach((chip, i) => chip.addEventListener('click', () => play(i, true)));
+
+    paint();
+  });
+</script>
