@@ -9,9 +9,8 @@
 
 @theme {
   --font-sans:
-    'Wanted Sans Variable', 'Wanted Sans', 'Pretendard Variable', Pretendard,
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
-    sans-serif;
+    'Wanted Sans Variable', 'Wanted Sans', -apple-system, BlinkMacSystemFont,
+    'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
 
   /* 데이터·라벨·코드용 모노 */
   --font-mono:
