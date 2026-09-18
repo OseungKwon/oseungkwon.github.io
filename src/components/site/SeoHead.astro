@@ -10,6 +10,7 @@ interface Props {
   modifiedTime?: string;
   tags?: string[];
   profile?: boolean;
+  breadcrumbs?: Array<{ name: string; href: string }>;
 }
 
 const SITE_NAME = '오승의 기술블로그';
@@ -26,12 +27,30 @@ const {
   modifiedTime,
   tags = [],
   profile = false,
+  breadcrumbs = [],
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? title : `${title} · ${SITE_NAME}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const resolvedImage = image ? { src: image, width: imageWidth, height: imageHeight } : DEFAULT_OG_IMAGE;
 const ogImage = new URL(resolvedImage.src, Astro.site).href;
+
+// 홈을 첫 항목으로 두고 받은 경로를 이어 붙인다. 검색 결과에서 사이트 안
+// 위치가 함께 보이면, 목록 페이지가 개별 글과 구분되어 노출된다.
+const breadcrumbJsonLd = breadcrumbs.length
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [{ name: '홈', href: '/' }, ...breadcrumbs].map(
+        (crumb, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: crumb.name,
+          item: new URL(crumb.href, Astro.site).href,
+        }),
+      ),
+    }
+  : null;
 
 const jsonLd = profile
   ? {
@@ -81,11 +100,12 @@ const jsonLd = profile
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <meta name="generator" content={Astro.generator} />
 
+<!-- 폰트 CSS는 렌더를 막는 자리에 있어, 연결 수립을 문서 파싱보다 앞당긴다. -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
 
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#050709" media="(prefers-color-scheme: dark)" />
@@ -116,3 +136,4 @@ const jsonLd = profile
 <meta name="twitter:image" content={ogImage} />
 
 <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+{breadcrumbJsonLd && <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} />}

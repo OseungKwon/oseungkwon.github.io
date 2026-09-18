@@ -36,7 +36,14 @@ export default defineConfig({
   // 모든 페이지 URL을 끝 슬래시(/post/slug/)로 통일한다.
   // canonical·sitemap·RSS 링크가 일치해야 중복 색인을 피할 수 있다.
   trailingSlash: 'always',
-  // sitemap은 src/pages/sitemap.xml.ts에서 단일 평면 파일로 직접 생성한다.
+
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'hover',
+  },
+  build: {
+    inlineStylesheets: 'always',
+  },
   integrations: [mdx()],
   markdown: {
     rehypePlugins: [rehypeTableWrapper],
