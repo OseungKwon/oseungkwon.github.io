@@ -2,8 +2,10 @@
 import { Image } from 'astro:assets';
 import type { CollectionEntry } from 'astro:content';
 import PostBackButton from '../components/blog/PostBackButton.astro';
+import RelatedPosts from '../components/blog/RelatedPosts.astro';
 import TableOfContents from '../components/TableOfContents.astro';
 import SiteLayout from './SiteLayout.astro';
+import { getTagLinks } from '../utils/tags';
 
 interface Props {
   post: CollectionEntry<'blog'>;
@@ -17,6 +19,7 @@ const dateLabel = post.data.pubDate.toLocaleDateString('en-us', {
   month: 'short',
   day: 'numeric',
 });
+const tagLinks = await getTagLinks(post);
 ---
 
 <SiteLayout
@@ -29,6 +32,7 @@ const dateLabel = post.data.pubDate.toLocaleDateString('en-us', {
   publishedTime={post.data.pubDate.toISOString()}
   modifiedTime={post.data.updatedDate?.toISOString()}
   tags={post.data.tags}
+  breadcrumbs={[{ name: post.data.title, href: `/post/${post.id}/` }]}
   container="wide"
   readingProgress
 >
@@ -70,14 +74,23 @@ const dateLabel = post.data.pubDate.toLocaleDateString('en-us', {
       </div>
 
       {
-        post.data.tags.length > 0 && (
+        tagLinks.length > 0 && (
           <div class="mt-10 flex flex-wrap gap-1.5 border-t border-token-primary pt-6">
-            {post.data.tags.map((tag) => (
-              <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">#{tag}</span>
-            ))}
+            {tagLinks.map(({ name, href }) =>
+              // 아카이브가 열린 태그만 링크로 둔다. 글 한 편뿐인 태그는 갈 곳이 없다.
+              href ? (
+                <a href={href} class="press rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary transition-colors hover:border-token-accent hover:text-token-link">
+                  #{name}
+                </a>
+              ) : (
+                <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">#{name}</span>
+              ),
+            )}
           </div>
         )
       }
+
+      <RelatedPosts post={post} />
     </article>
 
     <TableOfContents />

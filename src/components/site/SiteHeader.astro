@@ -10,6 +10,7 @@ const BASE = import.meta.env.BASE_URL;
 const path = Astro.url.pathname.replace(/\/$/, '');
 const base = BASE.replace(/\/$/, '');
 const isHome = path === base;
+const isTags = path === `${base}/tags` || path.startsWith(`${base}/tags/`);
 const isAbout = path === `${base}/about`;
 const isContact = path === `${base}/contact`;
 ---
@@ -46,6 +47,17 @@ const isContact = path === `${base}/contact`;
           ]}
         >
           {isHome && <span class="nav-pill-bg" aria-hidden="true" />}홈
+        </a>
+        <a
+          href={`${BASE}tags/`}
+          aria-current={isTags ? 'page' : undefined}
+          class:list={[
+            'relative isolate rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
+            isTags ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
+          ]}
+        >
+          {isTags && <span class="nav-pill-bg" aria-hidden="true" />}
+          주제
         </a>
         <a
           href={`${BASE}about/`}
