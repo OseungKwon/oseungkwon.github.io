@@ -33,9 +33,10 @@ const TAG_SLUGS: Record<string, string> = {
 };
 
 /**
- * 글이 한 편뿐인 태그까지 페이지로 만들면 본문이 거의 없는 목록 페이지가
- * 수십 개 생긴다. 이런 페이지는 색인되더라도 사이트 전체의 품질 평가를
- * 끌어내리므로, 글이 이 수 이상 쌓인 태그만 아카이브를 연다.
+ * 태그 페이지는 모두 만들어 어떤 태그든 눌러 볼 수 있게 두되, 글이 한 편뿐인
+ * 태그는 본문이 거의 없는 목록이라 색인에서는 뺀다(noindex). 이런 페이지가
+ * 수십 개 색인되면 사이트 전체의 품질 평가가 내려간다.
+ * 글이 이 수 이상 쌓인 태그만 색인을 허용하고 sitemap에 싣는다.
  */
 export const MIN_POSTS_PER_TAG = 2;
 
@@ -48,6 +49,8 @@ export interface TagGroup {
   slug: string;
   /** 최신 글이 앞에 오도록 정렬된 목록 */
   posts: Post[];
+  /** 색인과 sitemap에 넣을 만큼 글이 쌓였는지 */
+  indexable: boolean;
 }
 
 export const normalizeTag = (tag: string) => TAG_ALIASES[tag] ?? tag;
@@ -83,31 +86,29 @@ export async function getTagGroups(): Promise<TagGroup[]> {
       name,
       slug: tagSlug(name),
       posts: [...tagged].sort(byNewest),
+      indexable: tagged.length >= MIN_POSTS_PER_TAG,
     }))
     .sort((a, b) => b.posts.length - a.posts.length || a.name.localeCompare(b.name));
 }
 
-/** 아카이브 페이지를 여는 태그만 추린다. sitemap과 목록 페이지가 이 기준을 공유한다. */
+/** 색인을 허용하는 태그만 추린다. sitemap과 태그 목록 페이지가 이 기준을 공유한다. */
 export async function getArchivedTags(): Promise<TagGroup[]> {
   const groups = await getTagGroups();
-  return groups.filter((group) => group.posts.length >= MIN_POSTS_PER_TAG);
+  return groups.filter((group) => group.indexable);
 }
 
 /**
  * 한 글의 태그를 화면에 뿌릴 때 쓸 정보.
- * 아카이브가 있는 태그만 링크로 만들고, 나머지는 라벨로 남긴다.
+ * 태그 페이지는 모두 존재하므로 표기를 정규화한 뒤 그대로 링크로 만든다.
  */
 export async function getTagLinks(post: Post) {
-  const archived = new Map(
-    (await getArchivedTags()).map((group) => [group.name, group.slug]),
-  );
   const seen = new Set<string>();
 
   return post.data.tags.flatMap((raw) => {
     const name = normalizeTag(raw);
     if (seen.has(name)) return [];
     seen.add(name);
-    return [{ name, href: archived.has(name) ? `/tags/${archived.get(name)}/` : null }];
+    return [{ name, href: `/tags/${tagSlug(name)}/` }];
   });
 }
 

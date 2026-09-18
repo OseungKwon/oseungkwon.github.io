@@ -76,16 +76,11 @@ const tagLinks = await getTagLinks(post);
       {
         tagLinks.length > 0 && (
           <div class="mt-10 flex flex-wrap gap-1.5 border-t border-token-primary pt-6">
-            {tagLinks.map(({ name, href }) =>
-              // 아카이브가 열린 태그만 링크로 둔다. 글 한 편뿐인 태그는 갈 곳이 없다.
-              href ? (
-                <a href={href} class="press rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary transition-colors hover:border-token-accent hover:text-token-link">
-                  #{name}
-                </a>
-              ) : (
-                <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">#{name}</span>
-              ),
-            )}
+            {tagLinks.map(({ name, href }) => (
+              <a href={href} class="press rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary transition-colors hover:border-token-accent hover:text-token-link">
+                #{name}
+              </a>
+            ))}
           </div>
         )
       }

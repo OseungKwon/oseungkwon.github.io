@@ -11,6 +11,7 @@ interface Props {
   tags?: string[];
   profile?: boolean;
   breadcrumbs?: Array<{ name: string; href: string }>;
+  noindex?: boolean;
 }
 
 const SITE_NAME = '오승의 기술블로그';
@@ -28,6 +29,7 @@ const {
   tags = [],
   profile = false,
   breadcrumbs = [],
+  noindex = false,
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? title : `${title} · ${SITE_NAME}`;
@@ -112,6 +114,8 @@ const jsonLd = profile
 <meta name="author" content={AUTHOR} />
 <title>{pageTitle}</title>
 <meta name="description" content={description} />
+{/* 색인하지 않을 페이지도 링크는 따라가게 둬, 연결된 글까지는 크롤링되도록 한다. */}
+{noindex && <meta name="robots" content="noindex, follow" />}
 <link rel="canonical" href={canonical} />
 <link rel="alternate" type="application/rss+xml" title={SITE_NAME} href={new URL('rss.xml', Astro.site)} />
 

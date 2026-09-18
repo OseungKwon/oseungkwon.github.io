@@ -1,17 +1,17 @@
 ---
 import PostListItem from '../../components/PostListItem.astro';
 import SiteLayout from '../../layouts/SiteLayout.astro';
-import { getArchivedTags } from '../../utils/tags';
+import { getTagGroups } from '../../utils/tags';
 
 export async function getStaticPaths() {
-  const groups = await getArchivedTags();
+  const groups = await getTagGroups();
   return groups.map((group) => ({
     params: { tag: group.slug },
     props: group,
   }));
 }
 
-const { name, posts } = Astro.props;
+const { name, posts, indexable } = Astro.props;
 
 const formatDate = (d: Date) => d.toLocaleDateString('en-us', { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -27,6 +27,7 @@ const description = `${name} 주제로 쓴 글 ${posts.length}편. ${posts
   title={`${name} 글 모음`}
   description={description}
   breadcrumbs={[{ name: '주제별 글', href: '/tags/' }, { name, href: `/tags/${Astro.params.tag}/` }]}
+  noindex={!indexable}
 >
   <section class="pt-7 pb-1 sm:pt-11">
     <h1 class="max-w-4xl text-[17px] font-semibold leading-[1.6] tracking-tight text-token-primary break-keep sm:text-[19px]">

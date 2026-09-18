@@ -36,11 +36,16 @@ const description = `${archived.map((group) => group.name).join(', ')} 등 주�
   {
     rest.length > 0 && (
       <div class="mt-10 border-t-[0.5px] border-token-primary pt-6 sm:mt-14">
-        {/* 글이 한 편뿐인 태그는 목록 페이지를 따로 열지 않고 이름만 남긴다. */}
+        {/* 글이 한 편뿐인 태그. 눌러서 볼 수는 있지만 색인에서는 빠진다. */}
         <h2 class="mb-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">그 외 태그</h2>
         <div class="flex flex-wrap gap-1.5">
           {rest.map((group) => (
-            <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">#{group.name}</span>
+            <a
+              href={`/tags/${group.slug}/`}
+              class="press rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary transition-colors hover:border-token-accent hover:text-token-link"
+            >
+              #{group.name}
+            </a>
           ))}
         </div>
       </div>
