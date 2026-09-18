@@ -13,9 +13,11 @@ interface Props {
   tags: string[];
 }
 
-const { title, description, date, image, href, category } = Astro.props;
+const { title, description, date, image, href, category, tags } = Astro.props;
 
 const categoryLabels = { book: 'Book', tech: 'Tech' };
+// 썸네일 자리에는 대표 태그를 쓴다. 태그가 없는 글만 카테고리로 돌아간다.
+const thumbLabel = tags[0] ?? categoryLabels[category];
 ---
 
 <a
@@ -23,7 +25,11 @@ const categoryLabels = { book: 'Book', tech: 'Tech' };
   class="press surface flex items-center gap-4 rounded-2xl p-3.5 sm:gap-5 sm:p-4"
 >
   <div
-    class="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-token-image sm:h-16 sm:w-16"
+    class:list={[
+      'h-14 w-14 shrink-0 overflow-hidden rounded-xl sm:h-16 sm:w-16',
+      // 회색 플레이스홀더는 실제 이미지가 들어오는 자리에만 깐다.
+      image && 'bg-token-image',
+    ]}
   >
     {
       image ? (
@@ -39,7 +45,7 @@ const categoryLabels = { book: 'Book', tech: 'Tech' };
           class="h-full w-full object-cover"
         />
       ) : (
-        <PostThumbFallback label={categoryLabels[category]} />
+        <PostThumbFallback label={thumbLabel} />
       )
     }
   </div>

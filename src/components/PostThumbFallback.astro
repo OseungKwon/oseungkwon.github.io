@@ -1,21 +1,14 @@
 ---
-// 이미지가 없는 글의 중립 폴백. 과한 그래픽 대신, 기술 블로그의 언어인
-// 모노 라벨을 옅게 얹어 '빈 회색 박스'로 보이지 않게 한다.
 interface Props {
   label: string;
   class?: string;
 }
 const { label, class: className = '' } = Astro.props;
+
+// 짧은 태그는 크게, 긴 태그는 작게 잡아 64px 틀을 고르게 채운다.
+const size = label.length <= 4 ? 'text-[15px]' : label.length <= 7 ? 'text-[12.5px]' : 'text-[10.5px]';
 ---
 
-<div
-  class:list={[
-    'flex h-full w-full items-center justify-center bg-token-tertiary',
-    className,
-  ]}
->
-  <span
-    class="font-mono text-sm font-semibold uppercase tracking-[0.35em] text-token-tertiary"
-    >{label}</span
-  >
+<div class:list={['flex h-full w-full items-center justify-center rounded-xl border border-token-primary px-1', className]}>
+  <span class:list={['text-center font-semibold leading-[1.2] tracking-tight text-token-secondary', size]}>{label}</span>
 </div>
