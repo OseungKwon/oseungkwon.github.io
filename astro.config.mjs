@@ -37,9 +37,12 @@ export default defineConfig({
   // canonical·sitemap·RSS 링크가 일치해야 중복 색인을 피할 수 있다.
   trailingSlash: 'always',
 
+  // 모바일에는 hover가 없어 hover 전략은 데스크톱에서만 동작한다.
+  // viewport 전략은 링크가 화면에 300ms 머물면 미리 받으므로, 손가락이
+  // 링크에 닿기 전에 문서가 캐시에 들어와 있다.
   prefetch: {
     prefetchAll: true,
-    defaultStrategy: 'hover',
+    defaultStrategy: 'viewport',
   },
   build: {
     inlineStylesheets: 'always',
