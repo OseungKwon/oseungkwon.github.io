@@ -106,8 +106,20 @@ const jsonLd = profile
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css" />
+
+<!-- Geist Mono는 코드 블록과 날짜에만 쓰는 보조 폰트다. media="print"로 받으면
+     렌더를 막지 않고, 다 받은 뒤 all로 바꿔 적용한다. 모바일 첫 진입에서
+     렌더 차단 origin이 하나 줄어든다. -->
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400..600&display=swap"
+  media="print"
+  onload="this.media='all'"
+/>
+<noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet" />
+</noscript>
 
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#050709" media="(prefers-color-scheme: dark)" />
