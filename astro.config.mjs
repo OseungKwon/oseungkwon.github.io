@@ -45,7 +45,9 @@ export default defineConfig({
     defaultStrategy: 'viewport',
   },
   build: {
-    inlineStylesheets: 'always',
+    // CSS를 페이지마다 인라인하면 이동할 때마다 같은 66KB를 다시 받는다.
+    // 외부 파일로 빼면 첫 페이지에서 받은 것이 다음 글에서 캐시로 재사용된다.
+    inlineStylesheets: 'auto',
   },
   integrations: [mdx()],
   markdown: {
@@ -53,5 +55,12 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      // 모든 페이지가 공유하는 큰 CSS는 외부 파일로 남겨 캐시에 태우고,
+      // 특정 글에서만 쓰는 몇 KB짜리 컴포넌트 CSS는 문서 안에 넣는다.
+      // 1KB짜리라도 따로 받으면 렌더를 막는 왕복이 한 번 더 생긴다.
+      assetsInlineLimit: (filePath, content) =>
+        filePath.endsWith('.css') ? content.length < 12 * 1024 : undefined,
+    },
   },
 });
