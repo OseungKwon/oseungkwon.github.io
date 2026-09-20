@@ -1,0 +1,478 @@
+---
+/**
+ * 투 포인터는 무엇을 보지 않는가 — 단계 진행형 데모.
+ *
+ * 같은 문제(정렬된 배열에서 합이 target인 두 수)를 완전 탐색과 투 포인터로
+ * 각각 돌린다. 두 방식의 차이는 '빠르다'가 아니라 '보지 않고 넘긴 구간이
+ * 있다'는 것이라, 포인터가 지나간 쪽 블록이 옅어지며 빠지는 장면 하나에
+ * 전부 건다. 설명 문장을 두지 않는 것도 같은 이유다 — 무슨 일이 일어났는지는
+ * 블록의 위치와 농도가 말하고, 왜 그런지는 본문이 맡는다.
+ *
+ * nums와 target은 독자가 직접 바꾼다. 자기가 지금 풀고 있는 문제의 입력을
+ * 그대로 넣어 보게 하려는 것이고, 정렬되지 않은 입력을 넣으면 자동으로
+ * 정렬하면서 배지를 띄운다 — '정렬 전제'가 이 유형의 조건임을 조작으로
+ * 알게 하는 편이 주석 한 줄보다 오래 남는다.
+ */
+import Demo from './Demo.astro';
+
+/** 블록은 미리 그려 둔다. JS로 만든 요소에는 스코프 스타일이 걸리지 않는다. */
+const MAX = 8;
+const DEFAULT_NUMS = '2, 7, 11, 15, 19, 24';
+const DEFAULT_TARGET = '30';
+---
+
+<Demo
+  title="투 포인터가 건너뛰는 구간"
+  hint="단계를 넘겨 보세요. 두 방식이 확인하는 쌍의 수가 다릅니다."
+  caption="정렬된 배열에서 합이 target인 두 수 찾기(LeetCode 167)."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="탐색 방식">
+      <button class="demo-seg__opt" type="button" data-mode="two" aria-pressed="true">투 포인터</button>
+      <button class="demo-seg__opt" type="button" data-mode="brute" aria-pressed="false">완전 탐색</button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn" type="button" data-act="back">이전</button>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음</button>
+  </Fragment>
+
+  <div class="tp" data-demo="two-pointer">
+    <div class="tp-board">
+      <div class="tp-track" aria-hidden="true">
+        <span class="tp-marker" data-el="markL">L</span>
+        <span class="tp-marker" data-el="markR">R</span>
+      </div>
+
+      <ol class="tp-array">
+        {
+          Array.from({ length: MAX }).map((_, i) => (
+            <li class="tp-block" data-el={`cell${i}`} hidden>
+              <span data-el={`val${i}`} />
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+
+    <p class="tp-expr" aria-live="polite">
+      <span class="tp-expr__calc">
+        <code data-el="expr"></code>
+        <span class="tp-cmp" data-el="cmp"></span>
+      </span>
+      <span class="tp-pairs">
+        <span class="tp-pairs__n" data-el="checked">0</span> / <span data-el="total">0</span> 쌍
+      </span>
+    </p>
+    <div class="tp-inputs">
+      <label class="tp-field">
+        <span class="tp-field__name">nums</span>
+        <input
+          class="tp-input"
+          type="text"
+          inputmode="numeric"
+          spellcheck="false"
+          data-el="nums"
+          value={DEFAULT_NUMS}
+          aria-label="배열 값 (쉼표로 구분, 최대 8개)"
+        />
+      </label>
+      <label class="tp-field">
+        <span class="tp-field__name">target</span>
+        <input
+          class="tp-input tp-input--num"
+          type="text"
+          inputmode="numeric"
+          spellcheck="false"
+          data-el="target"
+          value={DEFAULT_TARGET}
+          aria-label="찾을 합"
+        />
+      </label>
+      <span class="demo-badge" data-el="sorted" hidden>정렬됨</span>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .tp {
+    /* 마커의 이동 거리는 블록 크기에서 계산한다. 한 곳에서만 바꾸면 된다. */
+    --tp-cell: 2.625rem;
+    --tp-gap: 0.375rem;
+    --tp-mark: 1.375rem;
+  }
+
+  /* ── 입력: 지금 풀고 있는 문제의 숫자를 그대로 넣는 자리 ── */
+  /* 입력은 무대 아래에 둔다. 위에 두면 볼 것이 하나 더 있는 채로 블록을 보게 된다. */
+  .tp-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .tp-field {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+  }
+
+  .tp-field__name {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .tp-input {
+    width: 12.5rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 0.5rem;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tp-input--num {
+    width: 4rem;
+  }
+
+  .tp-input[data-invalid] {
+    border-color: var(--demo-warn);
+  }
+
+  /* ── 무대: 마커 큐브가 트랙 위를 미끄러지고, 지나간 블록은 옅어지며 빠진다 ── */
+  .tp-board {
+    margin-bottom: 1.25rem;
+  }
+
+  .tp-track {
+    position: relative;
+    height: var(--tp-mark);
+    margin-bottom: 0.375rem;
+  }
+
+  .tp-marker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tp-mark);
+    height: var(--tp-mark);
+    border-radius: 0.375rem;
+    background-color: var(--demo-a);
+    color: #ffffff;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+    transition:
+      transform 0.24s cubic-bezier(0.2, 0.7, 0.2, 1),
+      opacity 0.16s ease;
+  }
+
+  .tp-marker[data-off] {
+    opacity: 0;
+  }
+
+  .tp-array {
+    display: flex;
+    gap: var(--tp-gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tp-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tp-cell);
+    height: var(--tp-cell);
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.5rem;
+    background-color: var(--surface-bg);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition:
+      transform 0.24s cubic-bezier(0.2, 0.7, 0.2, 1),
+      opacity 0.2s ease,
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  /* .tp-block의 display가 [hidden]의 기본 규칙을 이기므로 명시한다 */
+  .tp-block[hidden] {
+    display: none;
+  }
+
+  .tp-block[data-state='dropped'] {
+    opacity: 0.22;
+    transform: scale(0.82);
+  }
+
+  .tp-block[data-state='active'],
+  .tp-block[data-state='hit'] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  .tp-block[data-state='hit'] {
+    color: var(--demo-a);
+  }
+
+  .tp-expr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+  }
+
+  .tp-expr__calc {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .tp-pairs {
+    font-size: 0.8125rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .tp-pairs__n {
+    color: var(--color-link);
+    font-weight: 600;
+  }
+
+  .tp-cmp {
+    font-family: var(--font-sans);
+    color: var(--color-text-tertiary);
+  }
+
+  .tp-cmp[data-hit] {
+    color: var(--demo-a);
+    font-weight: 700;
+  }
+
+  @media (max-width: 34rem) {
+    .tp {
+      --tp-cell: 2.125rem;
+      --tp-gap: 0.3125rem;
+      --tp-mark: 1.25rem;
+    }
+
+    .tp-input {
+      width: 100%;
+    }
+
+    .tp-field {
+      flex: 1 1 100%;
+    }
+
+    .tp-block {
+      font-size: 0.8125rem;
+    }
+  }
+</style>
+
+<script>
+  type Mode = 'two' | 'brute';
+
+  type Step = {
+    /** 왼쪽(또는 i) 인덱스 */
+    l: number;
+    /** 오른쪽(또는 j) 인덱스 */
+    r: number;
+    /** 이 단계에서 답을 찾았는가 */
+    hit: boolean;
+    /** 쌍을 검사하지 않고 끝난 단계인가 */
+    exhausted: boolean;
+    /** 이 단계의 계산식 */
+    expr: string;
+    /** target과의 비교 */
+    cmp: string;
+  };
+
+  const MAX = 8;
+
+  document.querySelectorAll<HTMLElement>('[data-demo="two-pointer"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) => shell.querySelector<T>(`[data-el="${name}"]`);
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const nextBtn = shell.querySelector<HTMLButtonElement>('[data-act="next"]');
+    const backBtn = shell.querySelector<HTMLButtonElement>('[data-act="back"]');
+    const numsInput = el<HTMLInputElement>('nums');
+    const targetInput = el<HTMLInputElement>('target');
+
+    let mode: Mode = 'two';
+    let nums: number[] = [];
+    let target = 0;
+    let steps: Step[] = [];
+    let step = 0;
+    let didSort = false;
+
+    /** 양쪽에서 좁혀 온다. 한 칸 움직일 때마다 반대편 구간 전체가 후보에서 빠진다. */
+    const buildTwoPointer = (a: number[], t: number): Step[] => {
+      const out: Step[] = [];
+      let l = 0;
+      let r = a.length - 1;
+
+      while (l < r) {
+        const sum = a[l] + a[r];
+        const expr = `${a[l]} + ${a[r]} = ${sum}`;
+
+        if (sum === t) {
+          out.push({ l, r, hit: true, exhausted: false, expr, cmp: '= target' });
+          return out;
+        }
+        out.push({ l, r, hit: false, exhausted: false, expr, cmp: `${sum < t ? '<' : '>'} ${t}` });
+        if (sum < t) l++;
+        else r--;
+      }
+
+      out.push({ l, r, hit: false, exhausted: true, expr: '', cmp: '답 없음' });
+      return out;
+    };
+
+    /** 모든 쌍을 순서대로 본다. 건너뛰는 구간이 없다는 게 이 방식의 정의다. */
+    const buildBrute = (a: number[], t: number): Step[] => {
+      const out: Step[] = [];
+
+      for (let i = 0; i < a.length; i++) {
+        for (let j = i + 1; j < a.length; j++) {
+          const sum = a[i] + a[j];
+          const expr = `${a[i]} + ${a[j]} = ${sum}`;
+
+          if (sum === t) {
+            out.push({ l: i, r: j, hit: true, exhausted: false, expr, cmp: '= target' });
+            return out;
+          }
+          out.push({ l: i, r: j, hit: false, exhausted: false, expr, cmp: `≠ ${t}` });
+        }
+      }
+
+      const last = Math.max(0, a.length - 1);
+      out.push({ l: last, r: last, hit: false, exhausted: true, expr: '', cmp: '답 없음' });
+      return out;
+    };
+
+    const rebuild = () => {
+      steps = mode === 'two' ? buildTwoPointer(nums, target) : buildBrute(nums, target);
+      step = 0;
+    };
+
+    /** 입력은 유효할 때만 반영한다. 지우는 도중에 무대가 비지 않게. */
+    const readInputs = () => {
+      const raw = (numsInput?.value ?? '')
+        .split(/[,\s]+/)
+        .filter(Boolean)
+        .map(Number)
+        .filter((n) => Number.isFinite(n))
+        .slice(0, MAX);
+      const rawTarget = (targetInput?.value ?? '').trim();
+      const t = Number(rawTarget);
+      const okNums = raw.length >= 2;
+      const okTarget = rawTarget !== '' && Number.isFinite(t);
+
+      numsInput?.toggleAttribute('data-invalid', !okNums);
+      targetInput?.toggleAttribute('data-invalid', !okTarget);
+      if (!okNums || !okTarget) return false;
+
+      didSort = raw.some((v, i) => i > 0 && v < raw[i - 1]);
+      nums = [...raw].sort((a, b) => a - b);
+      target = t;
+      return true;
+    };
+
+    const stateOf = (idx: number, s: Step): string => {
+      // 빈손으로 끝난 단계에서는 어떤 블록도 강조하지 않는다. 남아 있으면 답으로 읽힌다.
+      if (s.exhausted && !s.hit) return 'dropped';
+      if (idx === s.l || idx === s.r) return s.hit ? 'hit' : 'active';
+      if (mode === 'two') return idx < s.l || idx > s.r ? 'dropped' : 'candidate';
+      return idx < s.l ? 'dropped' : 'candidate';
+    };
+
+    /** 마커를 idx번 블록 가운데로 옮긴다. 거리는 블록 크기 변수에서 계산한다. */
+    const place = (marker: HTMLElement | null, idx: number, off: boolean) => {
+      if (!marker) return;
+      marker.toggleAttribute('data-off', off);
+      marker.style.transform =
+        `translateX(calc((var(--tp-cell) + var(--tp-gap)) * ${idx} + (var(--tp-cell) - var(--tp-mark)) / 2))`;
+    };
+
+    const render = () => {
+      const s = steps[step];
+      const atEnd = step === steps.length - 1;
+      const pairs = (nums.length * (nums.length - 1)) / 2;
+      // 마지막 안내 단계는 쌍을 검사하지 않으므로 세지 않는다.
+      const checked = steps.slice(0, step + 1).filter((x) => !x.exhausted).length;
+
+      el('expr')!.textContent = s.expr;
+      el('cmp')!.textContent = s.cmp;
+      el('cmp')!.toggleAttribute('data-hit', s.hit);
+      el('sorted')!.hidden = !didSort;
+      el('checked')!.textContent = String(checked);
+      el('total')!.textContent = String(pairs);
+
+      for (let i = 0; i < MAX; i++) {
+        const cell = el(`cell${i}`);
+        if (!cell) continue;
+        cell.hidden = i >= nums.length;
+        if (cell.hidden) continue;
+        el(`val${i}`)!.textContent = String(nums[i]);
+        cell.dataset.state = stateOf(i, s);
+      }
+
+      const gone = s.exhausted && !s.hit;
+      el('markL')!.textContent = mode === 'two' ? 'L' : 'i';
+      el('markR')!.textContent = mode === 'two' ? 'R' : 'j';
+      place(el('markL'), s.l, gone);
+      place(el('markR'), s.r, gone);
+
+      if (backBtn) backBtn.disabled = step === 0;
+      // 끝까지 본 독자가 처음부터 다시 볼 경로를 남긴다.
+      if (nextBtn) nextBtn.textContent = atEnd ? '처음으로' : '다음';
+    };
+
+    const refresh = () => {
+      if (!readInputs()) return;
+      rebuild();
+      render();
+    };
+
+    nextBtn?.addEventListener('click', () => {
+      step = step === steps.length - 1 ? 0 : step + 1;
+      render();
+    });
+    backBtn?.addEventListener('click', () => {
+      if (step > 0) step--;
+      render();
+    });
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode === 'brute' ? 'brute' : 'two';
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        rebuild();
+        render();
+      });
+    });
+    numsInput?.addEventListener('input', refresh);
+    targetInput?.addEventListener('input', refresh);
+
+    refresh();
+  });
+</script>

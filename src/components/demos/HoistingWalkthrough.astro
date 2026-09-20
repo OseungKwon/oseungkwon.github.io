@@ -1,0 +1,625 @@
+---
+/**
+ * 바인딩의 내부 구조를 드러내는 단계 진행형 데모.
+ *
+ * 증명할 문장: "바인딩은 만들어지는 순간과 값이 들어가는 순간이 따로 있고,
+ * 그 사이에서 읽으면 ReferenceError가 난다."
+ *
+ * 그래서 바인딩 한 칸을 두 칸으로 쪼갰다. 명세가 실제로 나눠 두는 두 가지다.
+ *   - 초기화 플래그: CreateBinding이 끝나면 ✗, InitializeBinding이 끝나면 ✓
+ *   - 값 슬롯: 플래그가 ✗인 동안에는 비어 있다
+ * GetBindingValue(9.1.1.1.6)는 값 슬롯이 아니라 플래그를 먼저 본다. 초기화 전
+ * 접근이 undefined가 아니라 예외인 이유가 이 구조에 있어서, 두 칸을 따로
+ * 보여주면 결과가 갈리는 지점이 눈에 남는다.
+ *
+ * 단계마다 실행 중인 추상 연산을 그대로 적는다. 화면의 변화가 어떤 연산의
+ * 결과인지 짚어 주지 않으면 값만 바뀌는 애니메이션이 된다.
+ *
+ * 명세의 평가 순서를 재구성한 모형이다. 코드를 eval하거나 엔진 내부를
+ * 관측하지 않는다.
+ */
+import Demo from './Demo.astro';
+
+interface Props {
+  variant: 'declaration' | 'const' | 'callback' | 'modules';
+}
+const { variant } = Astro.props;
+
+/** 값 슬롯이 비어 있음(= 초기화 플래그 ✗). 셀 표기에서 이 값이면 미초기화로 읽는다. */
+const E = '-';
+
+/** 여러 줄에 걸친 한 문장을 통째로 강조하기 위한 줄 목록. */
+const R = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+
+type Step = {
+  /** 강조할 코드 줄. -1이면 본문 전, 배열이면 여러 줄을 함께 강조한다 */
+  at: number | number[];
+  /** 0 = 이름을 만드는 국면, 1 = 값을 채우는 국면 */
+  phase: 0 | 1;
+  /** 이 단계가 실행하는 추상 연산 (최대 2줄) */
+  ops: string[];
+  /** 바인딩별 `값` 또는 `값:동작` */
+  cells: string[];
+  note: string;
+  error?: boolean;
+};
+type Scene = { label: string; names: string[]; kinds: string[]; code: string[]; steps: Step[] };
+
+const s = (at: number | number[], phase: 0 | 1, ops: string[], cells: string[], note: string, error = false): Step => ({ at, phase, ops, cells, note, error });
+
+/** 인스턴스화에서 두 이름이 함께 등록되는 첫 단계. 여러 장면이 같은 출발점을 쓴다. */
+const createBoth = (first: string) => s(-1, 0, [`${first}("validateEmail")`, 'CreateImmutableBinding("validators")'], [`${E}:생성`, `${E}:생성`], '이름만 등록 · 슬롯은 빕니다');
+
+/** 화살표 함수로 등록했을 때. 선언 방식 비교와 콜백 비교 양쪽에서 출발점이 된다. */
+const arrowScene: Scene = {
+  label: 'const 화살표 함수',
+  names: ['validateEmail', 'validators'],
+  kinds: ['const', 'const'],
+  code: ['const validators = {', '  email: validateEmail,', '};', 'const validateEmail = (value) =>', "  value.includes('@');"],
+  steps: [createBoth('CreateImmutableBinding'), s(1, 1, ['GetBindingValue("validateEmail")', '→ ReferenceError'], [`${E}:실패`, E], '초기화 ✗ · 읽기에서 멈춥니다', true)],
+};
+
+const declarationScene: Scene = {
+  label: '함수 선언',
+  names: ['validateEmail', 'validators'],
+  kinds: ['function', 'const'],
+  code: ['const validators = {', '  email: validateEmail,', '};', 'function validateEmail(value) {', "  return value.includes('@');", '}'],
+  steps: [
+    createBoth('CreateMutableBinding'),
+    s(-1, 0, ['InitializeBinding("validateEmail", ƒ)'], ['ƒ:초기화', E], '함수 선언은 값까지 채웁니다'),
+    s(1, 1, ['GetBindingValue("validateEmail")', '→ ƒ'], ['ƒ:읽기', E], '초기화 ✓ · 값을 돌려줍니다'),
+    s(R(0, 2), 1, ['InitializeBinding("validators", {…})'], ['ƒ', '{…}:초기화'], '객체가 완성되어 슬롯에 들어갑니다'),
+    s(R(3, 5), 1, ['FunctionDeclaration : Evaluation', '→ empty · 상태 변화 없음'], ['ƒ', '{…}'], '이미 인스턴스화에서 끝났습니다'),
+  ],
+};
+
+/** 콜백 세 장면이 공유하는 앞부분. 갈라지는 지점을 비교하려면 여기까지 같아야 한다. */
+const registerCallback: Step[] = [
+  createBoth('CreateImmutableBinding'),
+  s(1, 1, ['InstantiateArrowFunctionExpression', '→ ƒ · 본문은 실행하지 않음'], [`${E}:참조`, E], '바인딩을 참조만 해 둡니다'),
+  s(R(0, 2), 1, ['InitializeBinding("validators", {…})'], [`${E}:참조`, '{…}:초기화'], '등록 자체는 성공합니다'),
+];
+
+const callback: Scene[] = [
+  { ...arrowScene, label: '직접 등록' },
+  {
+    label: '나중에 호출',
+    names: ['validateEmail', 'validators'],
+    kinds: ['const', 'const'],
+    code: ['const validators = {', '  email: (value) => validateEmail(value),', '};', 'const validateEmail = (value) =>', "  value.includes('@');", "validators.email('a@example.com');"],
+    steps: [
+      ...registerCallback,
+      s(R(3, 4), 1, ['InitializeBinding("validateEmail", ƒ)'], ['ƒ:초기화', '{…}'], '이제 슬롯이 채워집니다'),
+      s([1, 5], 1, ['GetBindingValue("validateEmail")', '→ ƒ'], ['ƒ:읽기', '{…}'], '호출한 줄이 콜백 본문을 실행합니다'),
+    ],
+  },
+  {
+    label: '먼저 호출',
+    names: ['validateEmail', 'validators'],
+    kinds: ['const', 'const'],
+    code: ['const validators = {', '  email: (value) => validateEmail(value),', '};', "validators.email('a@example.com');", 'const validateEmail = (value) =>', "  value.includes('@');"],
+    steps: [...registerCallback, s([1, 3], 1, ['GetBindingValue("validateEmail")', '→ ReferenceError'], [`${E}:실패`, '{…}'], '초기화 ✗ · 콜백 본문에서 멈춥니다', true)],
+  },
+];
+
+const modules: Scene[] = [
+  {
+    label: '순환 import',
+    names: ['requiredFields', 'validators'],
+    kinds: ['form.mjs', 'validators.mjs'],
+    code: ['form → validators → form', 'validators.mjs', '  const required = new Set(requiredFields);', '  export const validators = { … };', 'form.mjs', "  export const requiredFields = ['email'];"],
+    steps: [
+      s(0, 0, ['InitializeEnvironment(form)', 'InitializeEnvironment(validators)'], [`${E}:생성`, `${E}:생성`], '연결 단계 · 이름만 등록됩니다'),
+      s(1, 1, ['Evaluate(validators)', '→ form보다 먼저 실행'], [E, E], 'form은 validators를 기다립니다'),
+      s(2, 1, ['GetBindingValue("requiredFields")', '→ ReferenceError'], [`${E}:실패`, E], '초기화 ✗ · form에 닿지 못합니다', true),
+    ],
+  },
+  {
+    label: '공통 규칙 분리',
+    names: ['requiredFields', 'validators'],
+    kinds: ['rules.mjs', 'validators.mjs'],
+    code: [
+      'form → validators → rules',
+      'rules.mjs',
+      "  export const requiredFields = ['email'];",
+      'validators.mjs',
+      '  const required = new Set(requiredFields);',
+      '  export const validators = { … };',
+      'form.mjs',
+      "  validators.email('a@example.com');",
+    ],
+    steps: [
+      s(0, 0, ['InitializeEnvironment(rules)', 'InitializeEnvironment(validators)'], [`${E}:생성`, `${E}:생성`], '연결 단계 · 이름만 등록됩니다'),
+      s(2, 1, ['InitializeBinding("requiredFields", […])'], ["['email']:초기화", E], 'rules가 먼저 슬롯을 채웁니다'),
+      s(4, 1, ['GetBindingValue("requiredFields")', "→ ['email']"], ["['email']:읽기", E], '초기화 ✓ · 값을 돌려줍니다'),
+      s(5, 1, ['InitializeBinding("validators", {…})'], ["['email']", '{…}:초기화'], 'validators 슬롯이 채워집니다'),
+      s(7, 1, ['GetBindingValue("validators")', '→ {…}'], ["['email']", '{…}:읽기'], '초기화 ✓ · 검증에 성공합니다'),
+    ],
+  },
+];
+
+const configs = {
+  declaration: {
+    title: '함수 선언의 시작 상태',
+    hint: '본문이 한 줄도 실행되지 않은 상태에서 시작합니다. 단계를 넘기며 두 바인딩이 언제 값을 갖는지 보세요.',
+    scenes: [declarationScene],
+    phases: ['인스턴스화', '본문 평가'],
+    record: '모듈 환경 레코드',
+  },
+  const: {
+    title: 'const 화살표 함수의 시작 상태',
+    hint: '앞의 함수 선언과 같은 자리에서 같은 이름을 읽습니다. 초기화 플래그가 어떻게 다른지 보세요.',
+    scenes: [arrowScene],
+    phases: ['인스턴스화', '본문 평가'],
+    record: '모듈 환경 레코드',
+  },
+  callback: {
+    title: '등록 시점과 읽는 시점',
+    hint: '같은 콜백도 초기화 전에 호출하면 실패합니다. 세 경우를 비교해 보세요.',
+    scenes: callback,
+    phases: ['인스턴스화', '본문 평가'],
+    record: '모듈 환경 레코드',
+  },
+  modules: {
+    title: '모듈 평가 순서와 초기화 상태',
+    hint: 'form.mjs가 진입점입니다. 공통 규칙을 분리하기 전후를 비교해 보세요.',
+    scenes: modules,
+    phases: ['연결', '평가'],
+    record: '모듈 환경 레코드',
+  },
+};
+const config = configs[variant];
+/** 장면이 하나뿐이면 선택 버튼 대신 단계 이동만 남긴다. */
+const multi = config.scenes.length > 1;
+const first = config.scenes[0].steps[0];
+---
+
+<Demo title={config.title} hint={config.hint} caption="환경 레코드는 이름을 만드는 일과 값을 넣는 일을 따로 합니다. 명세의 평가 순서를 재구성한 모형입니다.">
+  <Fragment slot="controls">
+    {
+      multi && (
+        <div class="hw-options" role="group" aria-label={config.title}>
+          {config.scenes.map((scene, i) => (
+            <button type="button" class="demo-btn" data-scene={i} aria-pressed={i === 0}>
+              {scene.label}
+            </button>
+          ))}
+        </div>
+      )
+    }
+    <div class="hw-navigation">
+      <button type="button" class="demo-btn" data-back disabled>이전</button>
+      <span class="demo-label" data-progress>1 / {config.scenes[0].steps.length}</span>
+      <button type="button" class="demo-btn demo-btn--primary" data-next>다음</button>
+    </div>
+  </Fragment>
+
+  <div data-demo="hoisting" data-variant={variant}>
+    <ol class="hw-phases" aria-label="실행 국면">
+      {
+        config.phases.map((label, i) => (
+          <li class="hw-phase" data-phase={i} data-on={i === first.phase ? '' : undefined}>
+            <span class="hw-phase__num">{i + 1}</span>
+            {label}
+          </li>
+        ))
+      }
+    </ol>
+
+    {
+      config.scenes.map((scene, i) => (
+        <div data-panel={i} hidden={i !== 0} data-steps={JSON.stringify(scene.steps)}>
+          <div class="hw-layout">
+            <ol class="hw-code" aria-label="예제 코드">
+              {scene.code.map((line, j) => (
+                <li class="hw-line" data-line={j}>
+                  <span class="hw-number" aria-hidden="true">
+                    {j + 1}
+                  </span>
+                  <code>{line}</code>
+                </li>
+              ))}
+            </ol>
+
+            <div class="hw-bindings">
+              <div class="hw-label">{config.record}</div>
+              {scene.names.map((name, j) => (
+                <div class="hw-binding" data-binding={j} data-init="false">
+                  <div class="hw-binding__head">
+                    <code class="hw-binding__name">{name}</code>
+                    <span class="hw-kind">{scene.kinds[j]}</span>
+                    <span class="hw-act" data-act hidden />
+                  </div>
+                  <dl class="hw-slots">
+                    <div class="hw-slot">
+                      <dt>초기화</dt>
+                      <dd class="hw-flag" data-flag>
+                        ✗
+                      </dd>
+                    </div>
+                    <div class="hw-slot hw-slot--value">
+                      <dt>값</dt>
+                      <dd class="hw-value" data-value>
+                        비어 있음
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="hw-ops" aria-label="이번 단계의 연산">
+            <code class="hw-op" data-op={0}>
+              {first.ops[0]}
+            </code>
+            <code class="hw-op hw-op--cont" data-op={1} hidden={!first.ops[1]}>
+              {first.ops[1] ?? ''}
+            </code>
+          </div>
+        </div>
+      ))
+    }
+
+    <p class="hw-note" aria-live="polite" data-note>{first.note}</p>
+  </div>
+</Demo>
+
+<style>
+  .hw-options,
+  .hw-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .hw-navigation {
+    margin-left: auto;
+  }
+  /* 선택 버튼이 없는 단일 장면에서는 왼쪽에 붙인다 */
+  .hw-navigation:first-child {
+    margin-left: 0;
+  }
+  .hw-options button[aria-pressed='true'] {
+    color: var(--demo-a);
+    border-color: var(--demo-a);
+    background: var(--demo-a-soft);
+  }
+  button:focus-visible {
+    outline: 2px solid var(--demo-a);
+    outline-offset: 3px;
+  }
+  [hidden] {
+    display: none !important;
+  }
+
+  /* ── 국면 레일: 지금이 이름을 만드는 때인지 값을 넣는 때인지 ── */
+  .hw-phases {
+    display: flex;
+    gap: 0.375rem;
+    margin: 0 0 0.875rem;
+    padding: 0;
+    list-style: none;
+  }
+  .hw-phase {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+  .hw-phase[data-on] {
+    border-color: var(--demo-a);
+    background: var(--demo-a-soft);
+    color: var(--demo-a);
+    font-weight: 600;
+  }
+  .hw-phase__num {
+    font: 600 0.6875rem/1 var(--font-mono);
+    opacity: 0.7;
+  }
+
+  .hw-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  .hw-code {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .hw-line {
+    display: flex;
+    gap: 0.6rem;
+    border-radius: 0.25rem;
+    padding: 0.3rem;
+    color: var(--color-text-secondary);
+  }
+  .hw-line code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 0.75rem/1.65 var(--font-mono);
+  }
+  .hw-number {
+    flex: 0 0 1ch;
+    font: 0.6875rem/1.8 var(--font-mono);
+    color: var(--color-text-tertiary);
+  }
+  .hw-line[data-current] {
+    background: var(--demo-a-soft);
+    color: var(--color-text-primary);
+  }
+  .hw-line[data-error] {
+    background: var(--demo-warn-soft);
+    color: var(--demo-warn);
+  }
+  /* 오류로 실행이 멈춘 뒤의 줄 */
+  .hw-line[data-dead] {
+    opacity: 0.3;
+  }
+
+  /* ── 환경 레코드: 한 바인딩이 플래그 칸과 값 칸으로 나뉜다 ── */
+  .hw-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-text-tertiary);
+    margin-bottom: 0.5rem;
+  }
+  .hw-binding {
+    padding: 0.5rem 0.625rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.5rem;
+    background: var(--surface-bg);
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+  /* 값이 들어간 바인딩만 테두리에 색이 올라간다. */
+  .hw-binding[data-init='true'] {
+    border-color: var(--demo-a);
+  }
+  .hw-binding[data-act='실패'] {
+    border-color: var(--demo-warn);
+    background: var(--demo-warn-soft);
+  }
+  .hw-binding__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.375rem;
+  }
+  .hw-binding__name {
+    font: 600 0.75rem/1.5 var(--font-mono);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+  }
+  .hw-kind {
+    font: 0.6875rem/1.5 var(--font-mono);
+    color: var(--color-text-tertiary);
+  }
+  /* 이번 단계가 이 바인딩에 한 일. 칩 하나로 동사를 남긴다. */
+  .hw-act {
+    margin-left: auto;
+    padding: 0.0625rem 0.4375rem;
+    border: 1px solid var(--demo-a);
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--demo-a);
+  }
+  .hw-binding[data-act='생성'] .hw-act,
+  .hw-binding[data-act='참조'] .hw-act {
+    border-color: var(--color-border-primary);
+    color: var(--color-text-tertiary);
+  }
+  .hw-binding[data-act='초기화'] .hw-act {
+    background: var(--demo-a-soft);
+  }
+  .hw-binding[data-act='실패'] .hw-act {
+    border-color: var(--demo-warn);
+    color: var(--demo-warn);
+  }
+
+  .hw-slots {
+    display: flex;
+    gap: 0.375rem;
+    margin: 0.4375rem 0 0;
+  }
+  .hw-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+    padding: 0.1875rem 0.4375rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.3125rem;
+  }
+  .hw-slot--value {
+    flex: 1 1 auto;
+  }
+  .hw-slot dt {
+    flex: 0 0 auto;
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+  .hw-slot dd {
+    margin: 0;
+    min-width: 0;
+    font: 0.6875rem/1.5 var(--font-mono);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+  }
+  /* 아직 채워지지 않은 슬롯은 색이 아니라 테두리의 성질로 구분한다. */
+  .hw-binding[data-init='false'] .hw-slot {
+    border-style: dashed;
+  }
+  .hw-binding[data-init='false'] .hw-value {
+    font-family: var(--font-sans);
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+  .hw-flag {
+    font-weight: 700;
+    color: var(--color-text-tertiary);
+  }
+  .hw-binding[data-init='true'] .hw-flag {
+    color: var(--demo-a);
+  }
+  .hw-binding[data-act='실패'] .hw-flag {
+    color: var(--demo-warn);
+  }
+
+  /* ── 연산: 화면의 변화가 어떤 호출의 결과인지 남긴다 ── */
+  .hw-ops {
+    margin-top: 0.875rem;
+    padding-left: 0.625rem;
+    border-left: 2px solid var(--color-border-secondary);
+  }
+  .hw-op {
+    display: block;
+    font: 0.6875rem/1.7 var(--font-mono);
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+  }
+  .hw-op[hidden] {
+    display: none;
+  }
+  .hw-op--cont {
+    color: var(--color-text-tertiary);
+  }
+  .hw-op[data-ko] {
+    font-family: var(--font-sans);
+  }
+  .hw-ops[data-error] {
+    border-left-color: var(--demo-warn);
+  }
+  .hw-ops[data-error] .hw-op {
+    color: var(--demo-warn);
+  }
+
+  .hw-note {
+    margin: 0.875rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+  }
+  .hw-note[data-error] {
+    color: var(--demo-warn);
+  }
+
+  @media (max-width: 42rem) {
+    .hw-layout {
+      grid-template-columns: 1fr;
+    }
+    .hw-navigation {
+      margin-left: 0;
+    }
+  }
+</style>
+
+<script>
+  type Step = { at: number | number[]; phase: number; ops: string[]; cells: string[]; note: string; error?: boolean };
+
+  const lines = (at: number | number[]) => (Array.isArray(at) ? at : [at]);
+
+  /** '값' 또는 '값:동작' 표기를 푼다. 값이 '-'이면 아직 초기화 전이다. */
+  const parse = (cell: string) => {
+    const [value, act = ''] = cell.split(':');
+    return { value, act, init: value !== '-' };
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="hoisting"]').forEach((root) => {
+    const shell = root.closest('.demo')!;
+    const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-panel]'));
+    const phases = Array.from(root.querySelectorAll<HTMLElement>('[data-phase]'));
+    const modes = Array.from(shell.querySelectorAll<HTMLButtonElement>('[data-scene]'));
+    const back = shell.querySelector<HTMLButtonElement>('[data-back]')!;
+    const next = shell.querySelector<HTMLButtonElement>('[data-next]')!;
+    const progress = shell.querySelector<HTMLElement>('[data-progress]')!;
+    const note = root.querySelector<HTMLElement>('[data-note]')!;
+    const scenes = panels.map((panel) => JSON.parse(panel.dataset.steps!) as Step[]);
+
+    let scene = 0,
+      step = 0;
+
+    function render() {
+      const steps = scenes[scene],
+        state = steps[step],
+        panel = panels[scene];
+
+      panels.forEach((p, i) => {
+        p.hidden = i !== scene;
+      });
+      modes.forEach((b, i) => b.setAttribute('aria-pressed', String(i === scene)));
+      phases.forEach((p, i) => p.toggleAttribute('data-on', i === state.phase));
+
+      const hit = lines(state.at);
+      const last = Math.max(...hit);
+      panel.querySelectorAll<HTMLElement>('[data-line]').forEach((line, i) => {
+        const on = hit.includes(i);
+        line.toggleAttribute('data-current', on);
+        line.toggleAttribute('data-error', on && !!state.error);
+        // 오류로 멈춘 뒤의 줄은 실행되지 않는다. 지우지 않고 흐리게 남겨야 '도달하지 못했다'가 보인다.
+        line.toggleAttribute('data-dead', !!state.error && i > last);
+      });
+
+      panel.querySelectorAll<HTMLElement>('[data-binding]').forEach((binding, i) => {
+        const { value, act, init } = parse(state.cells[i]);
+        const name = binding.querySelector('.hw-binding__name')!.textContent;
+        binding.dataset.init = String(init);
+        if (act) binding.dataset.act = act;
+        else delete binding.dataset.act;
+
+        binding.querySelector('[data-flag]')!.textContent = init ? '✓' : '✗';
+        binding.querySelector('[data-value]')!.textContent = init ? value : '비어 있음';
+
+        const chip = binding.querySelector<HTMLElement>('[data-act]')!;
+        chip.textContent = act;
+        chip.hidden = !act;
+        // 두 칸으로 쪼갠 상태를 스크린리더에서는 한 줄로 읽히게 한다.
+        binding.setAttribute('aria-label', `${name} · 초기화 ${init ? '됨' : '전'} · 값 ${init ? value : '비어 있음'}`);
+      });
+
+      const ops = panel.querySelectorAll<HTMLElement>('[data-op]');
+      ops.forEach((op, i) => {
+        const text = state.ops[i] ?? '';
+        op.textContent = text;
+        op.hidden = !text;
+        op.toggleAttribute('data-ko', /[가-힣]/.test(text));
+      });
+      panel.querySelector('.hw-ops')!.toggleAttribute('data-error', !!state.error);
+
+      const atEnd = step === steps.length - 1;
+      progress.textContent = `${step + 1} / ${steps.length}${atEnd ? ' · 완료' : ''}`;
+      note.textContent = state.note;
+      note.toggleAttribute('data-error', !!state.error);
+      back.disabled = step === 0;
+      next.textContent = atEnd ? '처음으로' : '다음';
+      next.classList.toggle('demo-btn--primary', !atEnd);
+    }
+
+    modes.forEach((button, i) =>
+      button.addEventListener('click', () => {
+        scene = i;
+        step = 0;
+        render();
+      }),
+    );
+    back.addEventListener('click', () => {
+      step = Math.max(0, step - 1);
+      render();
+    });
+    next.addEventListener('click', () => {
+      step = (step + 1) % scenes[scene].length;
+      render();
+    });
+
+    render();
+  });
+</script>

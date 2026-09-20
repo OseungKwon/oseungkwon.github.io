@@ -1,0 +1,336 @@
+---
+/**
+ * 본문이 실행되기 전의 스코프 — 단계 진행형 데모.
+ *
+ * 증명할 문장은 하나다: "본문 첫 줄이 실행되기 전에 세 이름은 이미 스코프에
+ * 있지만 상태가 다르다." 그래서 0단계를 인스턴스화 직후로 두고, 아무것도
+ * 누르지 않은 정지 화면에서 이미 세 바인딩의 상태 차이가 보이게 했다.
+ * 조작하면 각 줄이 그 상태를 어떻게 바꾸는지 한 번 더 얻는다.
+ *
+ * 상태는 색이 아니라 테두리의 성질로 나눈다. 점선(아직 초기화 전) → 실선(값
+ * 있음) → 실선 + 옅은 채움(이번 단계가 건드린 것). 색을 늘리지 않고도 세
+ * 단계가 생기고 다크모드에서도 그대로 읽힌다.
+ *
+ * ECMA-262 10.2.11 FunctionDeclarationInstantiation을 단계로 재구성한 모형이다.
+ * 실제 엔진의 내부 구조가 아니라 명세의 순서를 눈에 보이게 옮긴 것이다.
+ */
+import Demo from './Demo.astro';
+
+const LINES = ['function render() {', '  console.log(count);', '  console.log(typeof draw);', '  var count = 1;', '  let total = 2;', '  function draw() {}', '}'];
+
+/** 바인딩 행은 고정이므로 템플릿에 미리 그려 둔다. */
+const BINDINGS = [
+  { name: 'count', kind: 'var' },
+  { name: 'total', kind: 'let' },
+  { name: 'draw', kind: 'function' },
+];
+---
+
+<Demo
+  title="본문이 실행되기 전의 스코프"
+  hint="첫 단계는 본문이 아직 한 줄도 실행되지 않은 시점입니다. 단계를 넘기며 세 바인딩이 언제 값을 갖는지 보세요."
+  caption="ECMA-262 10.2.11 FunctionDeclarationInstantiation의 순서를 단계로 재구성한 모형입니다."
+>
+  <Fragment slot="controls">
+    <span class="demo-label" data-el="phase">인스턴스화</span>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn" type="button" data-act="back">이전</button>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음</button>
+  </Fragment>
+
+  <div class="si" data-demo="scope-instantiation">
+    <div class="si-scene">
+      <ol class="si-code">
+        {
+          LINES.map((text, i) => (
+            <li class="si-line" data-el={`line${i}`}>
+              {text}
+            </li>
+          ))
+        }
+      </ol>
+
+      <div class="si-env">
+        <div class="si-env__name">환경 레코드</div>
+        <ul class="si-rows">
+          {
+            BINDINGS.map((b) => (
+              <li class="si-row" data-el={`row-${b.name}`}>
+                <span class="si-row__id">
+                  <code class="si-row__name">{b.name}</code>
+                  <span class="si-row__kind">{b.kind}</span>
+                </span>
+                <span class="si-row__value" data-el={`val-${b.name}`} />
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+
+    <p class="si-note" data-el="note" aria-live="polite"></p>
+  </div>
+</Demo>
+
+<style>
+  .si-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 15rem);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  /* ── 코드: 지금 실행 중인 줄만 채워서 표시한다 ── */
+  .si-code {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .si-line {
+    padding: 0.1875rem 0.5rem;
+    border-radius: 0.375rem;
+    white-space: pre;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: var(--color-text-tertiary);
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease;
+  }
+
+  .si-line[data-current] {
+    background-color: var(--demo-a-soft);
+    color: var(--color-text-primary);
+  }
+
+  /* ── 환경 레코드: 이름·종류·현재 상태 ── */
+  .si-env__name {
+    margin-bottom: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  .si-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .si-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4375rem 0.625rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.5rem;
+    background-color: var(--surface-bg);
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  /* 아직 초기화되지 않은 바인딩. 색이 아니라 테두리의 성질로 구분한다. */
+  .si-row[data-state='tdz'] {
+    border-style: dashed;
+  }
+
+  /* 이번 단계가 건드린 바인딩. 점선(초기화 전)은 유지한 채 색만 올린다. */
+  .si-row[data-focus] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  .si-row__id {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .si-row__name {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .si-row__kind {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .si-row__value {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+  }
+
+  /* '초기화 전'은 한글이라 모노로 두면 자간이 벌어진다. */
+  .si-row[data-state='tdz'] .si-row__value {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .si-note {
+    margin: 1.125rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 34rem) {
+    .si-scene {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .si-line {
+      font-size: 0.75rem;
+    }
+  }
+</style>
+
+<script>
+  type BindingState = { value: string; state: 'tdz' | 'set' };
+
+  type Step = {
+    /** 이 단계에서 실행 중인 코드 줄 */
+    line: number;
+    /** 조작부에 띄울 국면 */
+    phase: string;
+    /** 한 줄 상태 */
+    note: string;
+    /** 이 단계가 읽거나 바꾼 바인딩 */
+    focus: string[];
+    count: BindingState;
+    total: BindingState;
+    draw: BindingState;
+  };
+
+  const TDZ: BindingState = { value: '초기화 전', state: 'tdz' };
+  const UNDEF: BindingState = { value: 'undefined', state: 'set' };
+  const FN: BindingState = { value: 'ƒ draw', state: 'set' };
+
+  const STEPS: Step[] = [
+    {
+      line: 0,
+      phase: '인스턴스화',
+      note: '세 이름이 한꺼번에 등록됩니다',
+      focus: ['count', 'total', 'draw'],
+      count: UNDEF,
+      total: TDZ,
+      draw: FN,
+    },
+    {
+      line: 1,
+      phase: '본문 실행',
+      note: 'undefined를 읽습니다',
+      focus: ['count'],
+      count: UNDEF,
+      total: TDZ,
+      draw: FN,
+    },
+    {
+      line: 2,
+      phase: '본문 실행',
+      note: '아래에 선언됐지만 이미 함수입니다',
+      focus: ['draw'],
+      count: UNDEF,
+      total: TDZ,
+      draw: FN,
+    },
+    {
+      line: 3,
+      phase: '본문 실행',
+      note: '이 줄이 하는 일은 대입뿐입니다',
+      focus: ['count'],
+      count: { value: '1', state: 'set' },
+      total: TDZ,
+      draw: FN,
+    },
+    {
+      line: 4,
+      phase: '본문 실행',
+      note: 'total이 여기서 초기화됩니다',
+      focus: ['total'],
+      count: { value: '1', state: 'set' },
+      total: { value: '2', state: 'set' },
+      draw: FN,
+    },
+    {
+      line: 5,
+      phase: '본문 실행',
+      note: '실행할 것이 남아 있지 않습니다',
+      focus: [],
+      count: { value: '1', state: 'set' },
+      total: { value: '2', state: 'set' },
+      draw: FN,
+    },
+  ];
+
+  const NAMES = ['count', 'total', 'draw'] as const;
+  const LINE_COUNT = 7;
+
+  document.querySelectorAll<HTMLElement>('[data-demo="scope-instantiation"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = (name: string) => shell.querySelector<HTMLElement>(`[data-el="${name}"]`);
+    const nextBtn = shell.querySelector<HTMLButtonElement>('[data-act="next"]');
+    const backBtn = shell.querySelector<HTMLButtonElement>('[data-act="back"]');
+
+    let step = 0;
+
+    const render = () => {
+      const s = STEPS[step];
+      const atEnd = step === STEPS.length - 1;
+
+      for (let i = 0; i < LINE_COUNT; i++) {
+        el(`line${i}`)?.toggleAttribute('data-current', i === s.line);
+      }
+
+      NAMES.forEach((name) => {
+        const row = el(`row-${name}`);
+        const value = el(`val-${name}`);
+        if (!row || !value) return;
+        value.textContent = s[name].value;
+        row.dataset.state = s[name].state;
+        row.toggleAttribute('data-focus', s.focus.includes(name));
+      });
+
+      const phase = el('phase');
+      if (phase) phase.textContent = `${s.phase} · ${step + 1} / ${STEPS.length}`;
+      const note = el('note');
+      if (note) note.textContent = s.note;
+
+      if (backBtn) backBtn.disabled = step === 0;
+      // 끝까지 본 독자가 처음부터 다시 볼 경로를 남긴다.
+      if (nextBtn) nextBtn.textContent = atEnd ? '처음으로' : '다음';
+    };
+
+    nextBtn?.addEventListener('click', () => {
+      step = step === STEPS.length - 1 ? 0 : step + 1;
+      render();
+    });
+    backBtn?.addEventListener('click', () => {
+      if (step > 0) step--;
+      render();
+    });
+
+    render();
+  });
+</script>

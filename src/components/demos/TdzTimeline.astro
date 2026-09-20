@@ -1,0 +1,276 @@
+---
+/**
+ * TDZ는 위치가 아니라 순서다 — 대조 토글형 데모.
+ *
+ * 증명할 문장: "read의 코드 위치는 두 모드에서 같고, 바뀐 것은 호출 시점뿐인데
+ * 결과가 갈린다." 그래서 무대는 코드 목록이 아니라 '실행 순서' 목록이다.
+ * 토글하면 read() 행과 let 행의 자리가 바뀌고, 오른쪽 value 상태 칩이 점선
+ * (초기화 전)에서 실선으로 바뀌는 지점이 그대로 경계선이 된다.
+ *
+ * 결과는 코드 주석 자리에 띄운다. 실패한 호출에만 warn을 쓰고, 나머지는
+ * 블루와 뉴트럴로만 표현한다.
+ */
+import Demo from './Demo.astro';
+
+const ROWS = 4;
+---
+
+<Demo
+  title="같은 코드, 호출 시점만 다를 때"
+  hint="호출 위치를 바꿔 보세요. read가 정의된 줄은 두 경우 모두 같은 자리에 있습니다."
+  caption="V8은 초기화 전 접근에 Cannot access 'value' before initialization을 던집니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="호출 시점">
+      <button class="demo-seg__opt" type="button" data-mode="before" aria-pressed="true"> 선언 전에 호출 </button>
+      <button class="demo-seg__opt" type="button" data-mode="after" aria-pressed="false"> 선언 후에 호출 </button>
+    </div>
+  </Fragment>
+
+  <div class="tz" data-demo="tdz-timeline">
+    <div class="tz-head">
+      <span>실행 순서</span>
+      <span class="tz-head__state">value</span>
+    </div>
+
+    <ol class="tz-rows" aria-live="polite">
+      {
+        Array.from({ length: ROWS }).map((_, i) => (
+          <li class="tz-row" data-el={`row${i}`}>
+            <span class="tz-num">{i + 1}</span>
+            <span class="tz-body">
+              <code class="tz-code" data-el={`code${i}`} />
+              <span class="tz-out" data-el={`out${i}`} />
+            </span>
+            <span class="tz-state" data-el={`state${i}`} />
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</Demo>
+
+<style>
+  .tz-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    padding: 0 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  /* value는 식별자이므로 대문자로 바꾸지 않는다. */
+  .tz-head__state {
+    font-family: var(--font-mono);
+    text-transform: none;
+  }
+
+  .tz-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tz-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.625rem;
+    background-color: var(--surface-bg);
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease,
+      opacity 0.2s ease;
+  }
+
+  /* 에러로 멈춰 도달하지 못한 줄. 지우지 않고 남겨야 '실행되지 않았다'가 보인다. */
+  .tz-row[data-state='skip'] {
+    opacity: 0.32;
+  }
+
+  .tz-row[data-result='ok'] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  .tz-row[data-result='error'] {
+    border-color: var(--demo-warn);
+    background-color: var(--demo-warn-soft);
+  }
+
+  .tz-num {
+    flex: 0 0 auto;
+    width: 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--color-text-tertiary);
+  }
+
+  .tz-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .tz-code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text-primary);
+  }
+
+  /* 인스턴스화 줄은 코드가 아니라 국면이라 본문 서체로 되돌린다. */
+  .tz-row[data-kind='phase'] .tz-code {
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+  }
+
+  /* 모노 서체에 한글을 섞으면 자간이 벌어진다. 한글 결과만 본문 서체로 되돌린다. */
+  .tz-out[data-lang='ko'] {
+    font-family: var(--font-sans);
+  }
+
+  .tz-out {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .tz-row[data-result='ok'] .tz-out {
+    color: var(--demo-a);
+    font-weight: 600;
+  }
+
+  .tz-row[data-result='error'] .tz-out {
+    color: var(--demo-warn);
+    font-weight: 600;
+  }
+
+  .tz-state {
+    flex: 0 0 auto;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+  }
+
+  /* 초기화 전은 점선으로. 한글이라 모노를 벗긴다. */
+  .tz-state[data-state='tdz'] {
+    border-style: dashed;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .tz-state[data-state='set'] {
+    border-color: var(--demo-a);
+    color: var(--demo-a);
+    font-weight: 600;
+  }
+
+  .tz-state[data-state='none'] {
+    border-color: transparent;
+    color: transparent;
+  }
+
+  @media (max-width: 34rem) {
+    .tz-row {
+      align-items: flex-start;
+      padding: 0.5rem 0.625rem;
+    }
+
+    .tz-code,
+    .tz-row[data-kind='phase'] .tz-code {
+      font-size: 0.75rem;
+    }
+  }
+</style>
+
+<script>
+  type Row = {
+    /** 국면 줄인지 코드 줄인지 */
+    kind: 'phase' | 'code';
+    text: string;
+    /** 코드 주석 자리에 띄우는 결과 */
+    out?: string;
+    /** 이 줄이 끝난 시점의 value 상태 */
+    state: 'tdz' | 'set' | 'skip';
+    result?: 'ok' | 'error';
+  };
+
+  const READ = 'const read = () => value;';
+
+  const SCENES: Record<string, Row[]> = {
+    before: [
+      { kind: 'phase', text: 'setup() 인스턴스화 — value 바인딩 생성', state: 'tdz' },
+      { kind: 'code', text: READ, state: 'tdz' },
+      { kind: 'code', text: 'read();', out: '// ReferenceError', state: 'tdz', result: 'error' },
+      { kind: 'code', text: 'let value = 1;', out: '// 실행되지 않음', state: 'skip' },
+    ],
+    after: [
+      { kind: 'phase', text: 'setup() 인스턴스화 — value 바인딩 생성', state: 'tdz' },
+      { kind: 'code', text: READ, state: 'tdz' },
+      { kind: 'code', text: 'let value = 1;', state: 'set' },
+      { kind: 'code', text: 'read();', out: '// 1', state: 'set', result: 'ok' },
+    ],
+  };
+
+  const LABEL = { tdz: '초기화 전', set: '1', skip: '' } as const;
+
+  document.querySelectorAll<HTMLElement>('[data-demo="tdz-timeline"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = (name: string) => shell.querySelector<HTMLElement>(`[data-el="${name}"]`);
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+
+    let mode = 'before';
+
+    const render = () => {
+      SCENES[mode].forEach((row, i) => {
+        const line = el(`row${i}`);
+        const code = el(`code${i}`);
+        const out = el(`out${i}`);
+        const state = el(`state${i}`);
+        if (!line || !code || !out || !state) return;
+
+        line.dataset.kind = row.kind;
+        line.dataset.state = row.state;
+        if (row.result) line.dataset.result = row.result;
+        else delete line.dataset.result;
+
+        code.textContent = row.text;
+        out.textContent = row.out ?? '';
+        if (/[가-힣]/.test(row.out ?? '')) out.dataset.lang = 'ko';
+        else delete out.dataset.lang;
+        state.textContent = LABEL[row.state];
+        state.dataset.state = row.state === 'skip' ? 'none' : row.state;
+      });
+    };
+
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode === 'after' ? 'after' : 'before';
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        render();
+      });
+    });
+
+    render();
+  });
+</script>
