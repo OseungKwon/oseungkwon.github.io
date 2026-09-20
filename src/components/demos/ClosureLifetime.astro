@@ -1,0 +1,392 @@
+---
+/**
+ * 호출이 끝난 뒤에도 남는 변수 — 대조 토글 + 단계 진행형 데모.
+ *
+ * 증명할 문장: "counter.increment()를 호출할 때는 이미 createCounter()의 실행이
+ * 끝난 상태인데도, 반환된 함수는 그곳의 count에 접근한다."
+ *
+ * 클로저가 어려운 지점은 규칙이 복잡해서가 아니라, 이미 배운 규칙(호출이 끝나면
+ * 안의 변수도 사라진다)과 부딪히기 때문이다. 그래서 무대를 '호출 끝'이라는 한
+ * 순간에 고정하고, 같은 함수를 두 방식으로 끝내 본다. 3단계에서 한쪽은 count가
+ * 사라지고 한쪽은 남는다. 그 한 컷이 이 데모의 전부다.
+ *
+ * 남는 쪽을 화살표가 아니라 '내보낸 함수 상자 안에 들어 있는 모습'으로 그린다.
+ * 담겨 있으면 들고 있다는 뜻이 되어서, 연결선을 설명할 필요가 없다.
+ *
+ * 명세 용어(환경 레코드·바인딩·렉시컬 스코프)는 쓰지 않는다. 그 어휘는 본문이
+ * 맡고, 데모는 눈에 보이는 일만 말한다.
+ */
+import Demo from './Demo.astro';
+
+const MODES = [
+  {
+    key: 'plain',
+    label: '그냥 호출하면',
+    code: ['function createCounter() {', '  let count = 0;', '  count += 1;', '}'],
+  },
+  {
+    key: 'closure',
+    label: '안쪽 함수를 내보내면',
+    code: ['function createCounter() {', '  let count = 0;', '  return () => (count += 1);', '}', '', 'const increment = createCounter();', 'increment();'],
+  },
+];
+---
+
+<Demo title="호출이 끝나면 안의 변수는 어떻게 될까">
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="끝내는 방식">
+      {
+        MODES.map((m, i) => (
+          <button class="demo-seg__opt" type="button" data-mode={m.key} aria-pressed={i === 0}>
+            {m.label}
+          </button>
+        ))
+      }
+    </div>
+    <div class="cl-nav">
+      <button class="demo-btn" type="button" data-act="back" disabled>이전</button>
+      <span class="demo-label" data-el="progress">1 / 3</span>
+      <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음</button>
+    </div>
+  </Fragment>
+
+  <div class="cl" data-demo="closure-lifetime">
+    <div class="cl-scene">
+      <div class="cl-code">
+        {
+          MODES.map((m) => (
+            <ol class="cl-lines" data-code={m.key} hidden={m.key !== 'plain'} aria-label="예제 코드">
+              {m.code.map((line, i) => (
+                <li class="cl-line" data-line={`${m.key}-${i}`}>
+                  {line}
+                </li>
+              ))}
+            </ol>
+          ))
+        }
+      </div>
+
+      <div class="cl-boxes">
+        <div class="cl-box" data-el="callbox">
+          <div class="cl-box__head">
+            <code class="cl-box__name">createCounter()</code>
+            <span class="cl-box__state" data-el="callstate">실행 중</span>
+          </div>
+          <div class="cl-slot" data-el="slot-call">
+            <span class="cl-chip" data-el="chip-call">
+              <code class="cl-chip__name">count</code>
+              <code class="cl-chip__value" data-el="value-call">0</code>
+            </span>
+            <span class="cl-empty" data-el="empty-call" hidden>count도 함께 사라졌습니다</span>
+          </div>
+        </div>
+
+        <div class="cl-box cl-box--outer" data-el="outerbox">
+          <div class="cl-box__head">
+            <span class="cl-box__name cl-box__name--ko">밖으로 나온 것</span>
+          </div>
+          <div class="cl-slot" data-el="slot-outer">
+            <span class="cl-fn" data-el="fn-outer" hidden>
+              <code class="cl-fn__name">increment</code>
+              <span class="cl-chip" data-el="chip-outer">
+                <code class="cl-chip__name">count</code>
+                <code class="cl-chip__value" data-el="value-outer">0</code>
+              </span>
+            </span>
+            <span class="cl-empty" data-el="empty-outer">아직 없습니다</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="cl-note" data-el="note" aria-live="polite"></p>
+  </div>
+</Demo>
+
+<style>
+  .cl-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .cl-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 16rem);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .cl-lines {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cl-lines[hidden] {
+    display: none;
+  }
+
+  .cl-line {
+    min-height: 1.4rem;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 0.375rem;
+    white-space: pre;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: var(--color-text-tertiary);
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease;
+  }
+
+  .cl-line[data-current] {
+    background-color: var(--demo-a-soft);
+    color: var(--color-text-primary);
+  }
+
+  /* ── 두 상자: 함수 안과 밖 ── */
+  .cl-boxes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .cl-box {
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.625rem;
+    background-color: var(--surface-bg);
+    transition:
+      border-color 0.16s ease,
+      opacity 0.2s ease;
+  }
+
+  /* 호출이 끝난 상자. 지우지 않고 흐리게 남겨야 '끝났다'가 보인다. */
+  .cl-box[data-ended] {
+    opacity: 0.45;
+    border-style: dashed;
+  }
+
+  .cl-box[data-holds] {
+    border-color: var(--demo-a);
+  }
+
+  .cl-box__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .cl-box__name {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  /* 한글 라벨은 모노에서 자간이 벌어지므로 본문 서체로 둔다. */
+  .cl-box__name--ko,
+  .cl-box__state {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-box__name--ko {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .cl-slot {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+  }
+
+  /* count 칸. 이 데모에서 시선이 따라가야 하는 유일한 조각이다. */
+  .cl-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.1875rem 0.5rem;
+    border: 1px solid var(--demo-a);
+    border-radius: 0.375rem;
+    background-color: var(--demo-a-soft);
+  }
+
+  .cl-chip[hidden] {
+    display: none;
+  }
+
+  .cl-chip__name {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .cl-chip__value {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--demo-a);
+  }
+
+  /* 내보낸 함수. count 칸을 품고 있는 모습 자체가 설명이다. */
+  .cl-fn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3125rem 0.5rem;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 0.5rem;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .cl-fn[hidden] {
+    display: none;
+  }
+
+  .cl-fn__name {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .cl-empty {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-empty[hidden] {
+    display: none;
+  }
+
+  .cl-note {
+    margin: 1.125rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 34rem) {
+    .cl-nav {
+      margin-left: 0;
+    }
+
+    .cl-scene {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .cl-line {
+      font-size: 0.75rem;
+    }
+  }
+</style>
+
+<script>
+  type Mode = 'plain' | 'closure';
+
+  type Step = {
+    /** 강조할 코드 줄 */
+    at: number;
+    /** createCounter 호출이 아직 진행 중인가 */
+    running: boolean;
+    /** count 칸이 지금 어디 있는가 */
+    count: 'call' | 'outer' | 'gone';
+    value: string;
+    /** 내보낸 함수가 밖에 있는가 */
+    exported: boolean;
+    note: string;
+  };
+
+  const STEPS: Record<Mode, Step[]> = {
+    plain: [
+      { at: 1, running: true, count: 'call', value: '0', exported: false, note: '호출하면 count 칸이 생깁니다.' },
+      { at: 2, running: true, count: 'call', value: '1', exported: false, note: '함수 안에서 count를 올립니다.' },
+      { at: 3, running: false, count: 'gone', value: '1', exported: false, note: '호출이 끝나면 count도 사라집니다.' },
+    ],
+    closure: [
+      { at: 1, running: true, count: 'call', value: '0', exported: false, note: '호출하면 count 칸이 생깁니다.' },
+      { at: 2, running: true, count: 'call', value: '0', exported: false, note: 'count를 쓰는 함수를 내보냅니다.' },
+      { at: 5, running: false, count: 'outer', value: '0', exported: true, note: '호출은 끝났지만 count는 남습니다.' },
+      { at: 6, running: false, count: 'outer', value: '1', exported: true, note: '남아 있던 그 count를 올립니다.' },
+    ],
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="closure-lifetime"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = (name: string) => root.querySelector<HTMLElement>(`[data-el="${name}"]`);
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const back = shell.querySelector<HTMLButtonElement>('[data-act="back"]');
+    const next = shell.querySelector<HTMLButtonElement>('[data-act="next"]');
+    const progress = shell.querySelector<HTMLElement>('[data-el="progress"]');
+
+    let mode: Mode = 'plain';
+    let step = 0;
+
+    const render = () => {
+      const steps = STEPS[mode];
+      const s = steps[step];
+      const atEnd = step === steps.length - 1;
+
+      root.querySelectorAll<HTMLElement>('[data-code]').forEach((list) => {
+        list.hidden = list.dataset.code !== mode;
+      });
+      root.querySelectorAll<HTMLElement>('[data-line]').forEach((line) => {
+        line.toggleAttribute('data-current', line.dataset.line === `${mode}-${s.at}`);
+      });
+
+      const callbox = el('callbox');
+      callbox?.toggleAttribute('data-ended', !s.running);
+      el('callstate')!.textContent = s.running ? '실행 중' : '실행 끝';
+
+      // count 칸은 한 번에 한 곳에만 있다. 옮겨 다니는 모습이 이 데모의 주장이다.
+      el('chip-call')!.hidden = s.count !== 'call';
+      el('empty-call')!.hidden = s.count !== 'gone';
+      el('chip-outer')!.hidden = s.count !== 'outer';
+      el('value-call')!.textContent = s.value;
+      el('value-outer')!.textContent = s.value;
+
+      el('fn-outer')!.hidden = !s.exported;
+      el('empty-outer')!.hidden = s.exported;
+      el('outerbox')?.toggleAttribute('data-holds', s.count === 'outer');
+
+      el('note')!.textContent = s.note;
+      if (progress) progress.textContent = `${step + 1} / ${steps.length}`;
+      if (back) back.disabled = step === 0;
+      if (next) next.textContent = atEnd ? '처음으로' : '다음';
+    };
+
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode === 'closure' ? 'closure' : 'plain';
+        step = 0;
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        render();
+      });
+    });
+
+    next?.addEventListener('click', () => {
+      step = step === STEPS[mode].length - 1 ? 0 : step + 1;
+      render();
+    });
+    back?.addEventListener('click', () => {
+      if (step > 0) step--;
+      render();
+    });
+
+    render();
+  });
+</script>
