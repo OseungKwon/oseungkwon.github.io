@@ -50,6 +50,11 @@ const tagLinks = await getTagLinks(post);
       <h1 class="mt-4 text-3xl font-bold leading-[1.15] tracking-tight text-token-primary break-keep break-words sm:text-[42px]" style="scroll-margin-top: 4rem;">
         {post.data.title}
       </h1>
+      {post.data.subtitle && (
+        <p class="mt-3 text-lg text-token-secondary sm:text-xl">
+          {post.data.subtitle}
+        </p>
+      )}
 
       {
         post.data.heroImage && (
