@@ -1,0 +1,318 @@
+---
+/**
+ * 네트워크는 스레드풀을 쓰지 않는다 — 대조 토글 + 재생형 데모.
+ *
+ * 글(nodejs-runtime-anatomy)의 "소켓은 커널 I/O에 감시를 맡기므로 기다리는
+ * 동안 어떤 스레드도 점유하지 않는다. 다만 호스트 이름 조회(dns.lookup)는
+ * 스레드풀을 쓴다"를 보여준다.
+ *
+ * 같은 여덟 개의 작업을 파일 읽기와 fetch로 돌린다. 파일 블록은 워커 네 칸을
+ * 두고 줄을 서지만, fetch 블록은 여덟 개가 한꺼번에 커널 I/O 레인에 앉고
+ * 워커는 비어 있다. DNS 조회를 켜면 fetch도 잠깐 워커를 거친다.
+ * 위의 수치는 워커를 최대 몇 개 붙잡았는지다.
+ */
+import Demo from './Demo.astro';
+
+const JOBS = [0, 1, 2, 3, 4, 5, 6, 7];
+const WORKERS = [0, 1, 2, 3];
+---
+
+<Demo
+  title="기다리는 동안 누가 스레드를 붙잡는가"
+  hint="작업 종류를 바꾸면 같은 여덟 개를 다시 돌립니다. fetch는 응답을 기다리는 동안 워커를 쓰지 않습니다."
+  caption="libuv 설계 문서를 바탕으로 만든 설명용 모형입니다. 소요 시간은 흐름을 보이기 위한 값이며, 실제 네트워크 지연과 파일 읽기 속도는 환경마다 다릅니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="작업 종류">
+      <button class="demo-seg__opt" type="button" data-mode="file" aria-pressed="false">파일 읽기</button>
+      <button class="demo-seg__opt" type="button" data-mode="fetch" aria-pressed="true">fetch</button>
+      <button class="demo-seg__opt" type="button" data-mode="dns" aria-pressed="false">fetch + DNS 조회</button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="run">실행</button>
+  </Fragment>
+
+  <div class="nw" data-demo="network-pool">
+    <div class="demo-stats">
+      <div class="demo-stat">
+        <span class="demo-stat__value demo-stat__value--accent" data-el="peak">0 / 4</span>
+        <span class="nw-stat-label">붙잡은 워커 스레드 (최대)</span>
+      </div>
+    </div>
+
+    <div class="nw-map">
+      <span class="nw-name">요청</span>
+      <div class="demo-lane nw-rail">
+        {JOBS.map((i) => <span class="demo-slot" data-anchor={`q${i}`} />)}
+      </div>
+
+      <span class="nw-name">스레드풀</span>
+      <div class="nw-workers">
+        {
+          WORKERS.map((i) => (
+            <div class="demo-lane nw-worker" data-worker={i}>
+              <span class="nw-fill" data-meter={`w${i}`} />
+              <span class="demo-slot" data-anchor={`w${i}`} />
+            </div>
+          ))
+        }
+      </div>
+
+      <span class="nw-name">커널 I/O</span>
+      <div class="demo-lane nw-rail nw-kernel">
+        <span class="nw-fill" data-el="kernel-fill"></span>
+        {JOBS.map((i) => <span class="demo-slot" data-anchor={`k${i}`} />)}
+        <span class="demo-lane__desc nw-kernel__desc">epoll, kqueue, IOCP</span>
+      </div>
+
+      <span class="nw-name">완료</span>
+      <div class="demo-lane nw-rail">
+        {JOBS.map((i) => <span class="demo-slot" data-anchor={`d${i}`} />)}
+      </div>
+
+      {JOBS.map((i) => <span class="demo-token" data-token={`t${i}`}>{i + 1}</span>)}
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .nw {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .nw-stat-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+  }
+
+  .nw-map {
+    position: relative;
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+  }
+
+  .nw-name {
+    font-size: 0.75rem;
+    font-weight: 650;
+    color: var(--color-text-secondary);
+  }
+
+  .nw-rail {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding-left: 0.5rem;
+  }
+
+  /* 커널 I/O도 기다린 만큼 왼쪽부터 차오른다. 다만 스레드가 아니라
+     소켓 감시 목록 하나이므로, 칸을 나누지 않고 레인 전체를 채운다. */
+  .nw-kernel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .nw-kernel .demo-slot,
+  .nw-kernel__desc {
+    position: relative;
+  }
+
+  .nw-kernel__desc {
+    margin-left: auto;
+  }
+
+  .nw-workers {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  /* 워커 한 칸. 작업이 진행되는 만큼 칸이 왼쪽부터 차오른다. */
+  .nw-worker {
+    position: relative;
+    overflow: hidden;
+    padding-left: 0.5rem;
+  }
+
+  .nw-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    background-color: var(--demo-a-soft);
+  }
+
+  .nw-worker .demo-slot {
+    position: relative;
+  }
+
+  @media (max-width: 34rem) {
+    .nw-map {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .nw-name {
+      margin-top: 0.375rem;
+    }
+
+    .nw-workers {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .nw-kernel__desc {
+      flex-basis: 100%;
+      margin-left: 0;
+    }
+  }
+</style>
+
+<script>
+  import { createTokens, type Placement } from './lib/tokens';
+
+  type Mode = 'file' | 'fetch' | 'dns';
+
+  interface Phase {
+    /** w0~w3: 워커, k: 커널 I/O */
+    where: 'worker' | 'kernel';
+    start: number;
+    end: number;
+    worker?: number;
+  }
+
+  const SLOW = 25; // 화면에서 1ms를 25ms로 늘린다
+  const WORKER_COUNT = 4;
+  const FILE_MS = [40, 42, 38, 44, 41, 39, 43, 40];
+  const DNS_MS = [12, 10, 14, 11, 13, 12, 10, 11];
+  const NET_MS = [62, 70, 58, 75, 66, 80, 64, 72];
+
+  // 워커가 필요한 단계는 빈 워커가 생길 때까지 기다린다(선착순).
+  const schedule = (mode: Mode): Phase[][] => {
+    const free = Array(WORKER_COUNT).fill(0);
+    const useWorker = (ready: number, ms: number): Phase => {
+      const w = free.indexOf(Math.min(...free));
+      const start = Math.max(ready, free[w]);
+      free[w] = start + ms;
+      return { where: 'worker', start, end: start + ms, worker: w };
+    };
+
+    return FILE_MS.map((_, i) => {
+      if (mode === 'file') return [useWorker(0, FILE_MS[i])];
+      if (mode === 'fetch') return [{ where: 'kernel', start: 0, end: NET_MS[i] }];
+      const dns = useWorker(0, DNS_MS[i]);
+      return [dns, { where: 'kernel', start: dns.end, end: dns.end + NET_MS[i] }];
+    });
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="network-pool"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) => shell.querySelector<T>(`[data-el="${name}"]`)!;
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const runBtn = shell.querySelector<HTMLButtonElement>('[data-act="run"]')!;
+    const meters = root.querySelectorAll<HTMLElement>('[data-meter]');
+    const kernelFill = el('kernel-fill');
+    const tokens = createTokens(root.querySelector<HTMLElement>('.nw-map')!);
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let mode: Mode = 'fetch';
+    let jobs = schedule(mode);
+    let raf = 0;
+    let delay = 0;
+    let peak = 0;
+    let lastKey = '';
+
+    const total = () => Math.max(...jobs.map((phases) => phases[phases.length - 1].end));
+
+    const frame = (t: number, instant = false) => {
+      const at: Placement = {};
+      let waiting = 0;
+      let busy = 0;
+      let watching = 0;
+      meters.forEach((m) => (m.style.width = '0%'));
+
+      const finished = jobs
+        .map((phases, i) => ({ i, end: phases[phases.length - 1].end }))
+        .filter((j) => t >= j.end)
+        .sort((a, b) => a.end - b.end);
+
+      jobs.forEach((phases, i) => {
+        const now = phases.find((p) => t >= p.start && t < p.end);
+        if (now?.where === 'worker') {
+          at[`t${i}`] = `w${now.worker}`;
+          meters[now.worker!].style.width = `${((t - now.start) / (now.end - now.start)) * 100}%`;
+          busy++;
+        } else if (now?.where === 'kernel') {
+          at[`t${i}`] = `k${i}`;
+          watching++;
+        } else if (t < phases[phases.length - 1].end) {
+          at[`t${i}`] = `q${waiting++}`;
+        }
+      });
+      finished.forEach((j, rank) => (at[`t${j.i}`] = `d${rank}`));
+
+      peak = Math.max(peak, busy);
+      el('peak').textContent = `${peak} / ${WORKER_COUNT}`;
+      // 첫 소켓이 맡겨진 때부터 마지막 응답이 올 때까지를 한 번에 채운다.
+      // 소켓이 하나씩 빠져도 막대가 되돌아가지 않도록 구간 전체를 기준으로 삼는다.
+      const kernelPhases = jobs.flat().filter((p) => p.where === 'kernel');
+      const from = Math.min(...kernelPhases.map((p) => p.start));
+      const to = Math.max(...kernelPhases.map((p) => p.end));
+      kernelFill.style.width = watching ? `${((t - from) / (to - from)) * 100}%` : '0%';
+
+      const key = JSON.stringify(at);
+      if (key !== lastKey || instant) {
+        tokens.place(at, instant);
+        lastKey = key;
+      }
+    };
+
+    // 버튼을 눌러야 재생한다. 독자가 스크롤해 오기 전에 끝나 버리지 않게.
+    const setButton = (label: string, busy: boolean) => {
+      runBtn.textContent = label;
+      runBtn.disabled = busy;
+    };
+
+    const reset = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(delay);
+      peak = 0;
+      frame(0, true);
+      setButton('실행', false);
+    };
+
+    const run = () => {
+      reset();
+      if (calm) {
+        // 움직임을 줄인 독자에게는 과정 대신 결과(최대 점유 수)만 보여 준다
+        for (let t = 0; t <= total(); t += 1) frame(t, true);
+        setButton('다시 실행', false);
+        return;
+      }
+      setButton('실행 중', true);
+      let begin = 0;
+      const tick = (now: number) => {
+        if (!begin) begin = now;
+        const t = (now - begin) / SLOW;
+        frame(Math.min(t, total()));
+        if (t < total()) raf = requestAnimationFrame(tick);
+        else setButton('다시 실행', false);
+      };
+      // 줄 선 모습을 한 박자 보여 준 뒤 출발한다
+      delay = window.setTimeout(() => (raf = requestAnimationFrame(tick)), 300);
+    };
+
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode as Mode;
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        jobs = schedule(mode);
+        reset();
+      });
+    });
+    runBtn.addEventListener('click', run);
+
+    reset();
+  });
+</script>

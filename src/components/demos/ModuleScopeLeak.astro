@@ -1,0 +1,268 @@
+---
+/**
+ * 모듈 스코프를 함께 쓰는 요청들 — 이동하는 블록형 데모.
+ *
+ * 글(nodejs-runtime-anatomy)의 "사용자별 데이터를 모듈 스코프에 담으면 다른
+ * 사용자의 요청에서 그 값이 보일 수 있다"를 보여준다.
+ *
+ * 요청 블록 A·B가 콜 스택과 대기(await) 자리를 오가고, 값 블록 "A"·"B"는
+ * currentUser가 사는 자리에 놓인다. 모듈 스코프에서는 두 값이 한 칸을 두고
+ * 다투므로, A가 await에서 돌아왔을 때 그 칸에는 B의 값이 있다. 요청 스코프로
+ * 바꾸면 값이 요청마다 제 칸을 가진다.
+ */
+import Demo from './Demo.astro';
+---
+
+<Demo
+  title="await 사이에 다른 요청이 끼어들면"
+  hint="단계를 넘기며 currentUser 칸을 보세요. 값을 요청 안으로 옮기면 A의 응답이 달라집니다."
+  caption="한 프로세스에서 두 요청이 await를 사이에 두고 번갈아 실행되는 과정을 단계로 나눈 모형입니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="currentUser를 둔 곳">
+      <button class="demo-seg__opt" type="button" data-mode="module" aria-pressed="true">모듈 스코프</button>
+      <button class="demo-seg__opt" type="button" data-mode="request" aria-pressed="false">요청 스코프</button>
+    </div>
+    <div class="demo-nav">
+      <button class="demo-btn" type="button" data-act="back">이전</button>
+      <span class="demo-label" data-el="count"></span>
+      <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음</button>
+    </div>
+  </Fragment>
+
+  <div class="ms" data-demo="module-scope">
+    <div class="ms-scene">
+      <div class="ms-clients">
+        {
+          ['A', 'B'].map((u) => (
+            <div class="demo-lane ms-client">
+              <span class="demo-lane__name">사용자 {u}</span>
+              <span class="ms-resp" data-el={`resp-${u}`} />
+              <span class="demo-slot ms-end" data-anchor={`home-${u}`} />
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="ms-process">
+        <span class="ms-process__name">Node.js 프로세스 하나</span>
+
+        <div class="demo-lane" data-box="module">
+          <code class="demo-lane__name ms-code">let currentUser</code>
+          <span class="demo-lane__desc">모듈 스코프</span>
+          <span class="demo-slot ms-end ms-val-slot" data-anchor="mod"></span>
+        </div>
+
+        <div class="demo-lane" data-box="stack">
+          <span class="demo-lane__name">Call Stack</span>
+          <span class="demo-slot ms-end" data-anchor="stack"></span>
+        </div>
+
+        <div class="demo-lane" data-box="wait">
+          <code class="demo-lane__name ms-code">await fetch()</code>
+          <span class="demo-lane__end">
+            <span class="demo-slot" data-anchor="wait-A"></span>
+            <span class="demo-slot" data-anchor="wait-B"></span>
+          </span>
+        </div>
+
+        <div class="demo-lane" data-box="request">
+          <code class="demo-lane__name ms-code">const currentUser</code>
+          <span class="demo-lane__desc">요청마다 따로</span>
+          <span class="demo-lane__end">
+            <span class="demo-slot ms-val-slot" data-anchor="req-A"></span>
+            <span class="demo-slot ms-val-slot" data-anchor="req-B"></span>
+          </span>
+        </div>
+      </div>
+
+      <span class="demo-token" data-token="A">A</span>
+      <span class="demo-token demo-token--b" data-token="B">B</span>
+      <span class="demo-token ms-val" data-token="vA">"A"</span>
+      <span class="demo-token demo-token--b ms-val" data-token="vB">"B"</span>
+    </div>
+
+    <p class="demo-status" data-el="status" aria-live="polite"></p>
+  </div>
+</Demo>
+
+<style>
+  .ms-scene {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .ms-clients {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .ms-end {
+    margin-left: auto;
+  }
+
+  .ms-resp {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--demo-a);
+  }
+
+  .ms-resp[data-tone='warn'] {
+    color: var(--demo-warn);
+  }
+
+  /* 한 프로세스라는 경계. 이 데모에서 유일한 테두리다. */
+  .ms-process {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border: 1px dashed var(--color-border-primary);
+    border-radius: 0.875rem;
+  }
+
+  .ms-process__name {
+    padding: 0 0.25rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    color: var(--color-text-tertiary);
+  }
+
+  .ms-code {
+    font-family: var(--font-mono);
+  }
+
+  [data-box] {
+    transition:
+      background-color 0.16s ease,
+      opacity 0.16s ease;
+  }
+
+  /* 이 방식에서는 쓰지 않는 자리 */
+  [data-box][data-unused] {
+    opacity: 0.35;
+  }
+
+  /* 문자열 값 블록("A")이 들어가는 폭 */
+  .ms-val-slot {
+    width: 2rem;
+  }
+
+  @media (max-width: 34rem) {
+    .ms-scene {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+
+<script>
+  import { createTokens, type Placement } from './lib/tokens';
+
+  type Mode = 'module' | 'request';
+
+  interface Step {
+    status: string;
+    at: Placement;
+    on?: string;
+    /** 사용자 A가 받은 응답 */
+    resp?: string;
+  }
+
+  const steps = (mode: Mode): Step[] => {
+    const m = mode === 'module';
+    const vA = m ? 'mod' : 'req-A';
+    const vB = m ? 'mod' : 'req-B';
+    return [
+      { status: '두 사용자가 같은 페이지를 요청합니다.', at: { A: 'home-A', B: 'home-B' } },
+      { status: 'A의 요청이 렌더링을 시작합니다.', at: { A: 'stack', B: 'home-B' }, on: 'stack' },
+      {
+        status: 'currentUser에 "A"를 넣습니다.',
+        at: { A: 'stack', B: 'home-B', vA },
+        on: m ? 'module' : 'request',
+      },
+      { status: 'A가 fetch 응답을 기다립니다.', at: { A: 'wait-A', B: 'home-B', vA }, on: 'wait' },
+      { status: '비어 있는 콜 스택에 B가 들어옵니다.', at: { A: 'wait-A', B: 'stack', vA }, on: 'stack' },
+      {
+        status: m ? 'B가 같은 칸에 "B"를 덮어씁니다.' : 'B는 자기 칸에 "B"를 넣습니다.',
+        at: { A: 'wait-A', B: 'stack', vA: m ? null : vA, vB },
+        on: m ? 'module' : 'request',
+      },
+      { status: 'B도 fetch 응답을 기다립니다.', at: { A: 'wait-A', B: 'wait-B', vA: m ? null : vA, vB }, on: 'wait' },
+      {
+        status: 'A가 돌아와 currentUser를 읽습니다.',
+        at: { A: 'stack', B: 'wait-B', vA: m ? null : vA, vB },
+        on: m ? 'module' : 'request',
+      },
+      {
+        status: m ? 'A가 B의 주문을 받았습니다.' : 'A가 자기 주문을 받았습니다.',
+        at: { A: 'home-A', B: 'wait-B', vA: m ? null : vA, vB },
+        resp: m ? 'B의 주문' : 'A의 주문',
+      },
+    ];
+  };
+
+  const STEPS: Record<Mode, Step[]> = { module: steps('module'), request: steps('request') };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="module-scope"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) => shell.querySelector<T>(`[data-el="${name}"]`)!;
+    const boxes = root.querySelectorAll<HTMLElement>('[data-box]');
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const nextBtn = shell.querySelector<HTMLButtonElement>('[data-act="next"]')!;
+    const backBtn = shell.querySelector<HTMLButtonElement>('[data-act="back"]')!;
+    const tokens = createTokens(root.querySelector<HTMLElement>('.ms-scene')!);
+
+    let mode: Mode = 'module';
+    let step = 0;
+
+    const render = (instant = false) => {
+      const list = STEPS[mode];
+      const s = list[step];
+      const clash = mode === 'module' && step >= 7;
+
+      el('status').textContent = s.status;
+      el('count').textContent = `${step + 1} / ${list.length}`;
+      nextBtn.disabled = step === list.length - 1;
+      backBtn.disabled = step === 0;
+
+      boxes.forEach((box) => {
+        const key = box.dataset.box!;
+        box.toggleAttribute('data-on', key === s.on && !(clash && key === 'module'));
+        box.toggleAttribute('data-warn', clash && key === 'module');
+        box.toggleAttribute(
+          'data-unused',
+          (mode === 'module' && key === 'request') || (mode === 'request' && key === 'module'),
+        );
+      });
+
+      const resp = el('resp-A');
+      resp.textContent = s.resp ?? '';
+      resp.dataset.tone = mode === 'module' ? 'warn' : '';
+
+      tokens.place(s.at, instant);
+    };
+
+    nextBtn.addEventListener('click', () => {
+      if (step < STEPS[mode].length - 1) step++;
+      render();
+    });
+    backBtn.addEventListener('click', () => {
+      if (step > 0) step--;
+      render();
+    });
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode as Mode;
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        step = 0;
+        render();
+      });
+    });
+
+    render(true);
+  });
+</script>

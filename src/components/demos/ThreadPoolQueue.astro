@@ -1,0 +1,345 @@
+---
+/**
+ * 스레드풀 대기열 — 대조 토글 + 재생형 데모.
+ *
+ * 글(nodejs-runtime-anatomy)의 "워커가 네 개뿐이라 pbkdf2 여덟 개 중 뒤의 넷은
+ * 줄을 선다. 동기 버전은 메인 스레드에서 하나씩 계산해 시간이 그대로 쌓인다"를
+ * 보여준다.
+ *
+ * 작업 블록 여덟 개가 대기열 → 워커(또는 메인 스레드) → 완료 칸으로 이동한다.
+ * 완료 칸 아래의 ms가 글의 표와 같은 값이고, 세 방식 모두 같은 작업 여덟 개를
+ * 처리한다. 처음 화면은 기본 스레드풀(4)을 끝까지 돌린 상태다.
+ */
+import Demo from './Demo.astro';
+
+const TASKS = [0, 1, 2, 3, 4, 5, 6, 7];
+---
+
+<Demo
+  title="pbkdf2 여덟 개와 워커 네 개"
+  hint="방식을 바꾸면 같은 작업 여덟 개를 다시 돌립니다. 완료 칸 아래 숫자가 각 작업이 끝난 시각입니다."
+  caption="macOS(12코어) Node.js 23에서 측정한 완료 시각을 재생하는 모형입니다. 화면에서는 실제보다 10배 느리게 움직입니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="실행 방식">
+      <button class="demo-seg__opt" type="button" data-mode="pool4" aria-pressed="true">스레드풀 4</button>
+      <button class="demo-seg__opt" type="button" data-mode="pool8" aria-pressed="false">스레드풀 8</button>
+      <button class="demo-seg__opt" type="button" data-mode="sync" aria-pressed="false">pbkdf2Sync</button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="run">실행</button>
+  </Fragment>
+
+  <div class="tp" data-demo="thread-pool">
+    <div class="demo-stats">
+      <div class="demo-stat">
+        <span class="demo-stat__value demo-stat__value--accent" data-el="clock">—</span>
+        <span class="tp-stat-label">8개 모두 끝난 시각</span>
+      </div>
+    </div>
+
+    <div class="tp-map">
+      <span class="tp-name">대기열</span>
+      <div class="demo-lane tp-rail">
+        {TASKS.map((i) => <span class="demo-slot" data-anchor={`q${i}`} />)}
+      </div>
+
+      <span class="tp-name">메인 스레드</span>
+      <div class="tp-workers tp-workers--main">
+        <div class="demo-lane tp-worker" data-el="main">
+          <span class="tp-fill" data-meter="main"></span>
+          <span class="demo-slot" data-anchor="main"></span>
+        </div>
+      </div>
+
+      <span class="tp-name">스레드풀</span>
+      <div class="tp-workers">
+        {
+          TASKS.map((i) => (
+            <div class="demo-lane tp-worker" data-worker={i}>
+              <span class="tp-fill" data-meter={`w${i}`} />
+              <span class="demo-slot" data-anchor={`w${i}`} />
+            </div>
+          ))
+        }
+      </div>
+
+      <span class="tp-name">완료</span>
+      <div class="demo-lane tp-rail tp-rail--done">
+        {
+          TASKS.map((i) => (
+            <span class="tp-done">
+              <span class="demo-slot" data-anchor={`d${i}`} />
+              <span class="tp-ms" data-done={i} />
+            </span>
+          ))
+        }
+      </div>
+
+      {TASKS.map((i) => <span class="demo-token" data-token={`t${i}`}>{i + 1}</span>)}
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .tp {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .tp-stat-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+  }
+
+  /* 이름 열 + 장소 열. 블록은 이 판 위를 움직인다. */
+  .tp-map {
+    position: relative;
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+  }
+
+  .tp-name {
+    font-size: 0.75rem;
+    font-weight: 650;
+    color: var(--color-text-secondary);
+  }
+
+  .tp-rail {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding-left: 0.5rem;
+  }
+
+  .tp-rail--done {
+    align-items: flex-start;
+  }
+
+  .tp-workers {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .tp-workers--main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 워커 한 칸. 계산이 진행되는 만큼 칸이 왼쪽부터 차오른다. */
+  .tp-worker {
+    position: relative;
+    overflow: hidden;
+    padding-left: 0.5rem;
+    transition: opacity 0.16s ease;
+  }
+
+  .tp-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    background-color: var(--demo-a-soft);
+  }
+
+  .tp-worker .demo-slot {
+    position: relative;
+  }
+
+  /* 이 방식에서는 없는 워커 */
+  .tp-worker[data-off] {
+    opacity: 0.3;
+  }
+
+  /* 동기 계산 중인 메인 스레드는 다른 일을 못 한다. */
+  .tp-worker[data-blocked] .tp-fill {
+    background-color: var(--demo-warn-soft);
+  }
+
+  .tp-done {
+    display: grid;
+    justify-items: center;
+    gap: 0.1875rem;
+  }
+
+  .tp-ms {
+    min-height: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+
+  /* 앞의 작업을 기다렸던 작업 */
+  .tp-ms[data-late] {
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  @media (max-width: 34rem) {
+    .tp-map {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tp-name {
+      margin-top: 0.375rem;
+    }
+  }
+</style>
+
+<script>
+  import { createTokens, type Placement } from './lib/tokens';
+
+  type Mode = 'pool4' | 'pool8' | 'sync';
+
+  interface Job {
+    start: number;
+    end: number;
+    lane: string;
+  }
+
+  const SLOW = 10; // 화면에서 1ms를 10ms로 늘린다
+
+  // 글의 표에 있는 완료 시각이 나오도록 작업마다 걸린 시간을 정한다.
+  const schedule = (mode: Mode): Job[] => {
+    if (mode === 'pool4') {
+      const first = [66, 68, 70, 74];
+      const second = [62, 64, 66, 65];
+      return [
+        ...first.map((d, i) => ({ start: 0, end: d, lane: `w${i}` })),
+        // 뒤의 넷은 같은 번호의 워커가 비기를 기다린다
+        ...second.map((d, i) => ({ start: first[i], end: first[i] + d, lane: `w${i}` })),
+      ];
+    }
+    if (mode === 'pool8') {
+      return [66, 68, 70, 74, 63, 67, 72, 75].map((d, i) => ({ start: 0, end: d, lane: `w${i}` }));
+    }
+    let t = 0;
+    return [55, 56, 55, 55, 55, 56, 55, 55].map((d) => {
+      const job = { start: t, end: t + d, lane: 'main' };
+      t += d;
+      return job;
+    });
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="thread-pool"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) => shell.querySelector<T>(`[data-el="${name}"]`)!;
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const runBtn = shell.querySelector<HTMLButtonElement>('[data-act="run"]')!;
+    const workers = root.querySelectorAll<HTMLElement>('[data-worker]');
+    const meters = new Map<string, HTMLElement>();
+    root.querySelectorAll<HTMLElement>('[data-meter]').forEach((m) => meters.set(m.dataset.meter!, m));
+    const doneLabels = root.querySelectorAll<HTMLElement>('[data-done]');
+    const mainLane = el('main');
+    const tokens = createTokens(root.querySelector<HTMLElement>('.tp-map')!);
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let mode: Mode = 'pool4';
+    let jobs = schedule(mode);
+    let raf = 0;
+    let delay = 0;
+    let lastKey = '';
+
+    const total = () => Math.max(...jobs.map((j) => j.end));
+
+    const frame = (t: number, instant = false) => {
+      const at: Placement = {};
+      let waiting = 0;
+      meters.forEach((m) => (m.style.width = '0%'));
+      let mainBusy = false;
+
+      // 끝난 순서대로 완료 칸을 채운다
+      const finished = jobs
+        .map((j, i) => ({ ...j, i }))
+        .filter((j) => t >= j.end)
+        .sort((a, b) => a.end - b.end);
+
+      jobs.forEach((j, i) => {
+        if (t < j.start) {
+          at[`t${i}`] = `q${waiting++}`;
+        } else if (t < j.end) {
+          at[`t${i}`] = j.lane;
+          meters.get(j.lane)!.style.width = `${((t - j.start) / (j.end - j.start)) * 100}%`;
+          if (j.lane === 'main') mainBusy = true;
+        }
+      });
+      finished.forEach((j, rank) => (at[`t${j.i}`] = `d${rank}`));
+
+      doneLabels.forEach((label, rank) => {
+        const j = finished[rank];
+        label.textContent = j ? `${j.end}ms` : '';
+        // 앞의 작업을 기다렸던 작업(시작이 늦은 작업)을 굵게
+        label.toggleAttribute('data-late', Boolean(j && j.start > 0));
+      });
+
+      mainLane.toggleAttribute('data-blocked', mainBusy);
+      el('clock').textContent = t >= total() ? `${total()}ms` : `${Math.floor(t)}ms`;
+
+      // 자리가 바뀔 때만 옮겨야 진행 중인 이동이 끊기지 않는다
+      const key = JSON.stringify(at);
+      if (key !== lastKey || instant) {
+        tokens.place(at, instant);
+        lastKey = key;
+      }
+    };
+
+    const applyMode = () => {
+      jobs = schedule(mode);
+      workers.forEach((w, i) => {
+        const off = mode === 'sync' || (mode === 'pool4' && i >= 4);
+        w.toggleAttribute('data-off', off);
+      });
+      mainLane.toggleAttribute('data-off', mode !== 'sync');
+    };
+
+    // 버튼을 눌러야 재생한다. 독자가 스크롤해 오기 전에 끝나 버리지 않게.
+    const setButton = (label: string, busy: boolean) => {
+      runBtn.textContent = label;
+      runBtn.disabled = busy;
+    };
+
+    const reset = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(delay);
+      frame(0, true);
+      setButton('실행', false);
+    };
+
+    const run = () => {
+      reset();
+      if (calm) {
+        frame(total(), true);
+        setButton('다시 실행', false);
+        return;
+      }
+      setButton('실행 중', true);
+      let begin = 0;
+      const tick = (now: number) => {
+        if (!begin) begin = now;
+        const t = (now - begin) / SLOW;
+        frame(Math.min(t, total()));
+        if (t < total()) raf = requestAnimationFrame(tick);
+        else setButton('다시 실행', false);
+      };
+      // 줄 선 모습을 한 박자 보여 준 뒤 출발한다
+      delay = window.setTimeout(() => (raf = requestAnimationFrame(tick)), 300);
+    };
+
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode as Mode;
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        applyMode();
+        reset();
+      });
+    });
+    runBtn.addEventListener('click', run);
+
+    applyMode();
+    reset();
+  });
+</script>

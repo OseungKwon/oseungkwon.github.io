@@ -1,0 +1,237 @@
+---
+/**
+ * nextTick 큐와 Promise 큐 — 이동하는 블록형 데모.
+ *
+ * 글(nodejs-runtime-anatomy)의 "동기 코드가 끝나 콜 스택이 비면 nextTick 큐와
+ * Promise 큐를 모두 비운 뒤에야 이벤트 루프로 넘어간다. 둘 중 무엇을 먼저
+ * 비우는지는 CommonJS와 ES 모듈에서 다르다"를 보여준다.
+ *
+ * 왼쪽은 실행 중인 코드와 출력, 오른쪽은 콜백 블록이 머무는 자리다. 블록이
+ * 콜 스택으로 올라오는 순서가 곧 출력 순서이고, 모듈 형식을 바꾸면 두 블록이
+ * 올라오는 순서만 뒤바뀐다. setTimeout 블록은 그동안 이벤트 루프에서 기다린다.
+ */
+import Demo from './Demo.astro';
+
+const CODE = [
+  "console.log('1 동기 코드 시작');",
+  'setTimeout(timer, 0);',
+  'Promise.resolve().then(then);',
+  'process.nextTick(tick);',
+  "console.log('1 동기 코드 끝');",
+];
+const PLACES = [
+  ['stack', 'Call Stack'],
+  ['tick', 'nextTick 큐'],
+  ['promise', 'Promise 큐'],
+  ['loop', '이벤트 루프'],
+];
+---
+
+<Demo
+  title="콜 스택이 비면 두 큐를 먼저 비웁니다"
+  hint="단계를 넘기며 블록이 콜 스택으로 올라오는 순서를 보세요. 모듈 형식을 바꾸면 tick과 then의 순서가 뒤바뀝니다."
+  caption="Node.js 23에서 같은 코드를 .cjs와 .mjs로 실행한 결과를 단계로 나눈 모형입니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="모듈 형식">
+      <button class="demo-seg__opt" type="button" data-mode="cjs" aria-pressed="true">CommonJS</button>
+      <button class="demo-seg__opt" type="button" data-mode="esm" aria-pressed="false">ES 모듈</button>
+    </div>
+    <div class="demo-nav">
+      <button class="demo-btn" type="button" data-act="back">이전</button>
+      <span class="demo-label" data-el="count"></span>
+      <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음</button>
+    </div>
+  </Fragment>
+
+  <div class="mq" data-demo="microtask-queues">
+    <div class="mq-scene">
+      <div class="mq-code">
+        <ol class="demo-lines">
+          {CODE.map((line, i) => <li class="demo-line" data-line={i}>{line}</li>)}
+        </ol>
+        <ol class="mq-out" aria-label="출력">
+          {[0, 1, 2, 3].map((i) => <li class="mq-out__line" data-out={i} />)}
+        </ol>
+      </div>
+
+      <div class="mq-places">
+        {
+          PLACES.map(([key, name]) => (
+            <div class="demo-lane" data-place={key}>
+              <span class="demo-lane__name">{name}</span>
+              <span class="demo-slot mq-slot" data-anchor={key} />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <p class="demo-status" data-el="status" aria-live="polite"></p>
+
+    <span class="demo-token" data-token="tick">tick</span>
+    <span class="demo-token" data-token="then">then</span>
+    <span class="demo-token demo-token--b" data-token="timer">timer</span>
+  </div>
+</Demo>
+
+<style>
+  .mq {
+    position: relative;
+  }
+
+  .mq-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 13rem);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .mq-code {
+    display: grid;
+    gap: 0.875rem;
+    min-width: 0;
+  }
+
+  /* 출력: 콘솔처럼 한 줄씩 쌓인다. 한글이 섞이므로 모노 서체를 쓰지 않는다. */
+  .mq-out {
+    display: grid;
+    gap: 0.125rem;
+    min-height: 5.5rem;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    background-color: var(--color-bg-tertiary);
+    list-style: none;
+  }
+
+  .mq-out__line {
+    min-height: 1.125rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  /* 방금 찍힌 줄만 액센트 */
+  .mq-out__line[data-new] {
+    font-weight: 700;
+    color: var(--demo-a);
+  }
+
+  .mq-places {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  /* 가장 긴 블록(timer)도 가운데 앉도록 폭을 맞춘다. */
+  .mq-slot {
+    width: 2.75rem;
+    margin-left: auto;
+  }
+
+  @media (max-width: 34rem) {
+    .mq-scene {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+    }
+  }
+</style>
+
+<script>
+  import { createTokens, type Placement } from './lib/tokens';
+
+  type Mode = 'cjs' | 'esm';
+
+  interface Step {
+    status: string;
+    at: Placement;
+    /** 실행 중인 코드 줄(없으면 동기 코드가 끝난 뒤) */
+    line?: number;
+    /** 켤 자리 */
+    on: string;
+    /** 출력 줄 수 */
+    out: number;
+  }
+
+  const steps = (mode: Mode): Step[] => {
+    const first = mode === 'cjs' ? 'tick' : 'then';
+    const second = mode === 'cjs' ? 'then' : 'tick';
+    const queued = { timer: 'loop', tick: 'tick', then: 'promise' };
+    return [
+      { status: '동기 코드가 콜 스택에서 실행됩니다.', at: {}, line: 0, on: 'stack', out: 1 },
+      { status: 'setTimeout 콜백은 이벤트 루프에 맡깁니다.', at: { timer: 'loop' }, line: 1, on: 'loop', out: 1 },
+      { status: 'then 콜백이 Promise 큐에 들어갑니다.', at: { timer: 'loop', then: 'promise' }, line: 2, on: 'promise', out: 1 },
+      { status: 'tick 콜백이 nextTick 큐에 들어갑니다.', at: queued, line: 3, on: 'tick', out: 1 },
+      { status: '동기 코드가 끝나 콜 스택이 비었습니다.', at: queued, line: 4, on: 'stack', out: 2 },
+      {
+        status: mode === 'cjs' ? 'nextTick 큐를 먼저 비웁니다.' : 'ES 모듈에서는 Promise 큐를 먼저 비웁니다.',
+        at: { ...queued, [first]: 'stack' },
+        on: 'stack',
+        out: 3,
+      },
+      { status: '남은 큐도 비웁니다.', at: { timer: 'loop', [second]: 'stack' }, on: 'stack', out: 4 },
+      { status: '두 큐가 모두 비어야 이벤트 루프로 넘어갑니다.', at: { timer: 'loop' }, on: 'loop', out: 4 },
+    ];
+  };
+
+  const STEPS: Record<Mode, Step[]> = { cjs: steps('cjs'), esm: steps('esm') };
+  const OUTPUT: Record<Mode, string[]> = {
+    cjs: ['1 동기 코드 시작', '1 동기 코드 끝', '2 nextTick', '3 Promise.then'],
+    esm: ['1 동기 코드 시작', '1 동기 코드 끝', '3 Promise.then', '2 nextTick'],
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="microtask-queues"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) => shell.querySelector<T>(`[data-el="${name}"]`)!;
+    const places = root.querySelectorAll<HTMLElement>('[data-place]');
+    const lines = root.querySelectorAll<HTMLElement>('[data-line]');
+    const outs = root.querySelectorAll<HTMLElement>('[data-out]');
+    const segs = shell.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const nextBtn = shell.querySelector<HTMLButtonElement>('[data-act="next"]')!;
+    const backBtn = shell.querySelector<HTMLButtonElement>('[data-act="back"]')!;
+    const tokens = createTokens(root);
+
+    let mode: Mode = 'cjs';
+    let step = 0;
+
+    const render = (instant = false) => {
+      const list = STEPS[mode];
+      const s = list[step];
+      const prevOut = step > 0 ? list[step - 1].out : 0;
+
+      el('status').textContent = s.status;
+      el('count').textContent = `${step + 1} / ${list.length}`;
+      nextBtn.disabled = step === list.length - 1;
+      backBtn.disabled = step === 0;
+
+      lines.forEach((line, i) => line.toggleAttribute('data-current', i === s.line));
+      places.forEach((p) => p.toggleAttribute('data-on', p.dataset.place === s.on));
+      outs.forEach((line, i) => {
+        line.textContent = i < s.out ? OUTPUT[mode][i] : '';
+        line.toggleAttribute('data-new', i < s.out && i >= prevOut);
+      });
+
+      tokens.place(s.at, instant);
+    };
+
+    nextBtn.addEventListener('click', () => {
+      if (step < STEPS[mode].length - 1) step++;
+      render();
+    });
+    backBtn.addEventListener('click', () => {
+      if (step > 0) step--;
+      render();
+    });
+    segs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode as Mode;
+        segs.forEach((other) => other.setAttribute('aria-pressed', String(other === btn)));
+        step = 0;
+        render();
+      });
+    });
+
+    render(true);
+  });
+</script>

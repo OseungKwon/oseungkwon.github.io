@@ -1,0 +1,338 @@
+---
+/**
+ * 힙 한도와 컨테이너 한도 — 직접 조작형 데모.
+ *
+ * 글(nodejs-runtime-anatomy)의 "Buffer는 V8 힙 바깥에 저장된다. 힙이 먼저 차면
+ * 134로, 힙 바깥이 늘어 rss가 컨테이너 한도를 넘으면 137로 종료된다"를 보여준다.
+ *
+ * 객체 블록은 V8 힙 칸으로, Buffer 블록은 힙 바깥 칸으로 떨어진다. 아래의 rss
+ * 막대는 둘을 합친 프로세스 전체다. 어느 쪽을 쌓느냐에 따라 먼저 닿는 한도가
+ * 달라지고, 종료 코드와 마지막 오류가 기록되는지도 달라진다.
+ *
+ * 처음 화면은 글의 표 마지막 줄(객체 100만 개 + 10MB Buffer 20개)과 비슷한 상태다.
+ */
+import Demo from './Demo.astro';
+
+const HEAP = Array.from({ length: 10 }, (_, i) => i); // 힙 한도 200MB
+const OFF = Array.from({ length: 18 }, (_, i) => i);
+const RSS = Array.from({ length: 24 }, (_, i) => i); // 컨테이너 한도 480MB
+---
+
+<Demo
+  title="어느 한도에 먼저 닿느냐에 따라 종료 방식이 다릅니다"
+  hint="객체나 Buffer를 계속 쌓아 보세요. 블록 하나가 20MB입니다."
+  caption="힙 한도 200MB, 컨테이너 한도 480MB로 단순화한 설명용 모형입니다. 실제 rss에는 코드와 스택, V8 내부 구조가 더 포함됩니다."
+>
+  <Fragment slot="controls">
+    <button class="demo-btn" type="button" data-act="obj">객체 +20MB</button>
+    <button class="demo-btn" type="button" data-act="buf">Buffer +20MB</button>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn" type="button" data-act="reset">처음으로</button>
+  </Fragment>
+
+  <div class="ml" data-demo="memory-limits">
+    <div class="demo-stats">
+      <div class="demo-stat">
+        <span class="demo-stat__value demo-stat__value--accent" data-el="rss"></span>
+        <span class="demo-stat__label">rss</span>
+      </div>
+      <div class="demo-stat">
+        <span class="demo-stat__value" data-el="heap"></span>
+        <span class="demo-stat__label">heapUsed</span>
+      </div>
+      <div class="demo-stat">
+        <span class="demo-stat__value" data-el="ab"></span>
+        <span class="demo-stat__label">arrayBuffers</span>
+      </div>
+    </div>
+
+    <div class="ml-regions">
+      <div class="ml-region" data-region="heap">
+        <div class="ml-region__head">
+          <span class="ml-region__name">V8 힙</span>
+          <span class="ml-limit">한도 200MB</span>
+        </div>
+        <div class="ml-cells ml-cells--heap">
+          {HEAP.map((i) => <span class="ml-cell" data-anchor={`h${i}`} />)}
+        </div>
+        <span class="ml-src" data-anchor="src-obj" aria-hidden="true"></span>
+      </div>
+
+      <div class="ml-region" data-region="off">
+        <div class="ml-region__head">
+          <span class="ml-region__name">힙 바깥 (Buffer)</span>
+        </div>
+        <div class="ml-cells">
+          {OFF.map((i) => <span class="ml-cell" data-anchor={`b${i}`} />)}
+        </div>
+        <span class="ml-src" data-anchor="src-buf" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <div class="ml-rss">
+      <div class="ml-region__head">
+        <span class="ml-region__name">프로세스 전체 (rss)</span>
+        <span class="ml-limit">컨테이너 한도 480MB</span>
+      </div>
+      <div class="ml-strip">
+        {RSS.map((i) => <span class="ml-bit" data-bit={i} />)}
+      </div>
+    </div>
+
+    <div class="ml-exit" data-el="exit" hidden aria-live="polite">
+      <code class="ml-exit__code" data-el="exit-code"></code>
+      <span class="ml-exit__text" data-el="exit-text"></span>
+    </div>
+
+    {HEAP.map((i) => <span class="demo-token ml-tok" data-token={`h${i}`} />)}
+    {OFF.map((i) => <span class="demo-token demo-token--b ml-tok" data-token={`b${i}`} />)}
+  </div>
+</Demo>
+
+<style>
+  .ml {
+    position: relative;
+    display: grid;
+    gap: 1rem;
+  }
+
+  /* 필드 이름은 process.memoryUsage()의 키 그대로 보여 준다. */
+  .ml :global(.demo-stat__label) {
+    font-family: var(--font-mono);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .ml-regions {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 9fr);
+    gap: 0.25rem;
+  }
+
+  /* 영역은 옅은 바닥으로만 나눈다. 빈 칸은 바닥보다 한 단계 밝은 네모로,
+     '아직 쓸 수 있는 자리'를 말한다. */
+  .ml-region,
+  .ml-rss {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 0.625rem;
+    padding: 0.75rem;
+    border-radius: 0.625rem;
+    background-color: var(--color-bg-tertiary);
+    transition: background-color 0.16s ease;
+  }
+
+  [data-region][data-dead],
+  .ml-rss[data-dead] {
+    background-color: var(--demo-warn-soft);
+  }
+
+  .ml-region__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 0.5rem;
+  }
+
+  .ml-region__name {
+    font-size: 0.75rem;
+    font-weight: 650;
+    color: var(--color-text-primary);
+  }
+
+  [data-dead] .ml-region__name {
+    color: var(--demo-warn);
+  }
+
+  .ml-limit {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .ml-cells {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 1.25rem);
+    gap: 0.25rem;
+  }
+
+  .ml-cells--heap {
+    grid-template-columns: repeat(5, 1.25rem);
+  }
+
+  .ml-cell {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.25rem;
+    background-color: var(--surface-bg);
+  }
+
+  .ml-tok {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border-radius: 0.25rem;
+  }
+
+  /* 블록이 태어나는 자리. 영역 머리 위에서 떨어진다. */
+  .ml-src {
+    position: absolute;
+    top: -0.5rem;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+  }
+
+  .ml-strip {
+    display: grid;
+    grid-template-columns: repeat(24, minmax(0, 1fr));
+    gap: 2px;
+    height: 0.625rem;
+  }
+
+  .ml-bit {
+    border-radius: 2px;
+    background-color: var(--surface-bg);
+  }
+
+  .ml-bit[data-kind='base'] {
+    background-color: var(--color-border-primary);
+  }
+
+  .ml-bit[data-kind='heap'] {
+    background-color: var(--demo-a);
+  }
+
+  .ml-bit[data-kind='off'] {
+    background-color: var(--demo-b);
+  }
+
+  .ml-exit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.625rem;
+  }
+
+  .ml-exit[hidden] {
+    display: none;
+  }
+
+  .ml-exit__code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--demo-warn);
+  }
+
+  .ml-exit__text {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 34rem) {
+    .ml-regions {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+
+<script>
+  import { createTokens, type Placement } from './lib/tokens';
+
+  const MB = 20; // 블록 하나
+  const BASE = 2; // 코드·스택 등 힙 바깥의 기본 사용량(블록 수)
+  const HEAP_LIMIT = 10;
+  const RSS_LIMIT = 24;
+  const INITIAL = { heap: 4, off: 10 };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="memory-limits"]').forEach((root) => {
+    const shell = root.closest('.demo');
+    if (!shell) return;
+
+    const el = <T extends HTMLElement>(name: string) => shell.querySelector<T>(`[data-el="${name}"]`)!;
+    const bits = root.querySelectorAll<HTMLElement>('[data-bit]');
+    const objBtn = shell.querySelector<HTMLButtonElement>('[data-act="obj"]')!;
+    const bufBtn = shell.querySelector<HTMLButtonElement>('[data-act="buf"]')!;
+    const resetBtn = shell.querySelector<HTMLButtonElement>('[data-act="reset"]')!;
+    const heapRegion = root.querySelector<HTMLElement>('[data-region="heap"]')!;
+    const rssBox = root.querySelector<HTMLElement>('.ml-rss')!;
+    const tokens = createTokens(root);
+
+    let heap = INITIAL.heap;
+    let off = INITIAL.off;
+    let dead: 134 | 137 | null = null;
+
+    const placement = (): Placement => {
+      const at: Placement = {};
+      for (let i = 0; i < heap; i++) at[`h${i}`] = `h${i}`;
+      for (let i = 0; i < off; i++) at[`b${i}`] = `b${i}`;
+      return at;
+    };
+
+    const render = (instant = false) => {
+      const used = BASE + heap + off;
+      el('rss').textContent = `${used * MB}MB`;
+      el('heap').textContent = `${heap * MB}MB`;
+      el('ab').textContent = `${off * MB}MB`;
+
+      bits.forEach((bit, i) => {
+        bit.dataset.kind = i < BASE ? 'base' : i < BASE + heap ? 'heap' : i < used ? 'off' : '';
+      });
+
+      heapRegion.toggleAttribute('data-dead', dead === 134);
+      rssBox.toggleAttribute('data-dead', dead === 137);
+      const exit = el('exit');
+      exit.hidden = dead === null;
+      if (dead === 134) {
+        el('exit-code').textContent = 'exit 134 (SIGABRT)';
+        el('exit-text').textContent = 'FATAL ERROR: JavaScript heap out of memory';
+      } else if (dead === 137) {
+        el('exit-code').textContent = 'exit 137 (SIGKILL)';
+        el('exit-text').textContent = '강제 종료라 마지막 오류를 기록할 기회가 없습니다';
+      }
+      objBtn.disabled = bufBtn.disabled = dead !== null;
+
+      tokens.place(placement(), instant);
+    };
+
+    // 새 블록은 영역 위에서 순간이동으로 나타난 뒤 제자리로 떨어진다.
+    const drop = (kind: 'h' | 'b', index: number, source: string) => {
+      const start = placement();
+      start[`${kind}${index}`] = source;
+      tokens.place(start, true);
+      requestAnimationFrame(() => render());
+    };
+
+    const add = (kind: 'heap' | 'off') => {
+      if (dead) return;
+      const used = BASE + heap + off;
+      if (kind === 'heap' && heap >= HEAP_LIMIT) {
+        dead = 134; // V8이 할당에 실패해 스스로 abort
+      } else if (used >= RSS_LIMIT) {
+        dead = 137; // 커널이 프로세스를 죽인다
+      } else if (kind === 'heap') {
+        heap++;
+        drop('h', heap - 1, 'src-obj');
+        return;
+      } else {
+        off++;
+        drop('b', off - 1, 'src-buf');
+        return;
+      }
+      render();
+    };
+
+    objBtn.addEventListener('click', () => add('heap'));
+    bufBtn.addEventListener('click', () => add('off'));
+    resetBtn.addEventListener('click', () => {
+      heap = INITIAL.heap;
+      off = INITIAL.off;
+      dead = null;
+      render(true);
+    });
+
+    render(true);
+  });
+</script>
