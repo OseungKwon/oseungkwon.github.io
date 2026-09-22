@@ -1,0 +1,422 @@
+---
+import Demo from './Demo.astro';
+const cases = ['Router Cache 적중', 'HTTP 캐시 적중', 'CDN 적중', '라우트 결과 적중', '데이터 캐시 적중', '원본까지 조회'];
+const zones = [
+  {
+    name: '브라우저',
+    role: '사용자별 로컬 상태',
+    scope: 'CLIENT',
+    nodes: [
+      { id: 0, name: 'Router Cache', saved: 'RSC 세그먼트', role: '화면 전환 시 재사용' },
+      { id: 1, name: 'HTTP 캐시', saved: 'HTTP 응답', role: '네트워크 전송 생략' },
+    ],
+  },
+  { name: 'CloudFront', role: '여러 사용자에게 응답 공유', scope: 'CDN · EDGE', nodes: [{ id: 2, name: '엣지 응답 캐시', saved: 'HTML · RSC · 정적 자산', role: '원본 서버 요청 생략' }] },
+  {
+    name: 'Next.js 서버',
+    role: '라우트 응답 생성',
+    scope: 'APPLICATION',
+    nodes: [
+      { id: 3, name: 'Full Route Cache', saved: 'HTML + RSC', role: '완성된 렌더 결과 재사용' },
+      { id: 4, name: '데이터 / 함수 캐시', saved: 'Data Cache 또는 use cache', role: '렌더링 중 조회 결과 재사용' },
+    ],
+  },
+  { name: 'API / DB', role: '현재 데이터 조회', scope: 'DATA SOURCE', nodes: [{ id: 5, name: '원본 데이터', saved: '상품 · 문서 · 사용자 데이터', role: '캐시 미적중 시 조회' }] },
+];
+---
+
+<Demo title="어디에서 요청이 끝나는가" hint="응답 위치를 선택해 요청이 넘어가는 경계와 돌아오는 경로를 비교합니다." caption="화살표를 따라 요청이 도달한 계층과 응답이 돌아오는 경로를 비교합니다.">
+  <Fragment slot="controls">
+    <label class="demo-label"
+      >응답 위치
+      <select data-el="source" class="crm-select">
+        {
+          cases.map((label, i) => (
+            <option value={i} selected={i === 2}>
+              {label}
+            </option>
+          ))
+        }
+      </select>
+    </label>
+    <button type="button" class="demo-btn" data-el="reset">처음으로</button>
+  </Fragment>
+  <div data-demo="cache-request-map" class="crm">
+    <div class="crm-legend">
+      <span><i class="crm-key crm-key--request"></i>요청 경로</span><span><i class="crm-key crm-key--response"></i>응답 경로</span><span><i class="crm-key crm-key--skip"></i>미방문</span>
+    </div>
+    <div class="crm-topology">
+      {
+        zones.map((zone, z) => (
+          <>
+            {z > 0 && (
+              <div
+                class="crm-link"
+                data-link={z}
+                data-active={z === 1 ? 'true' : 'false'}
+                aria-label={z === 1 ? '브라우저와 CDN 간 HTTP 통신' : z === 2 ? 'CDN과 Next.js 원본 서버 간 HTTP 통신' : 'Next.js 서버의 API 또는 DB 조회'}
+              >
+                <span class="crm-wire crm-wire--down">
+                  <span>{z === 3 ? '데이터 조회' : 'HTTP 요청'}</span>
+                  <b aria-hidden="true">↓</b>
+                </span>
+                <span class="crm-boundary">{z === 1 ? '네트워크 경계' : z === 2 ? '원본 서버 경계' : '데이터 계층 경계'}</span>
+                <span class="crm-wire crm-wire--up">
+                  <b aria-hidden="true">↑</b>
+                  <span>{z === 3 ? '조회 결과' : '응답'}</span>
+                </span>
+              </div>
+            )}
+            <section class="crm-zone" data-zone={z} data-visited={z < 2 ? 'true' : 'false'} aria-label={zone.name}>
+              <div class="crm-zone-head">
+                <>
+                  <div>
+                    <>
+                      <strong>{zone.name}</strong>
+                      <span>{zone.role}</span>
+                    </>
+                  </div>
+                  <code>{zone.scope}</code>
+                </>
+              </div>
+              <div class:list={['crm-zone-nodes', zone.nodes.length === 2 && 'crm-zone-nodes--pair']}>
+                {zone.nodes.map((node, i) => (
+                  <>
+                    {i > 0 && (
+                      <div class="crm-inner" aria-hidden="true">
+                        {z === 0 ? (
+                          '또는'
+                        ) : (
+                          <>
+                            <span>렌더링</span>
+                            <b>→</b>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <div class="crm-node" data-node={node.id} data-state={node.id === 2 ? 'hit' : node.id === 1 ? 'pass' : 'skip'}>
+                      <div class="crm-node-top">
+                        <span class:list={['crm-icon', z === 3 && 'crm-icon--db']} aria-hidden="true" />
+                        <span class="crm-status" data-el="status">
+                          {node.id === 2 ? '응답 반환' : node.id === 1 ? 'MISS' : '미방문'}
+                        </span>
+                      </div>
+                      <strong>{node.name}</strong>
+                      <span class="crm-saved">{node.saved}</span>
+                      <span class="crm-role">{node.role}</span>
+                    </div>
+                  </>
+                ))}
+              </div>
+            </section>
+          </>
+        ))
+      }
+    </div>
+    <div class="crm-result" aria-live="polite"><span class="crm-result-label">응답 지점</span><strong data-el="result">CloudFront에서 응답 · Next.js 서버 요청 0회</strong></div>
+  </div>
+</Demo>
+<style>
+  .crm-select {
+    max-width: 100%;
+    margin-left: 8px;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 8px;
+    padding: 7px;
+    background: var(--surface-bg);
+    color: var(--color-text-primary);
+    font: inherit;
+  }
+  .crm-select:focus-visible {
+    outline: 2px solid var(--demo-a);
+    outline-offset: 3px;
+  }
+  .crm {
+    font-size: 11px;
+  }
+  .crm-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 14px;
+    color: var(--color-text-secondary);
+  }
+  .crm-legend > span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .crm-key {
+    width: 18px;
+    border-top: 2px solid var(--demo-a);
+  }
+  .crm-key--response {
+    border-top-style: dashed;
+  }
+  .crm-key--skip {
+    border-color: var(--color-border-primary);
+  }
+  .crm-topology {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) 30px minmax(0, 1fr) 30px minmax(0, 1.1fr) 30px minmax(0, 0.9fr);
+    align-items: stretch;
+  }
+  .crm-zone {
+    min-width: 0;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 10px;
+    padding: 10px;
+    background: var(--surface-bg);
+  }
+  .crm-zone[data-visited='false'] {
+    border-style: dashed;
+  }
+  .crm-zone-head {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+  .crm-zone-head > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .crm-zone-head strong {
+    font-size: 13px;
+    color: var(--color-text-primary);
+  }
+  .crm-zone-head span {
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+  }
+  .crm-zone-head code {
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    color: var(--color-text-tertiary);
+  }
+  .crm-zone-nodes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .crm-inner {
+    height: 24px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--color-text-secondary);
+  }
+  .crm-inner b {
+    transform: rotate(90deg);
+    font-size: 16px;
+    font-weight: 400;
+  }
+  .crm-node {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
+    background: var(--color-bg-tertiary);
+    overflow-wrap: anywhere;
+  }
+  .crm-node[data-state='skip'] {
+    border-style: dashed;
+    background: transparent;
+  }
+  .crm-node[data-state='hit'] {
+    border-color: var(--demo-a);
+    background: var(--demo-a-soft);
+  }
+  .crm-node > strong {
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--color-text-primary);
+  }
+  .crm-saved {
+    font-size: 9px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+  }
+  .crm-role {
+    display: none;
+  }
+  .crm-node-top {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-bottom: 2px;
+  }
+  .crm-icon {
+    display: none;
+  }
+  .crm-status {
+    font-size: 9px;
+    color: var(--color-text-tertiary);
+  }
+  .crm-node[data-state='hit'] .crm-status {
+    color: var(--demo-a);
+    font-weight: 650;
+  }
+  .crm-link {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+    color: var(--color-text-tertiary);
+  }
+  .crm-wire {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+  }
+  .crm-wire::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 1px solid var(--color-border-primary);
+  }
+  .crm-wire--up::before {
+    border-top-style: dashed;
+  }
+  .crm-wire span,
+  .crm-boundary {
+    display: none;
+  }
+  .crm-wire b {
+    position: relative;
+    transform: rotate(-90deg);
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1;
+    background: var(--surface-bg);
+  }
+  .crm-link[data-active='true'] {
+    color: var(--demo-a);
+  }
+  .crm-link[data-active='true'] .crm-wire::before {
+    border-color: var(--demo-a);
+  }
+  .crm-result {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .crm-result-label {
+    font-size: 10px;
+    color: var(--color-text-secondary);
+  }
+  .crm-result strong {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  @media (max-width: 600px) {
+    .crm-topology {
+      grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+      grid-template-rows: auto 34px auto;
+    }
+    .crm-zone[data-zone='0'] {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .crm-link[data-link='1'] {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .crm-zone[data-zone='1'] {
+      grid-column: 3;
+      grid-row: 1;
+    }
+    .crm-link[data-link='2'] {
+      grid-column: 3;
+      grid-row: 2;
+      flex-direction: row;
+      gap: 24px;
+      align-items: center;
+    }
+    .crm-link[data-link='2'] .crm-wire {
+      width: 16px;
+      height: 34px;
+    }
+    .crm-link[data-link='2'] .crm-wire::before {
+      left: 50%;
+      right: auto;
+      top: 0;
+      bottom: 0;
+      border-top: 0;
+      border-left: 1px solid var(--color-border-primary);
+    }
+    .crm-link[data-link='2'] .crm-wire--up::before {
+      border-left-style: dashed;
+    }
+    .crm-link[data-link='2'][data-active='true'] .crm-wire::before {
+      border-color: var(--demo-a);
+    }
+    .crm-link[data-link='2'] .crm-wire b {
+      transform: none;
+    }
+    .crm-zone[data-zone='2'] {
+      grid-column: 3;
+      grid-row: 3;
+    }
+    .crm-link[data-link='3'] {
+      grid-column: 2;
+      grid-row: 3;
+    }
+    .crm-link[data-link='3'] .crm-wire b {
+      transform: rotate(90deg);
+    }
+    .crm-zone[data-zone='3'] {
+      grid-column: 1;
+      grid-row: 3;
+    }
+  }
+</style>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-demo="cache-request-map"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    const select = frame.querySelector<HTMLSelectElement>('[data-el="source"]')!;
+    const results = [
+      'Router Cache · HTTP 요청 없음',
+      '브라우저 HTTP 캐시 · 네트워크 요청 없음',
+      'CloudFront · Next.js 서버 요청 없음',
+      'Full Route Cache · 새 렌더링 없음',
+      '데이터 / 함수 캐시 · 원본 데이터 조회 없음',
+      'API / DB · 원본 데이터 조회 실행',
+    ];
+    const render = () => {
+      const selected = Number(select.value);
+      const reachedZone = selected < 2 ? 0 : selected === 2 ? 1 : selected < 5 ? 2 : 3;
+      root.querySelectorAll<HTMLElement>('[data-node]').forEach((node) => {
+        const index = Number(node.dataset.node);
+        const state = index === selected ? 'hit' : index > 0 && index < selected ? 'pass' : 'skip';
+        node.dataset.state = state;
+        node.querySelector('[data-el="status"]')!.textContent = state === 'hit' ? '여기서 응답' : state === 'pass' ? 'MISS · 다음 단계' : index === 0 ? '대체 경로' : '미방문';
+      });
+      root.querySelectorAll<HTMLElement>('[data-zone]').forEach((zone) => {
+        zone.dataset.visited = String(Number(zone.dataset.zone) <= reachedZone);
+      });
+      root.querySelectorAll<HTMLElement>('[data-link]').forEach((link) => {
+        link.dataset.active = String(Number(link.dataset.link) <= reachedZone);
+      });
+      root.querySelector('[data-el="result"]')!.textContent = results[selected];
+    };
+    select.addEventListener('change', render);
+    frame.querySelector('[data-el="reset"]')!.addEventListener('click', () => {
+      select.value = '2';
+      render();
+    });
+    render();
+  });
+</script>
