@@ -33,6 +33,7 @@ const tagLinks = await getTagLinks(post);
   modifiedTime={post.data.updatedDate?.toISOString()}
   tags={post.data.tags}
   breadcrumbs={[{ name: post.data.title, href: `/post/${post.id}/` }]}
+  noindex={post.data.draft}
   container="wide"
   readingProgress
 >
@@ -81,11 +82,17 @@ const tagLinks = await getTagLinks(post);
       {
         tagLinks.length > 0 && (
           <div class="mt-10 flex flex-wrap gap-1.5 border-t border-token-primary pt-6">
-            {tagLinks.map(({ name, href }) => (
-              <a href={href} data-astro-prefetch="tap" class="press rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary transition-colors hover:border-token-accent hover:text-token-link">
-                #{name}
-              </a>
-            ))}
+            {tagLinks.map(({ name, href }) =>
+              href ? (
+                <a href={href} data-astro-prefetch="tap" class="press rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary transition-colors hover:border-token-accent hover:text-token-link">
+                  #{name}
+                </a>
+              ) : (
+                <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">
+                  #{name}
+                </span>
+              ),
+            )}
           </div>
         )
       }

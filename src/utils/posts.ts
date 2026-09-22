@@ -8,3 +8,10 @@ export async function getPublishedPosts() {
     import.meta.env.PROD ? !data.draft : true,
   );
 }
+
+// 페이지를 만들 글 전체를 반환한다. draft 글도 포함한다.
+// draft는 목록·sitemap·RSS·태그·관련 글 어디에도 걸리지 않고 noindex가 붙으므로,
+// 검색엔진에는 드러나지 않되 링크를 아는 사람은 직접 열어 볼 수 있다.
+export async function getAllPosts() {
+  return getCollection('blog');
+}

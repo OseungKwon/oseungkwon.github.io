@@ -99,16 +99,18 @@ export async function getArchivedTags(): Promise<TagGroup[]> {
 
 /**
  * 한 글의 태그를 화면에 뿌릴 때 쓸 정보.
- * 태그 페이지는 모두 존재하므로 표기를 정규화한 뒤 그대로 링크로 만든다.
+ * 태그 페이지는 발행된 글에서만 만들어지므로, draft 글에만 있는 태그는
+ * 링크 대상이 없다. 그런 태그는 링크 없이 이름만 돌려준다.
  */
 export async function getTagLinks(post: Post) {
   const seen = new Set<string>();
+  const existing = new Set((await getTagGroups()).map((group) => group.name));
 
   return post.data.tags.flatMap((raw) => {
     const name = normalizeTag(raw);
     if (seen.has(name)) return [];
     seen.add(name);
-    return [{ name, href: `/tags/${tagSlug(name)}/` }];
+    return [{ name, href: existing.has(name) ? `/tags/${tagSlug(name)}/` : undefined }];
   });
 }
 
