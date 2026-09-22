@@ -1,0 +1,162 @@
+---
+/**
+ * 캐시 위치 표시 — 정적 미니 구조도.
+ *
+ * 글(web-cache-nextjs)은 캐시를 하나씩 소개하는데, 읽다 보면 지금 보는 캐시가
+ * 요청 경로의 어디에 있는지 놓치기 쉽다. 각 캐시 절의 제목 아래에 같은 구조도를
+ * 두고 해당 캐시만 강조해, 글 뒤의 CacheRequestMap과 같은 배치를 미리 익히게 한다.
+ * 조작할 것이 없으므로 Demo 껍데기 대신 가벼운 figure로 둔다.
+ *
+ * 사용법: <CacheLocator at="router" />
+ */
+interface Props {
+  /** 강조할 캐시의 key */
+  at: string;
+}
+
+const { at } = Astro.props;
+
+const ZONES = [
+  {
+    name: '브라우저',
+    caches: [
+      { key: 'http', name: 'HTTP 캐시' },
+      { key: 'bfcache', name: 'bfcache' },
+      { key: 'router', name: 'Router Cache' },
+      { key: 'query', name: '쿼리 캐시' },
+      { key: 'sw', name: 'Cache Storage' },
+      { key: 'storage', name: 'Web Storage·IndexedDB' },
+    ],
+  },
+  { name: 'CDN', caches: [{ key: 'cdn', name: '엣지 캐시' }] },
+  {
+    name: 'Next.js 서버',
+    caches: [
+      { key: 'memo', name: 'Request Memoization' },
+      { key: 'data', name: 'Data Cache' },
+      { key: 'route', name: 'Full Route Cache' },
+      { key: 'use-cache', name: 'use cache' },
+      { key: 'shared', name: '메모리·Redis' },
+    ],
+  },
+  { name: 'API / DB', caches: [] },
+];
+
+const current = ZONES.flatMap((z) => z.caches).find((c) => c.key === at);
+---
+
+<figure class="cl not-prose" aria-label={`캐시 위치: ${current?.name ?? at}`}>
+  {
+    ZONES.map((zone, i) => {
+      const active = zone.caches.some((c) => c.key === at);
+      return (
+        <Fragment>
+          {i > 0 && (
+            <span class="cl-arrow" aria-hidden="true">
+              →
+            </span>
+          )}
+          <div class="cl-zone" data-active={active ? '' : undefined}>
+            <span class="cl-zone__name">{zone.name}</span>
+            {zone.caches.length > 0 && (
+              <ul class="cl-caches">
+                {zone.caches.map((c) => (
+                  <li class="cl-cache" data-active={c.key === at ? '' : undefined}>
+                    {c.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Fragment>
+      );
+    })
+  }
+</figure>
+
+<style>
+  .cl {
+    display: grid;
+    grid-template-columns: minmax(0, 2.4fr) 0.875rem minmax(0, 0.8fr) 0.875rem minmax(0, 2fr) 0.875rem minmax(0, 0.7fr);
+    align-items: stretch;
+    margin: 0.75rem 0 1.75rem;
+    font-family: var(--font-sans);
+  }
+
+  .cl-arrow {
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+    padding: 0.5rem 0.5625rem;
+    border: 1px solid var(--color-border-tertiary);
+    border-radius: 0.625rem;
+  }
+
+  .cl-zone[data-active] {
+    border-color: var(--color-accent);
+  }
+
+  .cl-zone__name {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-zone[data-active] .cl-zone__name {
+    color: var(--color-link);
+  }
+
+  .cl-caches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cl-cache {
+    margin: 0;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.3125rem;
+    background-color: var(--color-bg-tertiary);
+    font-size: 0.625rem;
+    line-height: 1.5;
+    white-space: nowrap;
+    color: var(--color-text-tertiary);
+  }
+
+  .cl-cache[data-active] {
+    background-color: var(--color-accent);
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  /* 좁은 화면에서는 구역 순서만 한 줄로 남기고 강조한 캐시 하나만 보인다.
+     제목마다 반복되는 표시라 세로로 쌓으면 본문보다 길어진다. */
+  @media (max-width: 34rem) {
+    .cl {
+      grid-template-columns: minmax(0, 1.2fr) 0.625rem minmax(0, 0.8fr) 0.625rem minmax(0, 1.2fr) 0.625rem minmax(0, 0.9fr);
+    }
+
+    .cl-zone {
+      padding: 0.375rem 0.4375rem;
+    }
+
+    .cl-cache:not([data-active]) {
+      display: none;
+    }
+
+    .cl-cache[data-active] {
+      white-space: normal;
+    }
+  }
+</style>
