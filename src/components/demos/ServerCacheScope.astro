@@ -1,0 +1,207 @@
+---
+/**
+ * Request Memoization과 Data Cache가 줄이는 범위 — 대조 토글.
+ *
+ * 글(web-cache-nextjs)의 "이 함수가 줄이는 것은 한 요청 안의 중복입니다"와
+ * "다음 요청에서도 데이터를 재사용하는 Data Cache"를 한 장면에서 비교한다.
+ * 두 요청이 각각 세 컴포넌트에서 같은 상품을 조회하고, 모드에 따라 어느 호출이
+ * DB까지 가는지만 바뀐다. 호출 수는 모드와 무관하게 여섯 번으로 같다.
+ */
+import Demo from './Demo.astro';
+
+const REQUESTS = ['요청 1 · 사용자 A', '요청 2 · 사용자 B'];
+const CALLERS = ['상품 제목', '상세 설명', '추천 영역'];
+---
+
+<Demo
+  title="같은 상품을 여섯 번 조회할 때 DB까지 가는 호출"
+  hint="캐시 방식을 바꾸면 어떤 호출이 결과를 재사용하는지 달라집니다."
+  caption="설명용 모형 · 두 요청 모두 getProduct('42')를 세 컴포넌트에서 호출합니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="캐시 방식">
+      <button class="demo-seg__opt" type="button" data-mode="none" aria-pressed="false">없음</button>
+      <button class="demo-seg__opt" type="button" data-mode="memo" aria-pressed="true">Memoization</button>
+      <button class="demo-seg__opt" type="button" data-mode="data" aria-pressed="false">+ Data Cache</button>
+    </div>
+  </Fragment>
+
+  <div class="scs" data-demo="server-cache-scope">
+    <div class="scs-requests">
+      {
+        REQUESTS.map((name, r) => (
+          <div class="scs-request">
+            <div class="scs-request__name">{name}</div>
+            <ul class="scs-calls">
+              {CALLERS.map((caller, c) => (
+                <li class="scs-call" data-call={`${r}-${c}`} data-state="db">
+                  <span class="scs-call__caller">{caller}</span>
+                  <span class="scs-call__tag" data-el="tag">
+                    DB 조회
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="scs-db" aria-live="polite">
+      <span class="scs-db__name">DB</span>
+      <span class="scs-db__count"><span class="demo-stat__value demo-stat__value--accent" data-el="count">2</span> / 6 호출</span>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .scs-requests {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .scs-request {
+    min-width: 0;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 0.875rem;
+  }
+
+  .scs-request__name {
+    margin-bottom: 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+  }
+
+  .scs-calls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .scs-call {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .scs-call__caller {
+    color: var(--color-text-primary);
+  }
+
+  .scs-call__tag {
+    flex: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  /* DB까지 간 호출: 이 데모가 세는 것 */
+  .scs-call[data-state='db'] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  .scs-call[data-state='db'] .scs-call__tag {
+    color: var(--demo-a);
+  }
+
+  /* 같은 요청 안에서 앞선 호출의 결과를 받은 경우 */
+  .scs-call[data-state='memo'] {
+    border-style: dashed;
+  }
+
+  .scs-call[data-state='memo'] .scs-call__tag {
+    color: var(--color-text-tertiary);
+  }
+
+  /* 이전 요청이 저장한 결과를 받은 경우 */
+  .scs-call[data-state='data'] {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .scs-call[data-state='data'] .scs-call__tag {
+    color: var(--color-text-secondary);
+  }
+
+  .scs-db {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.625rem;
+    margin-top: 0.875rem;
+    padding: 0.625rem;
+    border-radius: 0.75rem;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .scs-db__name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+  }
+
+  .scs-db__count {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+
+  @media (max-width: 34rem) {
+    .scs-requests {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+
+<script>
+  type Mode = 'none' | 'memo' | 'data';
+  type State = 'db' | 'memo' | 'data';
+
+  const TAGS: Record<State, string> = {
+    db: 'DB 조회',
+    memo: '요청 안 재사용',
+    data: 'Data Cache 적중',
+  };
+
+  /** r번째 요청의 c번째 호출이 어디서 결과를 받는지 */
+  const stateOf = (mode: Mode, r: number, c: number): State => {
+    if (mode === 'none') return 'db';
+    if (c > 0) return 'memo';
+    return mode === 'data' && r > 0 ? 'data' : 'db';
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="server-cache-scope"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    const buttons = frame.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const calls = root.querySelectorAll<HTMLElement>('[data-call]');
+
+    const render = (mode: Mode) => {
+      let count = 0;
+      calls.forEach((call) => {
+        const [r, c] = call.dataset.call!.split('-').map(Number);
+        const state = stateOf(mode, r, c);
+        if (state === 'db') count++;
+        call.dataset.state = state;
+        call.querySelector('[data-el="tag"]')!.textContent = TAGS[state];
+      });
+      root.querySelector('[data-el="count"]')!.textContent = String(count);
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    };
+
+    buttons.forEach((b) => b.addEventListener('click', () => render(b.dataset.mode as Mode)));
+    render('memo');
+  });
+</script>

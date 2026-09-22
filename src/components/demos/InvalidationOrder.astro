@@ -1,0 +1,359 @@
+---
+/**
+ * 서버 캐시와 CDN을 무효화하는 순서 — 단계 진행 + 대조 토글.
+ *
+ * 글(web-cache-nextjs)의 "CDN만 먼저 삭제하면 Next.js가 아직 저장하고 있던 v1으로
+ * 응답을 만들고 CDN이 그 결과를 다시 보관할 수 있습니다"를 보여준다. 두 순서 모두
+ * 다섯 단계이고 요청도 두 번으로 같다. 무효화 두 작업 사이에 요청이 끼어드는지만
+ * 다르다.
+ */
+import Demo from './Demo.astro';
+
+const LAYERS = [
+  { key: 'user', name: '사용자', sub: '받은 응답' },
+  { key: 'cdn', name: 'CloudFront', sub: '엣지 캐시' },
+  { key: 'server', name: 'Next.js', sub: '서버 데이터 캐시' },
+  { key: 'db', name: 'DB', sub: '원본' },
+];
+
+/** 기본 순서(CDN 먼저)의 단계 이름. 스크립트의 ORDERS.cdn과 같다. */
+const STEPS = ['DB 반영', 'CDN 무효화', '사용자 요청', '서버 캐시 만료', '사용자 요청'];
+---
+
+<Demo
+  title="무효화 순서에 따라 CDN에 남는 버전"
+  hint="순서를 고른 뒤 다음을 눌러 한 단계씩 진행합니다."
+  caption="설명용 모형 · 상품 설명 v1이 모든 계층에 저장된 상태에서 시작합니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="무효화 순서">
+      <button class="demo-seg__opt" type="button" data-order="cdn" aria-pressed="true">CDN 먼저</button>
+      <button class="demo-seg__opt" type="button" data-order="server" aria-pressed="false">서버 먼저</button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn" type="button" data-act="prev" disabled>이전</button>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음</button>
+  </Fragment>
+
+  <div class="ivo" data-demo="invalidation-order">
+    <ol class="ivo-steps">
+      {
+        STEPS.map((name, i) => (
+          <li class="ivo-step" data-step={i + 1}>
+            <span class="ivo-step__no">{i + 1}</span>
+            <span data-el="stepName">{name}</span>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="ivo-layers">
+      {
+        LAYERS.map((layer, i) => (
+          <Fragment>
+            {i > 0 && (
+              <span class="ivo-arrow" aria-hidden="true">
+                →
+              </span>
+            )}
+            <div class="ivo-layer" data-layer={layer.key} data-value={layer.key === 'user' ? 'none' : 'v1'}>
+              <span class="ivo-layer__name">{layer.name}</span>
+              <span class="ivo-layer__sub">{layer.sub}</span>
+              <span class="ivo-layer__value" data-el="value">
+                {layer.key === 'user' ? '—' : 'v1'}
+              </span>
+              <span class="ivo-layer__tag" data-el="tag" />
+            </div>
+          </Fragment>
+        ))
+      }
+    </div>
+
+    <p class="ivo-line" data-el="line" aria-live="polite">모든 계층에 v1</p>
+  </div>
+</Demo>
+
+<style>
+  .ivo-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ivo-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem 0.25rem 0.25rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: var(--demo-idle);
+    transition:
+      color 0.16s ease,
+      border-color 0.16s ease;
+  }
+
+  .ivo-step__no {
+    display: inline-grid;
+    place-items: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 9999px;
+    background-color: var(--color-bg-tertiary);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 700;
+  }
+
+  .ivo-step[data-done] {
+    color: var(--color-text-secondary);
+  }
+
+  .ivo-step[data-current] {
+    border-color: var(--demo-a);
+    font-weight: 700;
+    color: var(--demo-a);
+  }
+
+  .ivo-step[data-current] .ivo-step__no {
+    background-color: var(--demo-a-soft);
+  }
+
+  .ivo-layers {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1rem minmax(0, 1fr) 1rem minmax(0, 1fr) 1rem minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .ivo-arrow {
+    display: grid;
+    place-items: center;
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .ivo-layer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.75rem;
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .ivo-layer__name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  .ivo-layer__sub {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .ivo-layer__value {
+    margin-top: 0.375rem;
+    font-family: var(--font-mono);
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+  }
+
+  .ivo-layer__tag {
+    min-height: 1rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  /* 저장된 값이 없는 칸 */
+  .ivo-layer[data-value='none'] {
+    border-style: dashed;
+  }
+
+  .ivo-layer[data-value='none'] .ivo-layer__value {
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .ivo-layer[data-value='v2'] .ivo-layer__value {
+    color: var(--demo-a);
+  }
+
+  /* 이번 단계에서 바뀌거나 요청이 지나간 칸 */
+  .ivo-layer[data-current] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  /* DB가 v2인데 사용자가 v1을 받은 경우 */
+  .ivo-layer[data-stale] {
+    border-color: var(--demo-warn);
+    background-color: var(--demo-warn-soft);
+  }
+
+  .ivo-layer[data-stale] .ivo-layer__value {
+    color: var(--demo-warn);
+  }
+
+  .ivo-line {
+    min-height: 1.5rem;
+    margin: 1rem 0 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  @media (max-width: 34rem) {
+    .ivo-layers {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+
+    .ivo-arrow {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  type Value = 'v1' | 'v2' | 'none';
+  type LayerKey = 'user' | 'cdn' | 'server' | 'db';
+  type Snapshot = {
+    name: string;
+    line: string;
+    values: Record<LayerKey, Value>;
+    /** 이번 단계에서 바뀌거나 요청이 지나간 계층과 그 칸에 붙일 한 줄 */
+    tags: Partial<Record<LayerKey, string>>;
+  };
+
+  const V1: Record<LayerKey, Value> = { user: 'none', cdn: 'v1', server: 'v1', db: 'v1' };
+
+  // 두 순서 모두 요청이 두 번이다. CDN을 먼저 비우면 두 무효화 사이에 들어온
+  // 요청이 서버의 v1으로 CDN을 다시 채운다.
+  const ORDERS: Record<'cdn' | 'server', Snapshot[]> = {
+    cdn: [
+      { name: 'DB 반영', line: 'DB만 v2로 바뀜', values: { ...V1, db: 'v2' }, tags: { db: 'v2 저장' } },
+      { name: 'CDN 무효화', line: 'CDN의 v1 삭제', values: { ...V1, db: 'v2', cdn: 'none' }, tags: { cdn: '삭제' } },
+      {
+        name: '사용자 요청',
+        line: '서버의 v1이 CDN을 다시 채움',
+        values: { user: 'v1', cdn: 'v1', server: 'v1', db: 'v2' },
+        tags: { user: '응답 받음', cdn: 'MISS · v1 저장', server: '적중 · v1' },
+      },
+      {
+        name: '서버 캐시 만료',
+        line: '서버는 비었지만 CDN엔 v1',
+        values: { user: 'v1', cdn: 'v1', server: 'none', db: 'v2' },
+        tags: { server: '태그 만료' },
+      },
+      {
+        name: '사용자 요청',
+        line: 'CDN TTL 동안 계속 v1',
+        values: { user: 'v1', cdn: 'v1', server: 'none', db: 'v2' },
+        tags: { user: '응답 받음', cdn: '적중 · v1' },
+      },
+    ],
+    server: [
+      { name: 'DB 반영', line: 'DB만 v2로 바뀜', values: { ...V1, db: 'v2' }, tags: { db: 'v2 저장' } },
+      {
+        name: '서버 캐시 만료',
+        line: '서버의 v1 만료',
+        values: { ...V1, db: 'v2', server: 'none' },
+        tags: { server: '태그 만료' },
+      },
+      {
+        name: 'CDN 무효화',
+        line: 'CDN의 v1 삭제',
+        values: { user: 'none', cdn: 'none', server: 'none', db: 'v2' },
+        tags: { cdn: '삭제' },
+      },
+      {
+        name: '사용자 요청',
+        line: 'DB의 v2가 모든 계층을 채움',
+        values: { user: 'v2', cdn: 'v2', server: 'v2', db: 'v2' },
+        tags: { user: '응답 받음', cdn: 'MISS · v2 저장', server: 'MISS · v2 저장', db: '조회' },
+      },
+      {
+        name: '사용자 요청',
+        line: 'CDN이 v2로 응답',
+        values: { user: 'v2', cdn: 'v2', server: 'v2', db: 'v2' },
+        tags: { user: '응답 받음', cdn: '적중 · v2' },
+      },
+    ],
+  };
+
+  const EMPTY: Record<LayerKey, string> = { user: '—', cdn: '비어 있음', server: '비어 있음', db: '—' };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="invalidation-order"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    const orderButtons = frame.querySelectorAll<HTMLButtonElement>('[data-order]');
+    const prev = frame.querySelector<HTMLButtonElement>('[data-act="prev"]')!;
+    const next = frame.querySelector<HTMLButtonElement>('[data-act="next"]')!;
+    const chips = root.querySelectorAll<HTMLElement>('[data-step]');
+    const layers = root.querySelectorAll<HTMLElement>('[data-layer]');
+    const line = root.querySelector<HTMLElement>('[data-el="line"]')!;
+
+    let order: 'cdn' | 'server' = 'cdn';
+    /** 0은 시작 상태, 1~5는 ORDERS의 각 단계 */
+    let step = 0;
+
+    const render = () => {
+      const steps = ORDERS[order];
+      const snap = step > 0 ? steps[step - 1] : null;
+      const values = snap?.values ?? V1;
+
+      chips.forEach((chip, i) => {
+        chip.querySelector('[data-el="stepName"]')!.textContent = steps[i].name;
+        chip.toggleAttribute('data-current', i + 1 === step);
+        chip.toggleAttribute('data-done', i + 1 < step);
+      });
+
+      layers.forEach((layer) => {
+        const key = layer.dataset.layer as LayerKey;
+        const value = values[key];
+        const tag = snap?.tags[key] ?? '';
+        layer.dataset.value = value;
+        layer.querySelector('[data-el="value"]')!.textContent = value === 'none' ? EMPTY[key] : value;
+        layer.querySelector('[data-el="tag"]')!.textContent = tag;
+        layer.toggleAttribute('data-current', tag !== '');
+        layer.toggleAttribute('data-stale', key === 'user' && value === 'v1');
+      });
+
+      line.textContent = snap?.line ?? '모든 계층에 v1';
+      prev.disabled = step === 0;
+      next.disabled = step === steps.length;
+      orderButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.order === order)));
+    };
+
+    orderButtons.forEach((b) =>
+      b.addEventListener('click', () => {
+        order = b.dataset.order as 'cdn' | 'server';
+        step = 0;
+        render();
+      }),
+    );
+    prev.addEventListener('click', () => {
+      step = Math.max(0, step - 1);
+      render();
+    });
+    next.addEventListener('click', () => {
+      step = Math.min(ORDERS[order].length, step + 1);
+      render();
+    });
+    render();
+  });
+</script>

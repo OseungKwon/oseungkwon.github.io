@@ -1,0 +1,236 @@
+---
+/**
+ * 캐시 키에 넣는 입력 — 직접 조작.
+ *
+ * 글(web-cache-nextjs)의 "응답이 달라지는 입력은 빠뜨리지 않되 내용과 무관한
+ * 입력은 제외하는 것이 키 설계의 기준입니다"를 보여준다. 같은 네 요청을 두고
+ * 키에 넣을 입력만 바꾼다. 언어를 빼면 다른 언어의 응답이 나가고, utm_source를
+ * 넣으면 같은 내용을 원본에서 다시 가져온다.
+ */
+import Demo from './Demo.astro';
+
+const REQUESTS = [
+  { lang: 'ko', utm: 'insta' },
+  { lang: 'en', utm: 'insta' },
+  { lang: 'ko', utm: 'kakao' },
+  { lang: 'en', utm: 'kakao' },
+];
+---
+
+<Demo
+  title="캐시 키에 어떤 입력을 넣을까"
+  hint="키에 넣을 입력을 켜고 끄면서 네 요청의 결과를 비교합니다."
+  caption="설명용 모형 · 응답 내용은 언어에 따라서만 달라집니다."
+>
+  <Fragment slot="controls">
+    <span class="demo-label">키에 포함</span>
+    <button class="demo-seg__opt ckp-part" type="button" aria-pressed="true" disabled>상품 ID</button>
+    <button class="demo-seg__opt ckp-part" type="button" data-part="lang" aria-pressed="false">언어</button>
+    <button class="demo-seg__opt ckp-part" type="button" data-part="utm" aria-pressed="false">utm_source</button>
+  </Fragment>
+
+  <div class="ckp" data-demo="cache-key-parts">
+    <ol class="ckp-rows">
+      {
+        REQUESTS.map((req, i) => (
+          <li class="ckp-row" data-row={i} data-lang={req.lang} data-utm={req.utm}>
+            <span class="ckp-no">{i + 1}</span>
+            <code class="ckp-req">
+              /products/42?utm_source={req.utm}
+              <span class="ckp-lang">{req.lang}</span>
+            </code>
+            <code class="ckp-key" data-el="key">
+              product:42
+            </code>
+            <span class="ckp-result" data-el="result" data-state="miss">
+              원본 조회
+            </span>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="demo-stats ckp-stats" aria-live="polite">
+      <div class="demo-stat">
+        <span class="demo-stat__value demo-stat__value--accent" data-el="origin">1</span>
+        <span class="demo-stat__label">원본 조회</span>
+      </div>
+      <div class="demo-stat">
+        <span class="demo-stat__value ckp-wrong" data-el="wrong">2</span>
+        <span class="demo-stat__label">다른 언어로 응답</span>
+      </div>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  /* 켜고 끄는 개별 칩. 세그먼트 토글의 선택 스타일을 빌리되 테두리로 칸을 나눈다. */
+  .ckp-part {
+    border: 1px solid var(--color-border-secondary);
+  }
+
+  .ckp-part[aria-pressed='true'] {
+    border-color: var(--demo-a);
+  }
+
+  .ckp-part:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  .ckp-part:focus-visible {
+    outline: 2px solid var(--demo-a);
+    outline-offset: 2px;
+  }
+
+  .ckp-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ckp-row {
+    display: grid;
+    grid-template-columns: 1.25rem minmax(0, 1.3fr) minmax(0, 1fr) 7.5rem;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.625rem;
+    background-color: var(--color-bg-tertiary);
+    font-size: 0.75rem;
+  }
+
+  .ckp-no {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--color-text-tertiary);
+  }
+
+  .ckp-req,
+  .ckp-key {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+  }
+
+  .ckp-req {
+    color: var(--color-text-secondary);
+  }
+
+  .ckp-lang {
+    margin-left: 0.25rem;
+    padding: 0 0.3125rem;
+    border-radius: 0.25rem;
+    background-color: var(--surface-bg);
+    color: var(--color-text-primary);
+  }
+
+  .ckp-key {
+    color: var(--color-text-primary);
+  }
+
+  .ckp-result {
+    justify-self: end;
+    padding: 0.1875rem 0.5rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+  }
+
+  .ckp-result[data-state='hit'] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+    color: var(--demo-a);
+  }
+
+  .ckp-result[data-state='wrong'] {
+    border-color: var(--demo-warn);
+    background-color: var(--demo-warn-soft);
+    color: var(--demo-warn);
+  }
+
+  .ckp-stats {
+    margin-top: 1rem;
+  }
+
+  .ckp-wrong[data-bad] {
+    color: var(--demo-warn);
+  }
+
+  @media (max-width: 34rem) {
+    .ckp-row {
+      grid-template-columns: 1.25rem minmax(0, 1fr);
+      row-gap: 0.25rem;
+    }
+
+    .ckp-key,
+    .ckp-result {
+      grid-column: 2;
+    }
+
+    .ckp-result {
+      justify-self: start;
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-demo="cache-key-parts"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    const parts = frame.querySelectorAll<HTMLButtonElement>('[data-part]');
+    const rows = root.querySelectorAll<HTMLElement>('[data-row]');
+    const on = { lang: false, utm: false };
+
+    const render = () => {
+      /** 캐시 키 → 저장된 응답의 언어 */
+      const store = new Map<string, string>();
+      let origin = 0;
+      let wrong = 0;
+
+      rows.forEach((row) => {
+        const { lang, utm } = row.dataset;
+        const key = ['product:42', on.lang && lang, on.utm && utm].filter(Boolean).join(':');
+        const saved = store.get(key);
+        const result = row.querySelector<HTMLElement>('[data-el="result"]')!;
+        row.querySelector('[data-el="key"]')!.textContent = key;
+
+        if (saved === undefined) {
+          store.set(key, lang!);
+          origin++;
+          result.dataset.state = 'miss';
+          result.textContent = '원본 조회';
+        } else if (saved === lang) {
+          result.dataset.state = 'hit';
+          result.textContent = `적중 · ${saved} 응답`;
+        } else {
+          wrong++;
+          result.dataset.state = 'wrong';
+          result.textContent = `적중 · ${saved} 응답`;
+        }
+      });
+
+      root.querySelector('[data-el="origin"]')!.textContent = String(origin);
+      const wrongEl = root.querySelector<HTMLElement>('[data-el="wrong"]')!;
+      wrongEl.textContent = String(wrong);
+      wrongEl.toggleAttribute('data-bad', wrong > 0);
+      parts.forEach((p) => p.setAttribute('aria-pressed', String(on[p.dataset.part as 'lang' | 'utm'])));
+    };
+
+    parts.forEach((p) =>
+      p.addEventListener('click', () => {
+        const part = p.dataset.part as 'lang' | 'utm';
+        on[part] = !on[part];
+        render();
+      }),
+    );
+    render();
+  });
+</script>

@@ -9,6 +9,9 @@ draft: true
 
 import CacheRequestMap from '@components/demos/CacheRequestMap.astro';
 import HttpCachePolicy from '@components/demos/HttpCachePolicy.astro';
+import ServerCacheScope from '@components/demos/ServerCacheScope.astro';
+import CacheKeyParts from '@components/demos/CacheKeyParts.astro';
+import InvalidationOrder from '@components/demos/InvalidationOrder.astro';
 
 상품 상세 페이지를 열려면 서버에서 상품 정보를 조회하고, 화면을 만들고, 이미지와 코드를 브라우저로 전송해야 합니다. 사용자가 목록으로 돌아갔다가 같은 상품을 다시 열면 이 중 상당수는 조금 전에 했던 작업입니다. 상품 정보와 코드가 바뀌지 않았다면 그 결과를 재사용해 기다리는 시간을 줄일 수 있습니다.
 
@@ -180,6 +183,12 @@ export async function getProduct(id: string) {
 
 같은 `fetch` 옵션이라도 실행 위치를 구분해야 합니다. 브라우저에서 `cache: 'no-store'`는 브라우저 HTTP 캐시를, Next.js 서버에서는 Data Cache 사용을 제어합니다. 서버에서 데이터 캐시를 끈다고 최종 응답의 CDN 캐시나 외부 API의 캐시까지 함께 꺼지지는 않습니다. [Next.js fetch API](https://nextjs.org/docs/app/api-reference/functions/fetch)
 
+Request Memoization과 Data Cache는 모두 같은 조회를 반복하지 않게 하지만, 재사용하는 범위가 다릅니다. 아래에서 두 사용자의 요청이 각각 같은 상품을 세 번 조회할 때, 캐시 방식에 따라 DB까지 가는 호출이 몇 번인지 비교할 수 있습니다.
+
+<ServerCacheScope />
+
+Request Memoization만 사용하면 요청마다 첫 호출은 DB까지 갑니다. 요청 1이 끝나면 메모이즈한 결과도 사라지기 때문입니다. Data Cache를 더하면 요청 2의 첫 호출도 요청 1이 저장한 결과를 받습니다.
+
 ### 화면을 만드는 작업까지 줄이는 Full Route Cache
 
 Data Cache에서 상품 정보를 가져왔어도 서버는 컴포넌트를 렌더링해 응답을 만들어야 합니다. 공개 상품 소개처럼 같은 데이터로 같은 화면을 만든다면, 조회 결과뿐 아니라 완성된 렌더 결과도 재사용할 수 있습니다. 기존 모델의 **Full Route Cache**는 정적 렌더링으로 만든 HTML과 RSC Payload를 저장해 이 작업을 줄입니다.
@@ -263,6 +272,10 @@ product:42:en:USD
 ```
 
 반대로 응답에 영향을 주지 않는 값까지 키에 넣으면 같은 내용이 여러 항목으로 나뉩니다. 유입 경로를 기록하는 `utm_source`가 달라도 상품 내용이 같다면, 이를 모두 구분하는 것은 저장 공간을 늘리고 재사용 기회를 줄입니다. 응답이 달라지는 입력은 빠뜨리지 않되 내용과 무관한 입력은 제외하는 것이 키 설계의 기준입니다. [CloudFront 캐시 키](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/controlling-the-cache-key.html)
+
+아래 네 요청은 언어와 유입 경로만 다릅니다. 키에 넣을 입력을 바꿔 보면, 언어를 빼면 다른 언어의 응답이 나가고 `utm_source`를 넣으면 같은 내용을 원본에서 다시 가져오는 것을 확인할 수 있습니다.
+
+<CacheKeyParts />
 
 HTTP에서는 `Vary`로 URL 외에 응답을 구분할 요청 헤더를 알립니다. `Vary: Accept-Language`가 있다면 언어 헤더에 따라 다른 표현을 제공한다는 뜻입니다. 쿼리 라이브러리의 `queryKey`, 서버 함수의 인수, CDN의 캐시 키는 서로 다른 설정이지만, 모두 응답을 바꾸는 입력을 일관되게 구분해야 합니다.
 
@@ -440,6 +453,10 @@ TanStack Query로 표시한 데이터는 해당 쿼리를 무효화하거나 수
 ### CDN에도 이전 응답이 남아 있을 수 있습니다
 
 서버 데이터를 v2로 바꾸어도 CloudFront에 v1 응답이 남아 있으면 사용자의 요청이 서버에 도달하지 않을 수 있습니다. 반대로 CDN만 먼저 삭제하면 Next.js가 아직 저장하고 있던 v1으로 응답을 만들고 CDN이 그 결과를 다시 보관할 수 있습니다. 따라서 외부 CDN을 운영한다면 DB 반영과 서버 캐시 갱신, CDN 무효화를 하나의 변경 흐름으로 연결해야 합니다.
+
+아래에서 두 순서를 한 단계씩 진행해 보면, CDN을 먼저 비웠을 때 두 작업 사이에 들어온 요청이 서버의 v1으로 CDN을 다시 채우는 과정을 볼 수 있습니다.
+
+<InvalidationOrder />
 
 SWR 방식으로 서버 캐시를 오래된 상태로 표시한 경우에는 첫 요청이 v1을 받을 수도 있으므로, CDN을 다시 채울 때 사용할 새 결과가 준비되었는지도 고려합니다. Next.js의 태그·경로 무효화가 외부 CDN을 자동으로 삭제하지는 않습니다. [Next.js와 CDN 무효화](https://nextjs.org/docs/app/guides/cdn-caching)
 
