@@ -11,6 +11,7 @@ const path = Astro.url.pathname.replace(/\/$/, '');
 const base = BASE.replace(/\/$/, '');
 const isHome = path === base;
 const isTags = path === `${base}/tags` || path.startsWith(`${base}/tags/`);
+const isAlgorithm = path === `${base}/algorithm` || path.startsWith(`${base}/algorithm/`);
 const isAbout = path === `${base}/about`;
 const isContact = path === `${base}/contact`;
 ---
@@ -42,7 +43,7 @@ const isContact = path === `${base}/contact`;
           href={BASE}
           aria-current={isHome ? 'page' : undefined}
           class:list={[
-            'relative isolate rounded-full px-2.5 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
+            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
             isHome ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
           ]}
         >
@@ -52,7 +53,7 @@ const isContact = path === `${base}/contact`;
           href={`${BASE}tags/`}
           aria-current={isTags ? 'page' : undefined}
           class:list={[
-            'relative isolate rounded-full px-2.5 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
+            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
             isTags ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
           ]}
         >
@@ -60,10 +61,21 @@ const isContact = path === `${base}/contact`;
           주제
         </a>
         <a
+          href={`${BASE}algorithm/`}
+          aria-current={isAlgorithm ? 'page' : undefined}
+          class:list={[
+            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
+            isAlgorithm ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
+          ]}
+        >
+          {isAlgorithm && <span class="nav-pill-bg" aria-hidden="true" />}
+          알고리즘
+        </a>
+        <a
           href={`${BASE}about/`}
           aria-current={isAbout ? 'page' : undefined}
           class:list={[
-            'relative isolate rounded-full px-2.5 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
+            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
             isAbout ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
           ]}
         >
@@ -74,7 +86,7 @@ const isContact = path === `${base}/contact`;
           href={`${BASE}contact/`}
           aria-current={isContact ? 'page' : undefined}
           class:list={[
-            'relative isolate rounded-full px-2.5 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
+            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
             isContact ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
           ]}
         >

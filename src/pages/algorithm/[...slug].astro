@@ -1,0 +1,22 @@
+---
+import { render, type CollectionEntry } from 'astro:content';
+import AlgorithmLayout from '../../layouts/AlgorithmLayout.astro';
+import { getAllAlgorithms } from '../../utils/algorithms';
+
+export async function getStaticPaths() {
+  const entries = await getAllAlgorithms();
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: entry,
+  }));
+}
+
+type Props = CollectionEntry<'algorithm'>;
+
+const entry = Astro.props;
+const { Content } = await render(entry);
+---
+
+<AlgorithmLayout entry={entry}>
+  <Content />
+</AlgorithmLayout>

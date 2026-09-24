@@ -1,0 +1,50 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import { getPublishedAlgorithms, groupByFamily, PLATFORM_LABELS } from '../../utils/algorithms';
+
+const groups = groupByFamily(await getPublishedAlgorithms());
+const BASE = import.meta.env.BASE_URL;
+---
+
+<SiteLayout
+  title="알고리즘"
+  description="알고리즘마다 짧은 설명, 대표 문제, 동작을 눈으로 확인하는 시각화를 모았습니다."
+  breadcrumbs={[{ name: '알고리즘', href: '/algorithm/' }]}
+>
+  <section class="pt-7 pb-1 sm:pt-11">
+    <h1 class="max-w-4xl text-[17px] font-semibold leading-[1.6] tracking-tight text-token-primary break-keep sm:text-[19px]">
+      알고리즘마다 대표 문제 하나와, 동작을 눈으로 따라가는 시각화를 붙여 정리합니다
+    </h1>
+  </section>
+
+  {
+    groups.length === 0 && (
+      <p class="mt-10 text-sm text-token-secondary">아직 공개한 항목이 없습니다.</p>
+    )
+  }
+
+  {
+    groups.map((group, index) => (
+      <section class:list={['sm:mt-12', index === 0 ? 'mt-9' : 'mt-10 border-t-[0.5px] border-token-primary pt-6']}>
+        <div class="flex items-baseline gap-3">
+          <h2 class="font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">{group.family}</h2>
+          <span class="font-mono text-xs font-bold text-token-accent">{group.entries.length}</span>
+        </div>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          {group.entries.map((entry) => {
+            const [main] = entry.data.problems;
+            return (
+              <a href={`${BASE}algorithm/${entry.id}/`} class="press surface flex flex-col gap-1.5 rounded-2xl p-4">
+                <span class="text-base font-semibold tracking-tight text-token-primary">{entry.data.title}</span>
+                <span class="line-clamp-2 text-[13px] text-token-secondary break-keep">{entry.data.summary}</span>
+                <span class="mt-1 truncate font-mono text-[11px] text-token-date">
+                  {PLATFORM_LABELS[main.platform]} {main.id} · {main.title}
+                </span>
+              </a>
+            );
+          })}
+        </div>
+      </section>
+    ))
+  }
+</SiteLayout>

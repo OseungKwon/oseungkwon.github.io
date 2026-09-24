@@ -1,0 +1,117 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import SiteLayout from './SiteLayout.astro';
+import { PLATFORM_LABELS } from '../utils/algorithms';
+
+interface Props {
+  entry: CollectionEntry<'algorithm'>;
+}
+
+const { entry } = Astro.props;
+const { title, summary, family, complexity, problems, relatedPost, draft } = entry.data;
+const BASE = import.meta.env.BASE_URL;
+---
+
+<SiteLayout
+  title={`${title} — 알고리즘`}
+  description={summary}
+  article
+  publishedTime={entry.data.pubDate.toISOString()}
+  modifiedTime={entry.data.updatedDate?.toISOString()}
+  breadcrumbs={[
+    { name: '알고리즘', href: '/algorithm/' },
+    { name: title, href: `/algorithm/${entry.id}/` },
+  ]}
+  noindex={draft}
+  container="wide"
+  readingProgress
+>
+  <!-- 코드와 도형을 나란히 두려면 폭이 필요하다. 짧은 글이라 목차 사이드바는 두지 않는다. -->
+  <div class="mx-auto mt-6 max-w-5xl sm:mt-10">
+    <article class="surface algo-sheet rounded-3xl px-5 py-8 sm:px-10 sm:py-12">
+      <a
+        href={`${BASE}algorithm/`}
+        class="press inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-token-nav transition-colors hover:bg-token-hover hover:text-token-primary"
+      >
+        ← 알고리즘 목록
+      </a>
+
+      <div class="mt-6 flex flex-wrap items-center gap-2">
+        <span class="rounded-full bg-token-accent-soft px-2.5 py-1 text-[11px] font-semibold tracking-wider text-token-link">
+          {family}
+        </span>
+        {
+          complexity && (
+            <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">
+              시간 {complexity.time}
+              {complexity.space && <> · 공간 {complexity.space}</>}
+            </span>
+          )
+        }
+      </div>
+
+      <h1 class="mt-4 text-3xl font-bold leading-[1.15] tracking-tight text-token-primary break-keep sm:text-[42px]">
+        {title}
+      </h1>
+      <p class="mt-3 text-lg text-token-secondary break-keep sm:text-xl">{summary}</p>
+
+      <!-- 대표 문제: 본문을 읽기 전에 어떤 문제로 확인하면 되는지부터 보여준다. -->
+      <section class="mt-8" aria-label="대표 문제">
+        <h2 class="mb-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">대표 문제</h2>
+        <ul class="flex flex-col gap-2">
+          {
+            problems.map((problem, index) => (
+              <li>
+                <a
+                  href={problem.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class:list={[
+                    'press flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors',
+                    index === 0 ? 'border-token-accent' : 'border-token-primary hover:border-token-accent',
+                  ]}
+                >
+                  <span class="shrink-0 font-mono text-[11px] font-semibold text-token-link">
+                    {PLATFORM_LABELS[problem.platform]} {problem.id}
+                  </span>
+                  <span class="min-w-0 flex-1 truncate text-[15px] font-semibold text-token-primary">{problem.title}</span>
+                  {problem.difficulty && <span class="shrink-0 font-mono text-[11px] text-token-date">{problem.difficulty}</span>}
+                  <span class="shrink-0 text-token-tertiary" aria-hidden="true">↗</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <div class="prose prose-lg mt-10 max-w-none">
+        <slot />
+      </div>
+
+      {
+        relatedPost && (
+          <div class="mt-10 border-t border-token-primary pt-6">
+            <a href={`${BASE}post/${relatedPost}/`} class="text-sm font-semibold text-token-link hover:underline">
+              이 알고리즘을 더 깊게 다룬 글 →
+            </a>
+          </div>
+        )
+      }
+    </article>
+
+  </div>
+</SiteLayout>
+
+<style>
+  @media (max-width: 639px) {
+    .algo-sheet {
+      /* BlogPostLayout과 같은 풀블리드 처리 */
+      margin-inline: -1rem;
+      margin-block-end: -1.5rem;
+      border-radius: 0;
+      border-inline-width: 0;
+      border-block-end-width: 0;
+      box-shadow: none;
+    }
+  }
+</style>
