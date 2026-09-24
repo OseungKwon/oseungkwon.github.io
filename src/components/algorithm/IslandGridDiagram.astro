@@ -1,0 +1,250 @@
+---
+/**
+ * 격자 DFS의 대표 도형 — 물·땅 칸으로 된 격자 + DFS가 호출한 방향의 화살표(탐색 트리 간선).
+ *
+ * 칸마다 물(0)·땅(1)을 적고, 이미 지운(방문한) 땅에는 몇 번째 섬인지 작은 번호를 붙인다.
+ * 화살표는 "이 칸에서 저 칸을 호출했다"는 뜻이다. 같은 두 칸 사이를 거꾸로 호출하는 경우
+ * (방문 표시가 늦을 때 되돌아 들어가는 호출)는 겹치지 않게 휘어서 그린다.
+ *
+ * 그리기만 맡는다. 단계 진행(IslandFloodFill)과 본문 정적 그림(IslandMap)이 같은 컴포넌트를 쓴다.
+ * 상태는 data-state로 두므로 IslandFloodFill의 스크립트가 단계마다 바꿀 수 있다.
+ */
+interface Props {
+  grid: string[][];
+  /** 칸 상태 (행 우선 순서): water / land / active / stack / done / scan / wrong */
+  cellStates?: string[];
+  /** 칸마다 섬 번호 (땅이 아니면 null). 방문한 칸에만 보인다 */
+  islandIds?: (number | null)[];
+  /** 호출 화살표 [부모, 자식] (칸 번호 = r * cols + c) */
+  edges?: [number, number][];
+  edgeStates?: string[];
+  label: string;
+}
+
+const { grid, cellStates = [], islandIds = [], edges = [], edgeStates = [], label } = Astro.props;
+const rows = grid.length;
+const cols = grid[0].length;
+
+const CELL = 52;
+const GAP = 6;
+const LEFT = 26;
+const TOP = 24;
+const x = (c: number) => LEFT + c * (CELL + GAP);
+const y = (r: number) => TOP + r * (CELL + GAP);
+const cx = (i: number) => x(i % cols) + CELL / 2;
+const cy = (i: number) => y(Math.floor(i / cols)) + CELL / 2;
+const width = LEFT + cols * (CELL + GAP) + 10;
+const height = TOP + rows * (CELL + GAP) + 6;
+
+// 거꾸로 호출(이미 반대 방향 화살표가 있는 쌍)은 휘게 그려 겹치지 않게 한다.
+const seen = new Set<string>();
+const edgePath = ([a, b]: [number, number]) => {
+  const reverse = seen.has(`${b}-${a}`);
+  seen.add(`${a}-${b}`);
+  const x1 = cx(a);
+  const y1 = cy(a);
+  const x2 = cx(b);
+  const y2 = cy(b);
+  // 칸 가장자리에서 끊는다
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  // 정방향은 칸 가장자리에서 끊고, 거꾸로 호출은 칸 안쪽에서 시작해 길고 크게 휘게 한다
+  const k = (reverse ? 14 : CELL / 2 - 6) / len;
+  const sx = x1 + dx * k;
+  const sy = y1 + dy * k;
+  const ex = x2 - dx * k;
+  const ey = y2 - dy * k;
+  if (!reverse) return `M ${sx} ${sy} L ${ex} ${ey}`;
+  // 칸 사이 간격이 좁아 짧게 휘면 정방향 화살표에 묻힌다. 옆으로 크게 돌린다.
+  const bend = 24;
+  const mx = (sx + ex) / 2 + (dy / len) * bend;
+  const my = (sy + ey) / 2 - (dx / len) * bend;
+  return `M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}`;
+};
+const edgePaths = edges.map(edgePath);
+const cells = grid.flatMap((row, r) => row.map((value, c) => ({ value, r, c, i: r * cols + c })));
+---
+
+{/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
+<svg class="ig" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-ig-figure>
+  {/* 행·열 번호 */}
+  {Array.from({ length: cols }, (_, c) => <text class="ig-axis" x={x(c) + CELL / 2} y={TOP - 8} text-anchor="middle">{c}</text>)}
+  {Array.from({ length: rows }, (_, r) => <text class="ig-axis" x={LEFT - 10} y={y(r) + CELL / 2} dy="0.36em" text-anchor="middle">{r}</text>)}
+  {
+    cells.map(({ value, r, c, i }) => (
+      <g class="ig-cell" data-cell={i} data-state={cellStates[i] ?? (value === '1' ? 'land' : 'water')}>
+        <rect x={x(c)} y={y(r)} width={CELL} height={CELL} rx="8" />
+        <text class="ig-value" x={x(c) + CELL / 2} y={y(r) + CELL / 2} dy="0.36em" text-anchor="middle">{value}</text>
+        {islandIds[i] != null && (
+          <text class="ig-badge" x={x(c) + CELL - 8} y={y(r) + 14} text-anchor="end">
+            섬{islandIds[i]}
+          </text>
+        )}
+      </g>
+    ))
+  }
+  {/* 호출 화살표는 칸 위에 그린다 */}
+  {
+    edgePaths.map((d, idx) => (
+      <g class="ig-edge" data-edge={idx} data-state={edgeStates[idx] ?? 'hidden'}>
+        <path d={d} />
+        <circle r="3.5" cx={Number(d.trim().split(' ').at(-2))} cy={Number(d.trim().split(' ').at(-1))} />
+      </g>
+    ))
+  }
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .ig {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  .ig-axis {
+    font-size: 10px;
+    fill: var(--node-idle-text);
+  }
+
+  /* ── 칸 ─────────────────────────────── */
+  .ig-cell rect {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+
+  .ig-value {
+    font-size: 15px;
+    fill: var(--fg);
+  }
+
+  .ig-badge {
+    font-size: 9px;
+    font-weight: 700;
+    fill: var(--done-text);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  /* 물: 흐리게, 점선 */
+  .ig-cell[data-state='water'] rect {
+    fill: transparent;
+    stroke-dasharray: 3 4;
+  }
+
+  .ig-cell[data-state='water'] .ig-value {
+    fill: var(--node-idle-text);
+  }
+
+  /* 아직 가지 않은 땅 */
+  .ig-cell[data-state='land'] rect {
+    stroke: var(--fg-dim);
+  }
+
+  .ig-cell[data-state='land'] .ig-value {
+    font-weight: 700;
+  }
+
+  /* 호출 스택 위의 칸 */
+  .ig-cell[data-state='stack'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  .ig-cell[data-state='stack'] .ig-value {
+    fill: var(--stack-text);
+  }
+
+  /* 지금 칸 */
+  .ig-cell[data-state='active'] rect,
+  .ig-cell[data-state='scan'] rect {
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .ig-cell[data-state='active'] rect {
+    fill: var(--exec-bg);
+  }
+
+  .ig-cell[data-state='active'] .ig-value {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* 지운(방문한) 땅 */
+  .ig-cell[data-state='done'] rect,
+  .ig-cell[data-state='scan'] rect {
+    fill: var(--done-fill);
+  }
+
+  .ig-cell[data-state='done'] rect {
+    stroke: var(--done-line);
+  }
+
+  .ig-cell[data-state='done'] .ig-value,
+  .ig-cell[data-state='scan'] .ig-value {
+    fill: var(--done-text);
+  }
+
+  .ig-cell[data-state='done'] .ig-badge,
+  .ig-cell[data-state='scan'] .ig-badge,
+  .ig-cell[data-state='stack'] .ig-badge,
+  .ig-cell[data-state='active'] .ig-badge {
+    opacity: 1;
+  }
+
+  /* 다시 들어간 칸 */
+  .ig-cell[data-state='wrong'] rect {
+    fill: var(--removed-bg);
+    stroke: var(--removed);
+    stroke-width: 2;
+    stroke-dasharray: 5 3;
+  }
+
+  .ig-cell[data-state='wrong'] .ig-value {
+    fill: var(--removed);
+    font-weight: 700;
+  }
+
+  /* ── 호출 화살표 ───────────────────── */
+  .ig-edge path {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+
+  .ig-edge[data-state='hidden'] {
+    opacity: 0;
+  }
+
+  .ig-edge[data-state='stack'] path {
+    stroke: var(--stack);
+  }
+
+  .ig-edge[data-state='stack'] circle {
+    fill: var(--stack);
+  }
+
+  .ig-edge[data-state='done'] path {
+    stroke: var(--done-line);
+  }
+
+  .ig-edge[data-state='done'] circle {
+    fill: var(--done-line);
+  }
+
+  .ig-edge[data-state='wrong'] path {
+    stroke: var(--removed);
+    stroke-dasharray: 5 4;
+  }
+
+  .ig-edge[data-state='wrong'] circle {
+    fill: var(--removed);
+  }
+</style>

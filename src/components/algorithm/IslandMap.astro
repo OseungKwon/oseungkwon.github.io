@@ -1,0 +1,49 @@
+---
+/**
+ * 본문용 정적 그림: 격자와 섬 번호.
+ *
+ *   <IslandMap grid={[['1','1','0'], ['0','1','0'], ['0','0','1']]} />
+ *
+ * 상하좌우로 이어진 땅을 한 섬으로 묶어 칸마다 섬 번호를 붙인다. 도형은 단계 진행(IslandFloodFill)과
+ * 같은 IslandGridDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import IslandGridDiagram from './IslandGridDiagram.astro';
+
+interface Props {
+  grid: string[][];
+  caption?: string;
+}
+
+const { grid, caption } = Astro.props;
+const rows = grid.length;
+const cols = grid[0].length;
+
+// 상하좌우로 이어진 땅에 같은 섬 번호를 붙인다
+const ids: (number | null)[] = Array(rows * cols).fill(null);
+let count = 0;
+for (let r = 0; r < rows; r++) {
+  for (let c = 0; c < cols; c++) {
+    if (grid[r][c] !== '1' || ids[r * cols + c] !== null) continue;
+    count++;
+    const queue: [number, number][] = [[r, c]];
+    ids[r * cols + c] = count;
+    while (queue.length) {
+      const [y, x] = queue.shift()!;
+      for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ny = y + dy;
+        const nx = x + dx;
+        if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) continue;
+        if (grid[ny][nx] !== '1' || ids[ny * cols + nx] !== null) continue;
+        ids[ny * cols + nx] = count;
+        queue.push([ny, nx]);
+      }
+    }
+  }
+}
+const cellStates = grid.flat().map((v) => (v === '1' ? 'done' : 'water'));
+---
+
+<StaticFigure title={`격자 ${rows}×${cols} · 섬 ${count}개`} caption={caption}>
+  <IslandGridDiagram grid={grid} cellStates={cellStates} islandIds={ids} label={`${rows}행 ${cols}열 격자에 섬 ${count}개`} />
+</StaticFigure>
