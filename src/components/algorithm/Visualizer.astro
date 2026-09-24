@@ -29,15 +29,22 @@ interface Mode {
   label: string;
 }
 
+/** 창 아래 범례. 색이 무엇을 뜻하는지 본문을 읽지 않아도 알 수 있게 한다 */
+interface LegendItem {
+  state: 'active' | 'stack' | 'answer' | 'done' | 'idle';
+  label: string;
+}
+
 interface Props {
   modes: Mode[];
+  legend?: LegendItem[];
   steps: Record<string, { note: string }[]>;
   /** 창 제목 = 대표 도형 이름 */
   title: string;
   caption?: string;
 }
 
-const { modes, steps, title, caption } = Astro.props;
+const { modes, steps, title, caption, legend = [] } = Astro.props;
 const first = steps[modes[0].id][0];
 const total = steps[modes[0].id].length;
 ---
@@ -102,6 +109,19 @@ const total = steps[modes[0].id].length;
     </div>
 
     <p class="viz-note" data-el="note" aria-live="polite">{first.note}</p>
+
+    {
+      legend.length > 0 && (
+        <ul class="viz-legend" aria-label="색이 뜻하는 것">
+          {legend.map((item) => (
+            <li>
+              <span class="viz-swatch" data-state={item.state} aria-hidden="true" />
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      )
+    }
   </div>
 
   {caption && <figcaption class="viz-caption">{caption}</figcaption>}
@@ -528,6 +548,58 @@ const total = steps[modes[0].id].length;
   .viz-note::before {
     content: '› ';
     color: var(--exec);
+  }
+
+  /* 범례: 도형의 상태 색과 같은 모양의 작은 원 */
+  .viz-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem 1.125rem;
+    margin: 0;
+    padding: 0.625rem 1rem 0.75rem;
+    border-top: 1px solid var(--line);
+    list-style: none;
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+    background: var(--bg-side);
+  }
+
+  .viz-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+  }
+
+  .viz-swatch {
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 1.5px solid var(--node-line);
+    border-radius: 50%;
+    background: var(--node-bg);
+  }
+
+  .viz-swatch[data-state='idle'] {
+    border-style: dashed;
+  }
+
+  .viz-swatch[data-state='active'] {
+    border: 2px solid var(--exec);
+    background: var(--exec-bg);
+  }
+
+  .viz-swatch[data-state='stack'] {
+    border: 2px solid var(--stack);
+    background: var(--stack-soft);
+  }
+
+  .viz-swatch[data-state='answer'] {
+    border-color: var(--answer);
+    background: var(--answer-soft);
+  }
+
+  .viz-swatch[data-state='done'] {
+    border-color: var(--done-line);
+    background: var(--done-fill);
   }
 
   .viz-caption {
