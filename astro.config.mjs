@@ -52,6 +52,10 @@ export default defineConfig({
   // 모든 페이지 URL을 끝 슬래시(/post/slug/)로 통일한다.
   // canonical·sitemap·RSS 링크가 일치해야 중복 색인을 피할 수 있다.
   trailingSlash: 'always',
+  // 주제 색인은 홈 하단으로 옮겼다. 예전 주소로 들어와도 홈으로 보낸다.
+  redirects: {
+    '/tags/': '/#topics',
+  },
 
   // 모바일에는 hover가 없어 hover 전략은 데스크톱에서만 동작한다.
   // viewport 전략은 링크가 화면에 300ms 머물면 미리 받으므로, 손가락이

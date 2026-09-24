@@ -26,7 +26,7 @@ const description = `${name} 주제로 쓴 글 ${posts.length}편. ${posts
 <SiteLayout
   title={`${name} 글 모음`}
   description={description}
-  breadcrumbs={[{ name: '주제별 글', href: '/tags/' }, { name, href: `/tags/${Astro.params.tag}/` }]}
+  breadcrumbs={[{ name, href: `/tags/${Astro.params.tag}/` }]}
   noindex={!indexable}
 >
   <section class="pt-7 pb-1 sm:pt-11">
@@ -58,7 +58,7 @@ const description = `${name} 주제로 쓴 글 ${posts.length}편. ${posts
   </div>
 
   <div class="mt-10 border-t-[0.5px] border-token-primary pt-6 sm:mt-14">
-    <a href="/tags/" class="press inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-token-nav transition-colors hover:bg-token-hover hover:text-token-primary">
+    <a href="/#topics" class="press inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-token-nav transition-colors hover:bg-token-hover hover:text-token-primary">
       ← 다른 주제 보기
     </a>
   </div>

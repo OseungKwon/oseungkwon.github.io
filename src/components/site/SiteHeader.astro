@@ -9,8 +9,8 @@ const { container = 'default' } = Astro.props;
 const BASE = import.meta.env.BASE_URL;
 const path = Astro.url.pathname.replace(/\/$/, '');
 const base = BASE.replace(/\/$/, '');
-const isHome = path === base;
-const isTags = path === `${base}/tags` || path.startsWith(`${base}/tags/`);
+// 홈이 글 목록과 주제 색인을 함께 보여주므로, 태그별 글 목록도 Post 탭에 속한다.
+const isPost = path === base || path.startsWith(`${base}/tags/`);
 const isAlgorithm = path === `${base}/algorithm` || path.startsWith(`${base}/algorithm/`);
 const isAbout = path === `${base}/about`;
 ---
@@ -40,24 +40,14 @@ const isAbout = path === `${base}/about`;
       <div class="flex items-center gap-0.5 sm:gap-1">
         <a
           href={BASE}
-          aria-current={isHome ? 'page' : undefined}
+          aria-current={isPost ? 'page' : undefined}
           class:list={[
             'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
-            isHome ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
+            isPost ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
           ]}
         >
-          {isHome && <span class="nav-pill-bg" aria-hidden="true" />}홈
-        </a>
-        <a
-          href={`${BASE}tags/`}
-          aria-current={isTags ? 'page' : undefined}
-          class:list={[
-            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
-            isTags ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
-          ]}
-        >
-          {isTags && <span class="nav-pill-bg" aria-hidden="true" />}
-          주제
+          {isPost && <span class="nav-pill-bg" aria-hidden="true" />}
+          Post
         </a>
         <a
           href={`${BASE}algorithm/`}
@@ -68,7 +58,7 @@ const isAbout = path === `${base}/about`;
           ]}
         >
           {isAlgorithm && <span class="nav-pill-bg" aria-hidden="true" />}
-          알고리즘
+          Algorithm
         </a>
         <a
           href={`${BASE}about/`}
