@@ -25,6 +25,22 @@ function rehypeTableWrapper() {
   return (tree) => wrap(tree);
 }
 
+// 본문 링크는 새 탭으로 연다. 참고 문서를 확인하고 돌아올 때 읽던 위치를 잃지 않게 한다.
+// 같은 글 안의 앵커(#...)는 제자리 이동이므로 제외한다.
+function rehypeLinkNewTab() {
+  const visit = (node) => {
+    if (node.type === 'element' && node.tagName === 'a') {
+      const href = String(node.properties?.href ?? '');
+      if (href && !href.startsWith('#')) {
+        node.properties.target = '_blank';
+        node.properties.rel = ['noopener', 'noreferrer'];
+      }
+    }
+    node.children?.forEach(visit);
+  };
+  return (tree) => visit(tree);
+}
+
 // https://astro.build/config
 export default defineConfig({
   // GitHub Pages 배포를 위한 설정
@@ -51,7 +67,7 @@ export default defineConfig({
   },
   integrations: [mdx()],
   markdown: {
-    rehypePlugins: [rehypeTableWrapper],
+    rehypePlugins: [rehypeTableWrapper, rehypeLinkNewTab],
   },
   vite: {
     plugins: [tailwindcss()],
