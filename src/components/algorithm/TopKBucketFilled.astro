@@ -1,10 +1,10 @@
 ---
 /**
- * 본문용 정적 그림: 모든 값을 빈도 번호의 통에 넣은 뒤의 모습.
+ * 본문용 정적 그림: 모든 값을 빈도 번호의 버킷에 넣은 뒤의 모습.
  *
  *   <TopKBucketFilled nums={[1, 1, 1, 2, 2, 3]} focus={1} />
  *
- * focus 값이 있으면 그 값인 칸들과 통 안의 그 값을 같은 파랑으로 칠해 "3번 나왔으니 3번 통"을 보인다.
+ * focus 값이 있으면 그 값인 칸들과 버킷 안의 그 값을 같은 파랑으로 칠해 "3번 나왔으니 3번 버킷"을 보인다.
  * 도형은 단계 진행(TopKBucketWalk)과 같은 TopKBucketDiagram이다.
  */
 import StaticFigure from './StaticFigure.astro';
@@ -27,11 +27,11 @@ const cellStates = nums.map((x) => (x === focus ? 'stack' : 'idle'));
 const tileStates = values.map((x) => (x === focus ? 'active' : 'idle'));
 ---
 
-<StaticFigure title={`빈도별 통 · nums = [${nums.join(', ')}]`} caption={caption}>
+<StaticFigure title={`빈도별 버킷 · nums = [${nums.join(', ')}]`} caption={caption}>
   <TopKBucketDiagram
     nums={nums}
     cellStates={cellStates}
     tileStates={tileStates}
-    label={`nums = [${nums.join(', ')}]의 값을 빈도 번호의 통에 넣은 그림. ${values.map((x) => `${x}${topic(x)} ${counts.get(x)}번 통`).join(', ')}`}
+    label={`nums = [${nums.join(', ')}]의 값을 빈도 번호의 버킷에 넣은 그림. ${values.map((x) => `${x}${topic(x)} ${counts.get(x)}번 버킷`).join(', ')}`}
   />
 </StaticFigure>

@@ -28,7 +28,7 @@ const [left, right] = nodes[scene.node].children.map((c) => nodes[c].sorted);
 const gwa = '2459'.includes(String(left.at(-1)).at(-1)!) ? '와' : '과';
 ---
 
-<StaticFigure title={`두 줄 합치기 · ${arr(left)}${gwa} ${arr(right)}`} caption={caption}>
+<StaticFigure title={`두 배열 합치기 · ${arr(left)}${gwa} ${arr(right)}`} caption={caption}>
   <MergeSortDiagram
     nums={nums}
     cellStates={[...scene.cells].map((c) => CELL_STATES[c])}

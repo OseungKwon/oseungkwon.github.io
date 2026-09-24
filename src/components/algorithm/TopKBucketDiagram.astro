@@ -1,12 +1,12 @@
 ---
 /**
- * 버킷 정렬의 대표 도형 — 입력 칸 줄(nums) + 빈도를 번호로 쓰는 통 줄(buckets).
+ * 버킷 정렬의 대표 도형 — 입력 칸 줄(nums) + 빈도를 번호로 쓰는 버킷 줄(buckets).
  *
- * 통 i에는 "정확히 i번 나온 값"이 들어간다. 빈도는 1 이상 nums.length 이하라서 통은 0번부터
- * n번까지 n + 1개면 모자라지 않는다. 값끼리 비교하지 않고 빈도만으로 들어갈 통이 정해지는 것이
- * 이 도형이 보여 주려는 점이다. 0번 통은 늘 비어 있지만 풀이 코드의 배열 길이(n + 1)와 맞추려고 그린다.
+ * 버킷 i에는 "정확히 i번 나온 값"이 들어간다. 빈도는 1 이상 nums.length 이하라서 버킷은 0번부터
+ * n번까지 n + 1개면 모자라지 않는다. 값끼리 비교하지 않고 빈도만으로 들어갈 버킷이 정해지는 것이
+ * 이 도형이 보여 주려는 점이다. 0번 버킷은 늘 비어 있지만 풀이 코드의 배열 길이(n + 1)와 맞추려고 그린다.
  *
- * 통 안의 값 타일은 풀이와 같은 순서(빈도표에 처음 나온 순서)로 쌓는다. 그리기만 맡는다.
+ * 버킷 안의 값 타일은 풀이와 같은 순서(빈도표에 처음 나온 순서)로 쌓는다. 그리기만 맡는다.
  * 단계 진행(TopKBucketWalk)과 본문 정적 그림(TopKBucketFilled)이 같은 컴포넌트를 쓰고,
  * 상태는 data-state로 두므로 TopKBucketWalk의 스크립트가 단계마다 바꿀 수 있다.
  */
@@ -16,7 +16,7 @@ interface Props {
   cellStates?: string[];
   /** 값 타일 상태 (빈도표에 처음 나온 순서): hidden / active / idle / answer */
   tileStates?: string[];
-  /** 통 상태 (0..n): idle / active / done */
+  /** 버킷 상태 (0..n): idle / active / done */
   bucketStates?: string[];
   label: string;
 }
@@ -24,7 +24,7 @@ interface Props {
 const { nums, cellStates = [], tileStates = [], bucketStates = [], label } = Astro.props;
 const n = nums.length;
 
-// 풀이와 같은 계산으로 빈도와 통 안의 자리를 정한다
+// 풀이와 같은 계산으로 빈도와 버킷 안의 자리를 정한다
 const counts = new Map<number, number>();
 for (const num of nums) counts.set(num, (counts.get(num) ?? 0) + 1);
 const fill = Array.from({ length: n + 1 }, () => 0);
@@ -45,7 +45,7 @@ const center = (col: number) => colX(col) + CELL / 2;
 const width = LEFT + (n + 1) * (CELL + GAP) + 4;
 const height = BUCKET_Y + BUCKET_H + 28;
 
-// 위가 열린 통: 왼쪽 벽 → 둥근 바닥 → 오른쪽 벽. 채움은 열린 경로도 닫아서 칠한다.
+// 위가 열린 버킷: 왼쪽 벽 → 둥근 바닥 → 오른쪽 벽. 채움은 열린 경로도 닫아서 칠한다.
 const R = 7;
 const bucketPath = (col: number) => {
   const x = colX(col);
@@ -74,7 +74,7 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     ))
   }
 
-  {/* 통: 번호가 곧 빈도 */}
+  {/* 버킷: 번호가 곧 빈도 */}
   {
     Array.from({ length: n + 1 }, (_, i) => (
       <g class="tk-bucket" data-bucket={i} data-state={bucketStates[i] ?? 'idle'}>
@@ -84,7 +84,7 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     ))
   }
 
-  {/* 통에 들어간 값 */}
+  {/* 버킷에 들어간 값 */}
   {
     tiles.map((tile, t) => (
       <g class="tk-tile" data-tile={t} data-state={tileStates[t] ?? 'hidden'}>
@@ -156,7 +156,7 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     fill: var(--done-text);
   }
 
-  /* 지금 통에 넣는 값과 같은 칸들 */
+  /* 지금 버킷에 넣는 값과 같은 칸들 */
   .tk-cell[data-state='stack'] rect {
     fill: var(--stack-soft);
     stroke: var(--stack);
@@ -179,7 +179,7 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     font-weight: 700;
   }
 
-  /* ── 통 ─────────────────────────────── */
+  /* ── 버킷 ─────────────────────────────── */
   .tk-bucket path {
     fill: var(--bg-side);
     stroke: var(--node-line);
@@ -199,7 +199,7 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     font-weight: 700;
   }
 
-  /* 살펴보고 지나간 통 */
+  /* 살펴보고 지나간 버킷 */
   .tk-bucket[data-state='done'] path {
     fill: var(--done-fill);
     stroke: var(--done-line);
@@ -222,7 +222,7 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     opacity: 0;
   }
 
-  /* 방금 통에 넣은 값 */
+  /* 방금 버킷에 넣은 값 */
   .tk-tile[data-state='active'] rect {
     fill: var(--stack-soft);
     stroke: var(--stack);

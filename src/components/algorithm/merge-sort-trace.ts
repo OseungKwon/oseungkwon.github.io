@@ -35,9 +35,9 @@ export interface MsStep {
 
 /**
  * 칸 상태 코드
- * i 아직 나누지 않음(받은 값을 흐리게) / c 나눠 두고 기다림 / a 지금 나누는 줄
+ * i 아직 나누지 않음(받은 값을 흐리게) / c 나눠 두고 기다림 / a 지금 나누는 배열
  * b 합칠 자리(빈칸) / p 이번 합치기에서 앞서 채운 칸 / n 방금 채운 칸
- * h 비교하는 맨 앞 칸 / t 이미 옮긴 칸 / d 정렬을 마친 줄 / w 최종 결과
+ * h 비교하는 맨 앞 칸 / t 이미 옮긴 칸 / d 정렬을 마친 배열 / w 최종 결과
  */
 export const CELL_STATES: Record<string, string> = {
   i: 'idle',
@@ -151,7 +151,7 @@ export function trace(nums: number[]) {
     const [L, R] = node.children.map((c) => nodes[c]);
     const leaves = [L, R].filter((c) => c.children.length === 0);
 
-    // ① 나누기. 두 절반이 나눠져 기다리는 줄이 되고, 한 칸짜리 절반은 호출되자마자 그대로
+    // ① 나누기. 두 절반이 나눠져 기다리는 배열이 되고, 한 칸짜리 절반은 호출되자마자 그대로
     // 돌아오므로 같은 단계에서 끝난 것으로 보인다.
     status[id] = 'called';
     [L, R].forEach((c) => (status[c.id] = c.children.length === 0 ? 'done' : 'called'));
@@ -200,7 +200,7 @@ export function trace(nums: number[]) {
         kind: 'merge',
         node: id,
         mid: null,
-        // 옮긴 뒤의 i·j (남은 칸까지 붙였다면 줄 끝)
+        // 옮긴 뒤의 i·j (남은 칸까지 붙였다면 배열 끝)
         i: complete ? left.length : i,
         j: complete ? right.length : j,
         ret: complete ? [...result] : null,
@@ -219,8 +219,8 @@ export function trace(nums: number[]) {
 
   const sorted = sort(0);
 
-  // 끝 장면: 강조를 걷고 맨 위 줄을 최종 결과로 칠한다.
-  snap(`맨 위 줄이 ${arr(sorted)}${ro(sorted)} 정렬됐습니다`, { final: true }, {
+  // 끝 장면: 강조를 걷고 맨 위 배열을 최종 결과로 칠한다.
+  snap(`맨 위 배열이 ${arr(sorted)}${ro(sorted)} 정렬됐습니다`, { final: true }, {
     kind: 'end',
     node: 0,
     mid: null,

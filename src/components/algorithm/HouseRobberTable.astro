@@ -1,6 +1,6 @@
 ---
 /**
- * 동적 계획법 — 집도둑(LeetCode 198)의 1차원 dp 표.
+ * 동적 계획법 — 집도둑(LeetCode 198)의 1차원 dp 테이블.
  *
  * 대표 도형은 dp 표다(그리기는 DpTableDiagram). 집을 왼쪽부터 보며 dp[i]를 채운다.
  *
@@ -9,7 +9,7 @@
  *   거꾸로 따라가기 → 끝 칸에서 털기를 고른 칸만 거슬러 올라가 실제로 턴 집을 표시한다
  *
  * 변수 패널은 풀이 코드의 prev2·prev1·cur다. dp[i]가 읽는 칸이 i-2와 i-1 두 개뿐이라
- * 배열 없이 변수 두 개로 굴릴 수 있다는 것이 표 위에서 보인다.
+ * 배열 없이 변수 두 개로 굴릴 수 있다는 것이 테이블 위에서 보인다.
  *
  * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
  */
@@ -161,7 +161,7 @@ const CELL: Record<string, string> = { g: 'ghost', i: 'idle', q: 'pending', a: '
 <Visualizer
   modes={[{ id: 'main', label: '기본' }]}
   steps={{ main: steps }}
-  title={`dp 표 · nums = [${nums.join(', ')}]`}
+  title={`dp 테이블 · nums = [${nums.join(', ')}]`}
   caption="LeetCode 198 예제 2. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
   legend={[
     { state: 'active', label: '지금 채우는 칸' },
@@ -198,7 +198,7 @@ const CELL: Record<string, string> = { g: 'ghost', i: 'idle', q: 'pending', a: '
       houseStates={[...first.houses].map((c) => HOUSE[c])}
       cellStates={[...first.cells].map((c) => CELL[c])}
       arcLabels={labels}
-      label={`nums = [${nums.join(', ')}]의 dp 표`}
+      label={`nums = [${nums.join(', ')}]의 dp 테이블`}
     />
   </Fragment>
 </Visualizer>
