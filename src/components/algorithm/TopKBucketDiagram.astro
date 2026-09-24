@@ -1,0 +1,247 @@
+---
+/**
+ * 버킷 정렬의 대표 도형 — 입력 칸 줄(nums) + 빈도를 번호로 쓰는 통 줄(buckets).
+ *
+ * 통 i에는 "정확히 i번 나온 값"이 들어간다. 빈도는 1 이상 nums.length 이하라서 통은 0번부터
+ * n번까지 n + 1개면 모자라지 않는다. 값끼리 비교하지 않고 빈도만으로 들어갈 통이 정해지는 것이
+ * 이 도형이 보여 주려는 점이다. 0번 통은 늘 비어 있지만 풀이 코드의 배열 길이(n + 1)와 맞추려고 그린다.
+ *
+ * 통 안의 값 타일은 풀이와 같은 순서(빈도표에 처음 나온 순서)로 쌓는다. 그리기만 맡는다.
+ * 단계 진행(TopKBucketWalk)과 본문 정적 그림(TopKBucketFilled)이 같은 컴포넌트를 쓰고,
+ * 상태는 data-state로 두므로 TopKBucketWalk의 스크립트가 단계마다 바꿀 수 있다.
+ */
+interface Props {
+  nums: number[];
+  /** nums 칸 상태: idle / active / done / stack / answer */
+  cellStates?: string[];
+  /** 값 타일 상태 (빈도표에 처음 나온 순서): hidden / active / idle / answer */
+  tileStates?: string[];
+  /** 통 상태 (0..n): idle / active / done */
+  bucketStates?: string[];
+  label: string;
+}
+
+const { nums, cellStates = [], tileStates = [], bucketStates = [], label } = Astro.props;
+const n = nums.length;
+
+// 풀이와 같은 계산으로 빈도와 통 안의 자리를 정한다
+const counts = new Map<number, number>();
+for (const num of nums) counts.set(num, (counts.get(num) ?? 0) + 1);
+const fill = Array.from({ length: n + 1 }, () => 0);
+const tiles = [...counts].map(([value, count]) => ({ value, bucket: count, slot: fill[count]++ }));
+const capacity = Math.max(2, ...fill);
+
+const CELL = 44;
+const GAP = 8;
+const LEFT = 64;
+const NUM_Y = 24;
+const TILE_W = 34;
+const TILE_H = 26;
+const TILE_GAP = 4;
+const BUCKET_Y = NUM_Y + CELL + 42;
+const BUCKET_H = capacity * (TILE_H + TILE_GAP) + 8;
+const colX = (col: number) => LEFT + col * (CELL + GAP);
+const center = (col: number) => colX(col) + CELL / 2;
+const width = LEFT + (n + 1) * (CELL + GAP) + 4;
+const height = BUCKET_Y + BUCKET_H + 28;
+
+// 위가 열린 통: 왼쪽 벽 → 둥근 바닥 → 오른쪽 벽. 채움은 열린 경로도 닫아서 칠한다.
+const R = 7;
+const bucketPath = (col: number) => {
+  const x = colX(col);
+  const y = BUCKET_Y;
+  const b = BUCKET_Y + BUCKET_H;
+  return `M ${x} ${y} V ${b - R} Q ${x} ${b} ${x + R} ${b} H ${x + CELL - R} Q ${x + CELL} ${b} ${x + CELL} ${b - R} V ${y}`;
+};
+const tileX = (bucket: number) => colX(bucket) + (CELL - TILE_W) / 2;
+const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H + TILE_GAP) + TILE_GAP;
+---
+
+{/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
+<svg class="tk" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-tk-figure>
+  <text class="tk-row" x={LEFT - 12} y={NUM_Y + CELL / 2} dy="0.36em" text-anchor="end">nums</text>
+  <text class="tk-row" x={LEFT - 12} y={BUCKET_Y + BUCKET_H / 2} dy="0.36em" text-anchor="end">buckets</text>
+  <text class="tk-row tk-row--sub" x={LEFT - 12} y={BUCKET_Y + BUCKET_H + 18} text-anchor="end">빈도</text>
+
+  {/* 입력 칸 */}
+  {
+    nums.map((value, i) => (
+      <g class="tk-cell" data-cell={i} data-state={cellStates[i] ?? 'idle'}>
+        <rect x={colX(i)} y={NUM_Y} width={CELL} height={CELL} rx="8" />
+        <text class="tk-value" x={center(i)} y={NUM_Y + CELL / 2} dy="0.36em" text-anchor="middle">{value}</text>
+        <text class="tk-index" x={center(i)} y={NUM_Y - 8} text-anchor="middle">{i}</text>
+      </g>
+    ))
+  }
+
+  {/* 통: 번호가 곧 빈도 */}
+  {
+    Array.from({ length: n + 1 }, (_, i) => (
+      <g class="tk-bucket" data-bucket={i} data-state={bucketStates[i] ?? 'idle'}>
+        <path d={bucketPath(i)} />
+        <text class="tk-bucket-index" x={center(i)} y={BUCKET_Y + BUCKET_H + 18} text-anchor="middle">{i}</text>
+      </g>
+    ))
+  }
+
+  {/* 통에 들어간 값 */}
+  {
+    tiles.map((tile, t) => (
+      <g class="tk-tile" data-tile={t} data-state={tileStates[t] ?? 'hidden'}>
+        <rect x={tileX(tile.bucket)} y={tileY(tile.slot)} width={TILE_W} height={TILE_H} rx="6" />
+        <text class="tk-value" x={center(tile.bucket)} y={tileY(tile.slot) + TILE_H / 2} dy="0.36em" text-anchor="middle">{tile.value}</text>
+      </g>
+    ))
+  }
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .tk {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  .tk-row {
+    font-size: 11px;
+    fill: var(--fg-dim);
+  }
+
+  .tk-row--sub {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    fill: var(--node-idle-text);
+  }
+
+  .tk-index,
+  .tk-bucket-index {
+    font-size: 10px;
+    fill: var(--node-idle-text);
+  }
+
+  .tk-value {
+    font-size: 15px;
+    fill: var(--fg);
+    transition: fill 0.25s;
+  }
+
+  /* ── 입력 칸 ─────────────────────────── */
+  .tk-cell rect {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+
+  .tk-cell[data-state='active'] rect {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .tk-cell[data-state='active'] .tk-value {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  .tk-cell[data-state='done'] rect {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+  }
+
+  .tk-cell[data-state='done'] .tk-value {
+    fill: var(--done-text);
+  }
+
+  /* 지금 통에 넣는 값과 같은 칸들 */
+  .tk-cell[data-state='stack'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  .tk-cell[data-state='stack'] .tk-value {
+    fill: var(--stack-text);
+    font-weight: 700;
+  }
+
+  .tk-cell[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2;
+  }
+
+  .tk-cell[data-state='answer'] .tk-value {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+
+  /* ── 통 ─────────────────────────────── */
+  .tk-bucket path {
+    fill: var(--bg-side);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+
+  .tk-bucket[data-state='active'] path {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .tk-bucket[data-state='active'] .tk-bucket-index {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* 살펴보고 지나간 통 */
+  .tk-bucket[data-state='done'] path {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+    stroke-dasharray: 3 3;
+  }
+
+  .tk-bucket[data-state='done'] .tk-bucket-index {
+    fill: var(--done-text);
+  }
+
+  /* ── 값 타일 ─────────────────────────── */
+  .tk-tile rect {
+    fill: var(--node-bg);
+    stroke: var(--fg-dim);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s, opacity 0.2s;
+  }
+
+  .tk-tile[data-state='hidden'] {
+    opacity: 0;
+  }
+
+  /* 방금 통에 넣은 값 */
+  .tk-tile[data-state='active'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  .tk-tile[data-state='active'] .tk-value {
+    fill: var(--stack-text);
+    font-weight: 700;
+  }
+
+  .tk-tile[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2;
+  }
+
+  .tk-tile[data-state='answer'] .tk-value {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+</style>

@@ -1,0 +1,349 @@
+---
+/**
+ * 버킷 정렬 — 가장 많이 나온 k개 값 찾기(LeetCode 347).
+ *
+ * 대표 도형은 "빈도를 번호로 쓰는 통 줄"이다(그리기는 TopKBucketDiagram).
+ *
+ *   세기       → nums 칸을 하나씩 보며 counts의 횟수를 올린다
+ *   통에 넣기  → 값마다 빈도와 같은 번호의 통에 넣는다 (같은 값인 칸들이 파랗게)
+ *   거꾸로 보기 → 번호가 큰 통부터 내려오며 값을 꺼내 result에 담고, k개가 차면 멈춘다
+ *
+ * 비어 있는 통을 연달아 지나가는 일은 한 단계로 묶는다.
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import TopKBucketDiagram from './TopKBucketDiagram.astro';
+
+// LeetCode 347 예제 1
+const nums = [1, 1, 1, 2, 2, 3];
+const k = 2;
+const n = nums.length;
+
+// 칸: i 아직 / a 지금 세는 칸 / d 센 칸 / s 지금 통에 넣는 값 / w 답인 값
+// 타일(빈도표에 처음 나온 순서): h 아직 / a 방금 넣음 / i 통 안 / w 꺼내 담음
+// 통: i 아직 / a 지금 보는 통 / d 지나간 통
+interface Step {
+  note: string;
+  cells: string;
+  tiles: string;
+  buckets: string;
+  counts: [number, number][];
+  changedKey?: number;
+  dropKey?: number;
+  result: number[];
+  resultChanged?: boolean;
+}
+
+const noBatchim = (x: number) => '2459'.includes(String(x).at(-1)!);
+const topic = (x: number) => (noBatchim(x) ? '는' : '은');
+const particle = (x: number) => (noBatchim(x) ? '를' : '을');
+const direction = (x: number) => ('1245789'.includes(String(x).at(-1)!) ? '로' : '으로');
+const show = (arr: number[]) => `[${arr.join(', ')}]`;
+
+function trace(): Step[] {
+  const steps: Step[] = [];
+  const counts = new Map<number, number>();
+  const result: number[] = [];
+
+  // 통에 넣을 값의 순서는 빈도표에 처음 나온 순서다. 타일 번호도 이 순서를 따른다.
+  const order: number[] = [];
+  for (const num of nums) if (!order.includes(num)) order.push(num);
+  const tileOf = (value: number) => order.indexOf(value);
+
+  const cells = Array.from({ length: n }, () => 'i');
+  const tiles = order.map(() => 'h');
+  const buckets = Array.from({ length: n + 1 }, () => 'i');
+
+  const snap = (note: string, extra: Partial<Step> = {}) => {
+    steps.push({
+      note,
+      cells: cells.join(''),
+      tiles: tiles.join(''),
+      buckets: buckets.join(''),
+      counts: [...counts],
+      result: [...result],
+      ...extra,
+    });
+  };
+
+  snap('nums를 왼쪽부터 한 칸씩 보며 값마다 몇 번 나왔는지 counts에 셉니다. "다음"을 눌러 보세요');
+
+  // ① 센다
+  for (let i = 0; i < n; i++) {
+    const num = nums[i];
+    const times = (counts.get(num) ?? 0) + 1;
+    counts.set(num, times);
+    cells.fill('d', 0, i);
+    cells[i] = 'a';
+    let note =
+      times === 1
+        ? `${num}${topic(num)} 처음 나와 횟수를 1로 적습니다`
+        : `${num}${particle(num)} 다시 만나 ${num}의 횟수를 ${times}${direction(times)} 올립니다`;
+    if (i === n - 1) note += '. 다 셌으니 값마다 빈도와 같은 번호의 통에 넣습니다';
+    snap(note, { changedKey: num });
+  }
+  cells.fill('d');
+
+  // ② 빈도를 통 번호로 써서 넣는다
+  const buckets2: number[][] = Array.from({ length: n + 1 }, () => []);
+  let firstDrop = true;
+  for (const [num, count] of counts) {
+    buckets2[count].push(num);
+    tiles.forEach((s, t) => (s === 'a' ? (tiles[t] = 'i') : null));
+    tiles[tileOf(num)] = 'a';
+    buckets.fill('i');
+    buckets[count] = 'a';
+    const sameCells = nums.map((x) => (x === num ? 's' : 'd'));
+    const head = firstDrop ? '빈도를 통 번호로 씁니다. ' : '';
+    firstDrop = false;
+    snap(`${head}${num}${topic(num)} ${count}번 나왔으니 ${count}번 통에 넣습니다`, {
+      cells: sameCells.join(''),
+      dropKey: num,
+    });
+  }
+  tiles.forEach((s, t) => (s === 'a' ? (tiles[t] = 'i') : null));
+  buckets.fill('i');
+
+  // ③ 번호가 큰 통부터 거꾸로 보며 k개를 채운다
+  let empties: number[] = [];
+  const flushEmpties = () => {
+    if (empties.length === 0) return;
+    buckets.forEach((s, b) => (s === 'a' ? (buckets[b] = 'd') : null));
+    empties.forEach((b) => (buckets[b] = 'd'));
+    const head = steps.at(-1)!.buckets.includes('d') ? '' : '빈도가 가장 큰 쪽부터 거꾸로 봅니다. ';
+    snap(`${head}${empties.join(', ')}번 통은 비어 있어 지나갑니다`);
+    empties = [];
+  };
+
+  for (let count = n; count >= 1 && result.length < k; count--) {
+    if (buckets2[count].length === 0) {
+      empties.push(count);
+      continue;
+    }
+    flushEmpties();
+    buckets.forEach((s, b) => (s === 'a' ? (buckets[b] = 'd') : null));
+    buckets[count] = 'a';
+    const taken: number[] = [];
+    for (const num of buckets2[count]) {
+      result.push(num);
+      taken.push(num);
+      tiles[tileOf(num)] = 'w';
+      if (result.length === k) break;
+    }
+    const takenText = taken.join(', ');
+    let note = `${count}번 통에서 ${takenText}${particle(taken.at(-1)!)} 꺼내 result에 담습니다`;
+    const done = result.length === k;
+    if (done) {
+      nums.forEach((x, i) => (cells[i] = result.includes(x) ? 'w' : 'd'));
+      const rest = count > 1 ? `${count - 1}번 통부터는 보지 않고 ` : '';
+      note = `${count}번 통에서 ${takenText}${particle(taken.at(-1)!)} 꺼내면 k = ${k}개가 찹니다. ${rest}${show(result)}${particle(result.at(-1)!)} 돌려줍니다`;
+    }
+    snap(note, { resultChanged: true });
+  }
+  flushEmpties();
+  return steps;
+}
+
+const steps = trace();
+
+// 검증: 예제 1의 출력 [1, 2], 그리고 빈도순으로 정렬해 앞 k개를 고른 값과 같아야 한다.
+const freq = new Map<number, number>();
+for (const num of nums) freq.set(num, (freq.get(num) ?? 0) + 1);
+const bySort = [...freq].sort((a, b) => b[1] - a[1]).slice(0, k).map(([num]) => num);
+const final = steps.at(-1)!.result;
+const same = (a: number[], b: number[]) => JSON.stringify([...a].sort((x, y) => x - y)) === JSON.stringify([...b].sort((x, y) => x - y));
+if (!same(final, [1, 2]) || !same(final, bySort)) {
+  throw new Error('TopKBucketWalk: 결과가 LeetCode 347 예제 1 출력([1, 2])이나 정렬로 구한 값과 다릅니다.');
+}
+
+const keys = [...freq.keys()];
+const first = steps[0];
+const CELL: Record<string, string> = { i: 'idle', a: 'active', d: 'done', s: 'stack', w: 'answer' };
+const TILE: Record<string, string> = { h: 'hidden', a: 'active', i: 'idle', w: 'answer' };
+const BUCKET: Record<string, string> = { i: 'idle', a: 'active', d: 'done' };
+---
+
+<Visualizer
+  modes={[{ id: 'main', label: '기본' }]}
+  steps={{ main: steps }}
+  title={`빈도별 통 · nums = [${nums.join(', ')}], k = ${k}`}
+  caption="LeetCode 347 예제 1. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '지금 세는 칸 · 지금 보는 통' },
+    { state: 'stack', label: '이번에 통에 넣는 값' },
+    { state: 'answer', label: 'result에 담은 값' },
+    { state: 'done', label: '센 칸 · 지나간 통' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="kw" data-tk-watch>
+      <div class="kw-row kw-row--map">
+        <dt>counts</dt>
+        {/* 원소 사이에 템플릿 줄바꿈이 끼면 공백이 생긴다. 한 줄로 둔다. */}
+        <dd class="kw-map"><span class="kw-empty" data-counts-empty>비어 있음</span>{keys.map((key) => <span class="kw-chip" data-key={key} hidden><span class="kw-key">{key}</span><span class="kw-colon">:</span><span class="kw-times" data-times>0</span></span>)}</dd>
+      </div>
+      <div class="kw-row">
+        <dt>result</dt>
+        <dd><span class="kw-result" data-w="result">[]</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <TopKBucketDiagram
+      nums={nums}
+      cellStates={[...first.cells].map((c) => CELL[c])}
+      tileStates={[...first.tiles].map((c) => TILE[c])}
+      bucketStates={[...first.buckets].map((c) => BUCKET[c])}
+      label={`nums = [${nums.join(', ')}]의 값을 빈도 번호의 통에 넣은 그림`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .kw {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .kw-row {
+    display: flex;
+    gap: 0.5rem;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .kw-row--map {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .kw-row dt {
+    color: var(--t-var);
+  }
+
+  .kw-row:not(.kw-row--map) dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .kw-row dd {
+    margin: 0;
+    color: var(--fg);
+  }
+
+  .kw-map {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .kw-empty {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+  }
+
+  .kw-empty[hidden] {
+    display: none;
+  }
+
+  .kw-chip {
+    display: inline-flex;
+    gap: 0.125rem;
+    padding: 0 0.4375rem;
+    border: 1px solid var(--node-line);
+    border-radius: 6px;
+    background: var(--node-bg);
+  }
+
+  .kw-chip[hidden] {
+    display: none;
+  }
+
+  .kw-key,
+  .kw-times,
+  .kw-result {
+    color: var(--t-num);
+  }
+
+  .kw-colon {
+    color: var(--fg-dim);
+  }
+
+  /* 이번에 센 값 */
+  .kw-chip[data-changed],
+  .kw [data-changed] {
+    border-color: transparent;
+    background: var(--changed-bg);
+  }
+
+  /* 지금 통에 넣는 값 (도형의 파란 칸·타일과 같은 색) */
+  .kw-chip[data-drop] {
+    border-color: var(--stack);
+    background: var(--stack-soft);
+  }
+
+  .kw-result[data-changed] {
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    cells: string;
+    tiles: string;
+    buckets: string;
+    counts: [number, number][];
+    changedKey?: number;
+    dropKey?: number;
+    result: number[];
+    resultChanged?: boolean;
+  }
+
+  const CELL: Record<string, string> = { i: 'idle', a: 'active', d: 'done', s: 'stack', w: 'answer' };
+  const TILE: Record<string, string> = { h: 'hidden', a: 'active', i: 'idle', w: 'answer' };
+  const BUCKET: Record<string, string> = { i: 'idle', a: 'active', d: 'done' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-tk-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림(TopKBucketFilled)에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const watch = root.querySelector<HTMLElement>('[data-tk-watch]')!;
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const tiles = Array.from(figure.querySelectorAll<SVGGElement>('[data-tile]'));
+    const buckets = Array.from(figure.querySelectorAll<SVGGElement>('[data-bucket]'));
+    const chips = Array.from(watch.querySelectorAll<HTMLElement>('[data-key]'));
+    const empty = watch.querySelector<HTMLElement>('[data-counts-empty]')!;
+    const result = watch.querySelector<HTMLElement>('[data-w="result"]')!;
+
+    const render = (step: Step) => {
+      cells.forEach((el, i) => el.setAttribute('data-state', CELL[step.cells[i]]));
+      tiles.forEach((el, i) => el.setAttribute('data-state', TILE[step.tiles[i]]));
+      buckets.forEach((el, i) => el.setAttribute('data-state', BUCKET[step.buckets[i]]));
+
+      const counts = new Map(step.counts.map(([key, times]) => [String(key), times]));
+      empty.hidden = counts.size > 0;
+      chips.forEach((chip) => {
+        const key = chip.dataset.key!;
+        const times = counts.get(key);
+        chip.hidden = times === undefined;
+        chip.querySelector('[data-times]')!.textContent = String(times ?? 0);
+        chip.toggleAttribute('data-changed', String(step.changedKey) === key);
+        chip.toggleAttribute('data-drop', String(step.dropKey) === key);
+      });
+
+      result.textContent = `[${step.result.join(', ')}]`;
+      result.toggleAttribute('data-changed', Boolean(step.resultChanged));
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>
