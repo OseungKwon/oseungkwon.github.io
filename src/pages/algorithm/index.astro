@@ -1,8 +1,11 @@
 ---
+import FamilyGlyph from '../../components/algorithm/FamilyGlyph.astro';
 import SiteLayout from '../../layouts/SiteLayout.astro';
-import { getPublishedAlgorithms, groupByFamily, PLATFORM_LABELS } from '../../utils/algorithms';
+import { getPublishedAlgorithms, groupByFamily } from '../../utils/algorithms';
 
 const groups = groupByFamily(await getPublishedAlgorithms());
+// 분류 순서를 유지한 채 한 격자에 펼친다. 분류는 타일 안 라벨과 위쪽 필터로 구분한다.
+const entries = groups.flatMap((group) => group.entries);
 const BASE = import.meta.env.BASE_URL;
 ---
 
@@ -18,33 +21,167 @@ const BASE = import.meta.env.BASE_URL;
   </section>
 
   {
-    groups.length === 0 && (
+    entries.length === 0 && (
       <p class="mt-10 text-sm text-token-secondary">아직 공개한 항목이 없습니다.</p>
     )
   }
 
   {
-    groups.map((group, index) => (
-      <section class:list={['sm:mt-12', index === 0 ? 'mt-9' : 'mt-10 border-t-[0.5px] border-token-primary pt-6']}>
-        <div class="flex items-baseline gap-3">
-          <h2 class="font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">{group.family}</h2>
-          <span class="font-mono text-xs font-bold text-token-accent">{group.entries.length}</span>
-        </div>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          {group.entries.map((entry) => {
-            const [main] = entry.data.problems;
-            return (
-              <a href={`${BASE}algorithm/${entry.id}/`} class="press surface flex flex-col gap-1.5 rounded-2xl p-4">
-                <span class="text-base font-semibold tracking-tight text-token-primary">{entry.data.title}</span>
-                <span class="line-clamp-2 text-[13px] text-token-aside break-keep">{entry.data.summary}</span>
-                <span class="mt-1 truncate font-mono text-[11px] text-token-date">
-                  {PLATFORM_LABELS[main.platform]} {main.id} · {main.title}
-                </span>
-              </a>
-            );
-          })}
-        </div>
-      </section>
-    ))
+    groups.length > 1 && (
+      <div class="mt-7 flex flex-wrap gap-2 sm:mt-9" role="group" aria-label="분류로 걸러 보기" data-family-filter>
+        <button type="button" class="filter-chip press" aria-pressed="true" data-family="">
+          전체 <span class="filter-count">{entries.length}</span>
+        </button>
+        {groups.map((group) => (
+          <button type="button" class="filter-chip press" aria-pressed="false" data-family={group.family}>
+            {group.family} <span class="filter-count">{group.entries.length}</span>
+          </button>
+        ))}
+      </div>
+    )
   }
+
+  <ul class="tile-grid mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+    {
+      entries.map((entry) => (
+        <li class="tile-cell" data-family={entry.data.family}>
+          <a href={`${BASE}algorithm/${entry.id}/`} class="tile surface press">
+            <span class="tile-family">{entry.data.family}</span>
+            <FamilyGlyph family={entry.data.family} class="tile-glyph" />
+            <span class="tile-title">{entry.data.title}</span>
+            {entry.data.complexity && <span class="tile-complexity">{entry.data.complexity.time}</span>}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
 </SiteLayout>
+
+<script>
+  // 분류 칩을 누르면 해당 분류 타일만 남긴다. 페이지 이동 없이 격자만 다시 채운다.
+  const filter = document.querySelector<HTMLElement>('[data-family-filter]');
+  if (filter) {
+    const chips = [...filter.querySelectorAll<HTMLButtonElement>('button[data-family]')];
+    const cells = [...document.querySelectorAll<HTMLElement>('.tile-cell')];
+    filter.addEventListener('click', (event) => {
+      const chip = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-family]');
+      if (!chip) return;
+      const family = chip.dataset.family;
+      chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+      cells.forEach((cell) => {
+        cell.hidden = Boolean(family) && cell.dataset.family !== family;
+      });
+    });
+  }
+</script>
+
+<style>
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border-primary);
+    padding: 0.4rem 0.85rem;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: var(--surface-bg);
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .filter-chip:hover {
+    color: var(--color-text-primary);
+  }
+  .filter-chip[aria-pressed='true'] {
+    color: var(--color-link);
+    background: var(--color-accent-soft);
+    border-color: transparent;
+  }
+  .filter-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-link);
+  }
+
+  .tile-cell[hidden] {
+    display: none;
+  }
+
+  /* 칸은 항상 정사각형이다. 분류 라벨은 위, 제목과 복잡도는 아래, 가운데는 분류 아이콘이 채운다. */
+  .tile {
+    display: flex;
+    aspect-ratio: 1 / 1;
+    flex-direction: column;
+    border-radius: 1.25rem;
+    padding: 1rem;
+    outline: none;
+  }
+  .tile:focus-visible {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  }
+
+  .tile-family {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  /* 아이콘은 FamilyGlyph 컴포넌트 안의 svg라 scoped 스타일이 닿도록 :global로 연다. */
+  .tile :global(.tile-glyph) {
+    align-self: center;
+    width: 40%;
+    height: auto;
+    margin-block: auto;
+    color: var(--color-text-tertiary);
+    transition: color 0.2s ease;
+  }
+
+  .tile-title {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+    word-break: keep-all;
+  }
+
+  .tile-complexity {
+    margin-top: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-date);
+  }
+
+  @media (min-width: 640px) {
+    .tile {
+      padding: 1.15rem;
+    }
+    .tile-title {
+      font-size: 19px;
+    }
+  }
+
+  /* 호버와 키보드 포커스에서 아이콘에 색을 입혀 고른 타일을 드러낸다. */
+  @media (hover: hover) {
+    .tile:hover {
+      border-color: rgba(0, 111, 255, 0.35);
+    }
+    .tile:hover :global(.tile-glyph) {
+      color: var(--color-accent);
+    }
+  }
+  .tile:focus-visible :global(.tile-glyph) {
+    color: var(--color-accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile :global(.tile-glyph),
+    .filter-chip {
+      transition: none;
+    }
+  }
+</style>
