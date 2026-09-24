@@ -29,5 +29,5 @@ const { container = 'default', readingProgress = false, ...seo } = Astro.props;
   <main class:list={['mx-auto w-full flex-1 px-4 pt-4 pb-6 sm:px-6 lg:px-8', container === 'wide' ? 'max-w-6xl' : 'max-w-5xl']}>
     <slot />
   </main>
-  <SiteFooter />
+  <SiteFooter container={container} />
 </BaseLayout>
