@@ -1,4 +1,6 @@
 ---
+import './algo-theme.css';
+
 /**
  * Visualizer — 알고리즘 항목의 공통 시각화 틀.
  *
@@ -49,7 +51,7 @@ const first = steps[modes[0].id][0];
 const total = steps[modes[0].id].length;
 ---
 
-<figure class="viz not-prose" data-viz data-steps={JSON.stringify(steps)} data-modes={JSON.stringify(modes)} aria-label={title}>
+<figure class="viz algo-theme not-prose" data-viz data-steps={JSON.stringify(steps)} data-modes={JSON.stringify(modes)} aria-label={title}>
   <!-- 조작부: 누를 수 있는 것은 모두 여기 있다 -->
   <div class="viz-controls">
     <div class="viz-controls__row">
@@ -128,84 +130,10 @@ const total = steps[modes[0].id].length;
 </figure>
 
 <style>
-  /* ── 창 색: 라이트 페이지 ── */
+  /* 창 색(라이트·다크)은 algo-theme.css의 .algo-theme가 정의한다. */
   .viz {
-    --bg: #ffffff;
-    --bg-side: #f7f8fa;
-    --line: #e4e7eb;
-    --window-border: #dde1e6;
-    --window-shadow: 0 12px 32px -18px rgba(15, 23, 42, 0.28);
-    --fg: #1f2328;
-    --fg-dim: #656d76;
-    --fg-faint: #9aa1a9;
-
-    /* 지금 위치 */
-    --exec: #d4a100;
-    --exec-text: #7a5b00;
-    --exec-bg: rgba(255, 210, 0, 0.26);
-
-    --stack: #0a66d1;
-    --stack-soft: rgba(10, 102, 209, 0.08);
-    --stack-text: #0a4fa3;
-    --answer: #0d8a6a;
-    --answer-soft: rgba(13, 138, 106, 0.1);
-    --removed: #cf222e;
-    --removed-bg: rgba(207, 34, 46, 0.07);
-    --changed-bg: #d3e6fd;
-
-    /* 도형의 바탕 요소 */
-    --node-bg: #ffffff;
-    --node-line: #cfd5dc;
-    --node-idle-text: #a6adb5;
-    --done-fill: #f1f3f5;
-    --done-line: #9aa2ab;
-    --done-text: #5f6770;
-    --figure-dot: rgba(15, 23, 42, 0.07);
-
-    /* 변수 값 */
-    --t-var: #0a3069;
-    --t-num: #0a7c4a;
-    --t-kw: #0550ae;
-
     margin: 2.75rem 0;
     color: var(--fg);
-  }
-
-  /* ── 창 색: 다크 페이지 ── */
-  :global(.dark) .viz {
-    --bg: #1e1e1e;
-    --bg-side: #181818;
-    --line: #2b2b2b;
-    --window-border: #333333;
-    --window-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6);
-    --fg: #cccccc;
-    --fg-dim: #8b8b8b;
-    --fg-faint: #6a6a6a;
-
-    --exec: #ffcc00;
-    --exec-text: #ffcc00;
-    --exec-bg: rgba(255, 204, 0, 0.14);
-
-    --stack: #569cd6;
-    --stack-soft: rgba(86, 156, 214, 0.12);
-    --stack-text: #9cdcfe;
-    --answer: #4ec9b0;
-    --answer-soft: rgba(78, 201, 176, 0.16);
-    --removed: #f14c4c;
-    --removed-bg: rgba(241, 76, 76, 0.12);
-    --changed-bg: rgba(38, 79, 120, 0.9);
-
-    --node-bg: #1e1e1e;
-    --node-line: #3a3a3a;
-    --node-idle-text: #5a5a5a;
-    --done-fill: #252526;
-    --done-line: #5a5a5a;
-    --done-text: #8b8b8b;
-    --figure-dot: rgba(255, 255, 255, 0.05);
-
-    --t-var: #9cdcfe;
-    --t-num: #b5cea8;
-    --t-kw: #569cd6;
   }
 
   /* ── 조작부 (창 밖) — iOS·macOS 컨트롤 문법 ──
