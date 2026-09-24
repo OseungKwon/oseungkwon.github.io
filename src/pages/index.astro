@@ -17,19 +17,15 @@ const otherTags = groups.filter((group) => group.posts.length < MIN_POSTS_PER_TA
 ---
 
 <SiteLayout>
-  <!-- 히어로: 한 줄 소개. 라이브러리 내부 분석과 아키텍처 설계라는 두 축을
-       병렬 문장으로 담담하게 말한다. 무게는 아래 카드로. -->
-  <section class="pt-7 pb-1 sm:pt-11">
-    <h1 class="max-w-4xl text-[17px] font-semibold leading-[1.6] tracking-tight text-token-primary break-keep sm:text-[19px]">
-      라이브러리가 실제로 어떻게 동작하는지 내부를 뜯어보고, 프론트엔드 아키텍처를 어떻게 설계할지 고민합니다
-    </h1>
-  </section>
+  <!-- 섹션 라벨이 페이지 성격을 말하므로 보이는 소개 문장은 두지 않는다.
+       제목 계층은 스크린리더와 검색엔진을 위해 숨긴 h1으로 유지한다. -->
+  <h1 class="sr-only">오승의 기술블로그 글 목록</h1>
 
   <!-- 최신 글: 카드형 featured. '지난 글'과 짝을 이루는 라벨을 달아
-       히어로에 논지를 넘긴 뒤 카드는 시퀀스의 첫 항목으로 읽히게 한다. -->
+       카드가 시퀀스의 첫 항목으로 읽히게 한다. -->
   {
     featured && (
-      <div class="mt-9 sm:mt-12">
+      <div class="pt-7 sm:pt-11">
         <h2 class="mb-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">최신 글</h2>
         <div class="featured-halo">
           <FeaturedPost
