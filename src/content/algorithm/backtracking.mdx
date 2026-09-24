@@ -1,0 +1,75 @@
+---
+title: '백트래킹'
+summary: '선택을 하나씩 쌓아 가다 끝에 닿으면 한 칸 되돌아가 다른 선택을 시도하는 완전 탐색입니다.'
+family: '완전 탐색'
+complexity:
+  time: 'O(n · n!)'
+  space: 'O(n)'
+problems:
+  - platform: 'leetcode'
+    id: '46'
+    title: 'Permutations'
+    url: 'https://leetcode.com/problems/permutations/'
+    difficulty: 'Medium'
+pubDate: '2026-09-24'
+draft: true
+---
+
+import BacktrackingTree from '@components/algorithm/BacktrackingTree.astro';
+
+## 언제 쓰나
+
+- 가능한 경우를 **모두** 만들거나 세야 합니다 (순열, 조합, 부분집합).
+- 답이 선택의 나열로 이뤄지고, 선택 하나를 고르면 다음 선택지가 줄어듭니다.
+- 입력이 작습니다. 경우의 수가 n!이나 2ⁿ으로 늘어나므로 n이 10 안팎일 때 씁니다.
+
+## 어떻게 동작하나
+
+백트래킹은 **상태 공간 트리**(state space tree)를 깊이 우선으로 훑는 과정입니다. 루트는 아무것도 고르지 않은 상태, 간선 하나는 선택 하나, 리프는 완성된 답입니다. `nums = [1, 2, 3]`이면 깊이 1에서 첫 수를, 깊이 2에서 둘째 수를 고르고, 깊이 3의 리프 6개가 순열 6개가 됩니다.
+
+코드의 한 걸음은 이 트리 위의 이동과 같습니다. 수를 고르면 한 칸 아래 자식으로 내려가고, 재귀가 돌아오면 부모로 한 칸 올라옵니다. 올라올 때 방금 고른 것을 취소해야 형제 가지가 부모와 같은 상태에서 출발할 수 있습니다.
+
+아래에서 "다음"을 누르면 한 걸음씩 진행합니다. 노란 노드가 지금 위치이고, 루트에서 노란 노드까지 이어진 파란 경로가 `path`와 같습니다. 올라올 때 `path`에서 수가 빠지고 `used`가 다시 `false`가 되는 순간을 보세요.
+
+<BacktrackingTree />
+
+위쪽 토글을 "되돌리지 않는다"로 바꾸면 `path.pop()`과 `used[i] = false`를 뺀 같은 재귀가 실행됩니다. 호출은 루트까지 돌아오지만 `path`는 `[1, 2, 3]`, `used`는 모두 `true`로 남습니다. 어떤 수도 새로 고를 수 없으니 트리는 첫 가지 하나만 그린 채 끝납니다.
+
+## 대표 문제 풀이
+
+[LeetCode 46](https://leetcode.com/problems/permutations/)은 서로 다른 정수 배열 `nums`의 모든 순열을 반환하는 문제입니다. 선택 → 재귀 → 되돌리기 세 부분이 트리의 내려가기·탐색·올라오기에 하나씩 대응합니다.
+
+```js
+var permute = function (nums) {
+  const result = [];
+  const path = [];
+  const used = new Array(nums.length).fill(false);
+
+  function backtrack() {
+    // 리프: 순열 하나 완성
+    if (path.length === nums.length) {
+      result.push([...path]);
+      return;
+    }
+    for (let i = 0; i < nums.length; i++) {
+      if (used[i]) continue;
+      used[i] = true; // 선택: 자식으로 내려간다
+      path.push(nums[i]);
+      backtrack(); // 이 가지를 끝까지 탐색한다
+      path.pop(); // 되돌리기: 부모로 올라온다
+      used[i] = false;
+    }
+  }
+
+  backtrack();
+  return result;
+};
+```
+
+`result.push([...path])`에서 사본을 담는 이유는 `path`가 모든 가지가 함께 쓰는 배열 하나이기 때문입니다. 사본 없이 `path`를 그대로 담으면 이후 `pop`이 담아 둔 결과까지 비웁니다.
+
+리프가 n!개이고 리프마다 길이 n인 사본을 만들므로 시간은 O(n · n!)입니다. 출력을 빼면 `path`, `used`, 재귀 깊이가 모두 n이라 공간은 O(n)입니다.
+
+## 자주 하는 실수
+
+**되돌릴 상태를 하나만 되돌립니다.** 저는 처음에 "고른 수를 다시 고를 수 있게 `used`를 돌려놓아야 한다"까지만 떠올렸고, `path.pop()`을 빠뜨렸습니다. 선택할 때 바꾼 상태는 `used[i]`와 `path` 두 가지이므로 되돌릴 때도 둘 다 되돌려야 합니다. 선택 줄과 되돌리기 줄이 서로 거울처럼 짝을 이루는지 확인하면 이런 누락을 찾을 수 있습니다.

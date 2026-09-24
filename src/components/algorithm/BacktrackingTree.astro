@@ -1,0 +1,522 @@
+---
+/**
+ * 백트래킹 — 순열(LeetCode 46)의 상태 공간 트리.
+ *
+ * 대표 도형은 상태 공간 트리다. 루트는 아무것도 고르지 않은 상태, 간선 하나가
+ * 선택 하나, 리프가 완성된 순열이다. 윤곽을 처음부터 점선으로 깔아 두고,
+ * 도형이 바뀌는 사건마다 한 단계씩 보여준다.
+ *
+ *   고른다      → 지금 위치(노랑)가 자식으로 내려가고 path에 수가 붙는다
+ *   리프 도착   → 순열 하나 완성, result에 담긴다
+ *   되돌아온다  → 지금 위치가 부모로 올라오고 path에서 수가 빠진다
+ *                 (연달아 올라오는 되돌리기는 한 단계로 묶는다)
+ *
+ * 루트에서 지금 위치까지의 파란 경로가 path와 같다. 떠난 노드는 지우지 않고 흔적으로 남긴다.
+ *
+ * '되돌리지 않는다' 모드는 path.pop()과 used[i] = false를 뺀 같은 재귀다.
+ * 지금 위치는 루트까지 올라오지만 path·used가 그대로 남아, 나머지 가지가 점선인 채로 끝난다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 재귀를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+
+const nums = [1, 2, 3];
+
+interface TreeNode {
+  key: string;
+  label: string;
+  depth: number;
+  parent: string | null;
+  children: string[];
+  x: number;
+  y: number;
+}
+
+// ── 트리: 루트 = 빈 선택, 자식 = 아직 쓰지 않은 수를 하나 더 고른 상태
+const nodes: TreeNode[] = [];
+const byKey = new Map<string, TreeNode>();
+
+function build(prefix: number[], parent: string | null) {
+  const key = prefix.join(',');
+  const node: TreeNode = { key, label: prefix.length === 0 ? '[ ]' : String(prefix.at(-1)), depth: prefix.length, parent, children: [], x: 0, y: 0 };
+  nodes.push(node);
+  byKey.set(key, node);
+  if (parent !== null) byKey.get(parent)!.children.push(key);
+  for (const n of nums) if (!prefix.includes(n)) build([...prefix, n], key);
+}
+build([], null);
+
+// ── 레이아웃: 리프를 같은 간격으로 놓고, 부모는 자식들의 가운데
+const COL = 62;
+const ROW = 76;
+const TOP = 30;
+const R = 17;
+let leafCursor = 0;
+function layout(node: TreeNode) {
+  node.y = TOP + node.depth * ROW;
+  if (node.children.length === 0) {
+    node.x = COL / 2 + leafCursor++ * COL;
+    return;
+  }
+  node.children.forEach((key) => layout(byKey.get(key)!));
+  node.x = (byKey.get(node.children[0])!.x + byKey.get(node.children.at(-1)!)!.x) / 2;
+}
+layout(nodes[0]);
+
+const width = leafCursor * COL;
+const height = TOP + nums.length * ROW + 44;
+const edges = nodes.filter((node) => node.parent !== null);
+const leaves = nodes.filter((node) => node.depth === nums.length);
+
+// 간선은 원 테두리에서 끊는다. 반투명 채움 아래로 선이 비치지 않게.
+const edgeLine = (node: TreeNode) => {
+  const parent = byKey.get(node.parent!)!;
+  const dx = node.x - parent.x;
+  const dy = node.y - parent.y;
+  const k = R / Math.hypot(dx, dy);
+  return { x1: parent.x + dx * k, y1: parent.y + dy * k, x2: node.x - dx * k, y2: node.y - dy * k };
+};
+
+// ── 실행 기록
+// 노드 상태: i 아직 안 감 / s 지나온 경로 / a 지금 위치 / d 끝남 / w 답(리프)
+interface Step {
+  note: string;
+  nodes: string;
+  edges: string;
+  path: number[];
+  used: boolean[];
+  result: number[][];
+  pushed?: boolean;
+  popped?: number[];
+  usedChanged?: number[];
+  resultAdded?: boolean;
+  short?: boolean;
+}
+
+const particle = (n: number) => ('2459'.includes(String(n).at(-1)!) ? '를' : '을');
+// 숫자 발음의 받침에 따라 '로'/'으로'를 고른다 ([1]로가 아니라 [1]으로, [2]로).
+const direction = (n: number) => ('2459'.includes(String(n).at(-1)!) ? '로' : '으로');
+const show = (arr: number[]) => `[${arr.join(', ')}]`;
+
+function trace(undo: boolean): Step[] {
+  const path: number[] = [];
+  const used = nums.map(() => false);
+  const result: number[][] = [];
+  const at: string[] = ['']; // 재귀 호출 위치 = 트리에서 지금까지 내려온 경로
+  const visited = new Set<string>(['']);
+  const steps: Step[] = [];
+
+  // 연달아 올라오는 되돌리기는 한 단계로 묶는다.
+  let pendingPops: number[] = [];
+  let pendingUsed: number[] = [];
+  let pendingLeaves = 0;
+
+  const nodeState = (node: TreeNode) => {
+    if (!visited.has(node.key)) return 'i';
+    if (at.at(-1) === node.key) return 'a';
+    if (at.includes(node.key)) return 's';
+    return node.depth === nums.length ? 'w' : 'd';
+  };
+  const edgeState = (node: TreeNode) => (!visited.has(node.key) ? 'i' : at.includes(node.key) ? 's' : 'd');
+
+  const snap = (note: string, extra: Partial<Step> = {}) =>
+    steps.push({
+      note,
+      nodes: nodes.map(nodeState).join(''),
+      edges: edges.map(edgeState).join(''),
+      path: [...path],
+      used: [...used],
+      result: result.map((row) => [...row]),
+      ...extra,
+    });
+
+  const flush = (note?: string) => {
+    if (pendingLeaves === 0) return;
+    const popped = pendingPops;
+    snap(
+      note ??
+        (undo
+          ? `${popped.join(', ')}${particle(popped.at(-1)!)} 되돌리고 ${path.length === 0 ? '루트로' : `${show(path)}${direction(path.at(-1)!)}`} 올라옵니다`
+          : '되돌리지 않고 위로 올라옵니다. path는 그대로입니다'),
+      { popped, usedChanged: pendingUsed },
+    );
+    pendingPops = [];
+    pendingUsed = [];
+    pendingLeaves = 0;
+  };
+
+  // 리프는 고르는 순간 바로 처리하므로 재귀로 내려가지 않는다.
+  function backtrack() {
+    for (let i = 0; i < nums.length; i++) {
+      if (used[i]) continue;
+      flush();
+
+      used[i] = true;
+      path.push(nums[i]);
+      const key = at.at(-1) === '' ? String(nums[i]) : `${at.at(-1)},${nums[i]}`;
+      at.push(key);
+      visited.add(key);
+
+      if (path.length === nums.length) {
+        result.push([...path]);
+        snap(`${nums[i]}${particle(nums[i])} 고르면 순열 ${show(path)} 완성. result에 담습니다`, { pushed: true, usedChanged: [i], resultAdded: true });
+      } else {
+        snap(`${nums[i]}${particle(nums[i])} 고릅니다`, { pushed: true, usedChanged: [i] });
+        backtrack();
+      }
+
+      if (undo) {
+        pendingPops.push(path.pop()!);
+        used[i] = false;
+        pendingUsed.push(i);
+      }
+      at.pop();
+      pendingLeaves++;
+    }
+  }
+
+  snap('아무것도 고르지 않은 루트에서 시작합니다');
+  backtrack();
+  flush(
+    undo
+      ? `루트로 돌아와 탐색이 끝났습니다. 순열 ${result.length}개`
+      : `루트로 돌아왔지만 used가 모두 true라 더 고를 수 없습니다. 순열 ${result.length}개에서 끝`,
+  );
+  if (!undo) steps.at(-1)!.short = true;
+  return steps;
+}
+
+const undoSteps = trace(true);
+const keepSteps = trace(false);
+
+// 끝 장면은 문제 예제의 출력과 같아야 한다.
+const expected = [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]];
+if (JSON.stringify(undoSteps.at(-1)!.result) !== JSON.stringify(expected)) {
+  throw new Error('BacktrackingTree: 마지막 단계의 result가 LeetCode 46 예제 출력과 다릅니다.');
+}
+
+const MODES = [
+  { id: 'undo', label: '되돌린다' },
+  { id: 'keep', label: '되돌리지 않는다' },
+];
+const first = undoSteps[0];
+const stateName: Record<string, string> = { i: 'idle', s: 'stack', a: 'active', d: 'done', w: 'answer' };
+---
+
+<Visualizer
+  modes={MODES}
+  steps={{ undo: undoSteps, keep: keepSteps }}
+  title="상태 공간 트리 · nums = [1, 2, 3]"
+  caption="LeetCode 46 예제 1. 빌드할 때 재귀를 실제로 돌려 기록한 단계입니다."
+>
+  <Fragment slot="watch">
+    <dl class="bw" data-bt-watch>
+      <div class="bw-row">
+        <dt>path</dt>
+        {/* 원소 사이에 템플릿 줄바꿈이 끼면 [ 1 , 2 ]처럼 벌어진다. 한 줄로 둔다. */}
+        <dd>[{nums.map((_, index) => <span class="bw-item" data-w={`path${index}`} hidden><span class="bw-sep">, </span><span class="bw-num" data-w={`pathv${index}`} /></span>)}]</dd>
+      </div>
+      <div class="bw-row">
+        <dt>used</dt>
+        <dd>[{nums.map((_, index) => <span class="bw-item" data-w={`used${index}`}><span class="bw-sep">, </span><span class="bw-bool" data-w={`usedv${index}`}>false</span></span>)}]</dd>
+      </div>
+      <div class="bw-row bw-row--result">
+        <dt>result <span class="bw-count" data-w="resultCount">0</span></dt>
+        <dd>
+          <ol class="bw-result">
+            {expected.map((_, index) => <li data-w={`result${index}`} hidden />)}
+          </ol>
+        </dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <svg class="bt" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="nums = [1, 2, 3]의 상태 공간 트리" data-bt-tree>
+      {
+        edges.map((node, index) => {
+          const line = edgeLine(node);
+          return <line class="bt-edge" data-edge={index} data-state={stateName[first.edges[index]]} {...line} />;
+        })
+      }
+      {
+        nodes.map((node, index) => (
+          <g class="bt-node" data-node={index} data-state={stateName[first.nodes[index]]} data-root={node.depth === 0 || undefined}>
+            <circle cx={node.x} cy={node.y} r={R} />
+            <text x={node.x} y={node.y} dy="0.36em" text-anchor="middle">
+              {node.label}
+            </text>
+          </g>
+        ))
+      }
+      {
+        leaves.map((leaf) => (
+          <text class="bt-leaf" data-leaf={nodes.indexOf(leaf)} x={leaf.x} y={leaf.y + R + 22} text-anchor="middle">
+            {leaf.key.split(',').join('')}
+          </text>
+        ))
+      }
+    </svg>
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수(--exec, --stack, --answer, --node-* 등)는 Visualizer의 .viz가 라이트·다크별로 정의한다. */
+
+  /* ── 트리 ─────────────────────────────── */
+  .bt {
+    display: block;
+    width: 100%;
+    max-width: 26rem;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  .bt-edge {
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: stroke 0.25s, stroke-width 0.25s;
+  }
+
+  .bt-edge[data-state='idle'] {
+    stroke-dasharray: 2 5;
+  }
+
+  .bt-edge[data-state='done'] {
+    stroke: var(--done-line);
+  }
+
+  .bt-edge[data-state='stack'] {
+    stroke: var(--stack);
+    stroke-width: 2.5;
+  }
+
+  .bt-node circle {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+
+  .bt-node text {
+    font-size: 14px;
+    fill: var(--node-idle-text);
+    transition: fill 0.25s;
+  }
+
+  .bt-node[data-root] text {
+    font-size: 11px;
+  }
+
+  .bt-node[data-state='idle'] circle {
+    stroke-dasharray: 2 4;
+  }
+
+  .bt-node[data-state='done'] circle {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+  }
+
+  .bt-node[data-state='done'] text {
+    fill: var(--done-text);
+  }
+
+  /* 지나온 경로 = path */
+  .bt-node[data-state='stack'] circle {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  .bt-node[data-state='stack'] text {
+    fill: var(--stack-text);
+  }
+
+  /* 지금 위치 */
+  .bt-node[data-state='active'] circle {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .bt-node[data-state='active'] text {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* 답: result에 담긴 리프 */
+  .bt-node[data-state='answer'] circle {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+  }
+
+  .bt-node[data-state='answer'] text {
+    fill: var(--answer);
+  }
+
+  .bt-leaf {
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    fill: var(--node-idle-text);
+  }
+
+  .bt-leaf[data-found] {
+    fill: var(--answer);
+  }
+
+  /* ── 변수 ─────────────────────────────── */
+  .bw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .bw-row {
+    display: flex;
+    gap: 0.5rem;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .bw-row--result {
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .bw-row dt {
+    color: var(--t-var);
+  }
+
+  .bw-row:not(.bw-row--result) dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .bw-row dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--fg);
+  }
+
+  .bw-item[hidden],
+  .bw-result li[hidden] {
+    display: none;
+  }
+
+  /* 첫 원소 앞에는 쉼표를 두지 않는다 */
+  .bw-item:first-child .bw-sep {
+    display: none;
+  }
+
+  .bw-num {
+    color: var(--t-num);
+  }
+
+  .bw-bool {
+    color: var(--t-kw);
+  }
+
+  .bw-count {
+    margin-left: 0.25rem;
+    padding: 0 0.375rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    color: var(--answer);
+    background: var(--answer-soft);
+  }
+
+  .bw-count[data-short] {
+    color: var(--removed);
+    background: var(--removed-bg);
+  }
+
+  .bw-result {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    gap: 0 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--answer);
+  }
+
+  /* 이번 단계에 바뀐 값 */
+  .bw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+
+  /* 방금 빠진 원소 */
+  .bw [data-popped] {
+    color: var(--removed);
+    text-decoration: line-through;
+  }
+</style>
+
+<script>
+  interface Step {
+    nodes: string;
+    edges: string;
+    path: number[];
+    used: boolean[];
+    result: number[][];
+    pushed?: boolean;
+    popped?: number[];
+    usedChanged?: number[];
+    resultAdded?: boolean;
+    short?: boolean;
+  }
+
+  const STATE: Record<string, string> = { i: 'idle', s: 'stack', a: 'active', d: 'done', w: 'answer' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-bt-tree]').forEach((tree) => {
+    const root = tree.closest<HTMLElement>('[data-viz]')!;
+    const watch = root.querySelector<HTMLElement>('[data-bt-watch]')!;
+    const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
+    const nodeEls = Array.from(tree.querySelectorAll<SVGGElement>('[data-node]'));
+    const edgeEls = Array.from(tree.querySelectorAll<SVGLineElement>('[data-edge]'));
+    const leafEls = Array.from(tree.querySelectorAll<SVGTextElement>('[data-leaf]'));
+    const size = watch.querySelectorAll('[data-w^="usedv"]').length;
+    const resultRows = Array.from(watch.querySelectorAll<HTMLLIElement>('[data-w^="result"]:not([data-w="resultCount"])'));
+
+    const render = (step: Step) => {
+      nodeEls.forEach((node, index) => node.setAttribute('data-state', STATE[step.nodes[index]]));
+      edgeEls.forEach((edge, index) => edge.setAttribute('data-state', STATE[step.edges[index]]));
+      leafEls.forEach((label) => label.toggleAttribute('data-found', step.nodes[Number(label.dataset.leaf)] === 'w'));
+
+      // path: 남은 원소 뒤에 방금 빠진 원소를 취소선으로 잠깐 보여준다.
+      const popped = [...(step.popped ?? [])].reverse();
+      const shown = [...step.path, ...popped];
+      for (let index = 0; index < size; index++) {
+        const isPopped = index >= step.path.length && index < shown.length;
+        w(`path${index}`).hidden = index >= shown.length;
+        const value = w(`pathv${index}`);
+        value.textContent = index < shown.length ? String(shown[index]) : '';
+        value.toggleAttribute('data-popped', isPopped);
+        value.toggleAttribute('data-changed', Boolean(step.pushed) && index === step.path.length - 1);
+
+        const used = w(`usedv${index}`);
+        used.textContent = String(step.used[index]);
+        used.toggleAttribute('data-changed', Boolean(step.usedChanged?.includes(index)));
+      }
+
+      const count = w('resultCount');
+      count.textContent = String(step.result.length);
+      count.toggleAttribute('data-short', Boolean(step.short));
+      resultRows.forEach((row, index) => {
+        row.hidden = index >= step.result.length;
+        row.textContent = index < step.result.length ? `[${step.result[index].join(', ')}]` : '';
+        row.toggleAttribute('data-changed', Boolean(step.resultAdded) && index === step.result.length - 1);
+      });
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>
