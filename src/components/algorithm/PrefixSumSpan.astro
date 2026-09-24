@@ -1,0 +1,44 @@
+---
+/**
+ * 본문용 정적 그림: 누적 합 기둥과, 두 기둥 사이 구간 하나.
+ *
+ *   <PrefixSumSpan nums={[1, 2, 3, -2]} from={2} to={4} />
+ *
+ * 기둥 from과 to를 호로 잇고, 사이 칸을 칠하고, 호 아래에 "prefix[to] − prefix[from] = 구간 합"을 적는다.
+ * from/to를 주지 않으면 칸과 기둥만 그린다. 도형은 단계 진행(PrefixSumWalk)과 같은 PrefixSumDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import PrefixSumDiagram from './PrefixSumDiagram.astro';
+
+interface Props {
+  nums: number[];
+  from?: number;
+  to?: number;
+  caption?: string;
+}
+
+const { nums, from, to, caption } = Astro.props;
+const prefix = [0];
+for (const x of nums) prefix.push(prefix.at(-1)! + x);
+
+const hasSpan = from !== undefined && to !== undefined;
+const pairs: [number, number][] = hasSpan ? [[from, to]] : [];
+const and = (n: number) => ('2459'.includes(String(n).at(-1)!) ? '와' : '과');
+const minus = (n: number) => (n < 0 ? `(${n})` : String(n));
+const sum = hasSpan ? prefix[to] - prefix[from] : 0;
+const cellStates = nums.map((_, i) => (hasSpan && i >= from && i < to ? 'answer' : 'idle'));
+const postStates = prefix.map((_, i) => (hasSpan && (i === from || i === to) ? 'answer' : 'done'));
+const spanText = hasSpan ? `[${nums.slice(from, to).join(', ')}]` : '';
+---
+
+<StaticFigure title={`누적 합 · nums = [${nums.join(', ')}]`} caption={caption}>
+  <PrefixSumDiagram
+    nums={nums}
+    pairs={pairs}
+    cellStates={cellStates}
+    postStates={postStates}
+    arcStates={hasSpan ? ['found'] : []}
+    arcLabels={hasSpan ? [`${minus(prefix[to])} − ${minus(prefix[from])} = ${sum}`] : []}
+    label={hasSpan ? `기둥 ${from}${and(from!)} 기둥 ${to} 사이의 구간 ${spanText}의 합은 ${sum}` : `nums = [${nums.join(', ')}]의 누적 합`}
+  />
+</StaticFigure>
