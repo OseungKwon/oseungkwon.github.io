@@ -3,14 +3,22 @@ import type { AlgorithmFamily } from '../../utils/algorithms';
 
 interface Props {
   family: AlgorithmFamily;
+  /** 항목 slug. 전용 아이콘이 있으면 분류 아이콘 대신 그린다 */
+  slug?: string;
   class?: string;
 }
 
-const { family, class: className } = Astro.props;
+const { family, slug, class: className } = Astro.props;
+
+// 같은 분류에 항목이 여럿이면 분류 아이콘만으로는 타일끼리 구분이 안 된다.
+// 이 목록에 있는 항목은 자기 시각화의 대표 도형을 줄인 전용 아이콘을 쓴다.
+const ENTRY_GLYPHS = ['merge-sort', 'quickselect', 'three-way-partition', 'custom-comparator-sort', 'bucket-sort'];
+const glyph = slug && ENTRY_GLYPHS.includes(slug) ? slug : family;
 ---
 
-<!-- 분류마다 교재에서 그 알고리즘을 설명할 때 그리는 도형을 선으로 줄여 둔다.
-     목록 타일에서 제목을 읽기 전에 모양으로 분류를 알아보게 하는 용도다. -->
+<!-- 교재에서 그 알고리즘을 설명할 때 그리는 도형을 선으로 줄여 둔다.
+     목록 타일에서 제목을 읽기 전에 모양으로 알아보게 하는 용도다.
+     전용 아이콘이 없는 항목은 분류 아이콘을 쓴다. -->
 <svg
   class={className}
   viewBox="0 0 64 64"
@@ -22,7 +30,7 @@ const { family, class: className } = Astro.props;
   aria-hidden="true"
 >
   {
-    family === '완전 탐색' && (
+    glyph === '완전 탐색' && (
       <>
         <path d="M32 12 18 30M32 12l14 18M18 30l-8 18M18 30l8 18M46 30l-8 18M46 30l8 18" />
         <circle cx="32" cy="12" r="4" fill="currentColor" />
@@ -36,7 +44,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '그래프' && (
+    glyph === '그래프' && (
       <>
         <path d="M14 18 40 12M14 18l6 30M40 12l12 22M20 48l32-14M40 12 20 48" />
         <circle cx="14" cy="18" r="4" fill="currentColor" />
@@ -47,7 +55,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '동적 계획법' && (
+    glyph === '동적 계획법' && (
       <>
         <rect x="10" y="10" width="44" height="44" rx="3" />
         <path d="M24.7 10v44M39.3 10v44M10 24.7h44M10 39.3h44" />
@@ -56,7 +64,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '그리디' && (
+    glyph === '그리디' && (
       <>
         <path d="M10 52h44" />
         <rect x="12" y="14" width="10" height="38" rx="2" fill="currentColor" stroke="none" />
@@ -66,7 +74,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '투 포인터·슬라이딩 윈도우' && (
+    glyph === '투 포인터·슬라이딩 윈도우' && (
       <>
         <path d="M8 28h48M8 40h48M8 28v12M16 28v12M24 28v12M32 28v12M40 28v12M48 28v12M56 28v12" />
         <path d="M20 12v10m-4-4 4 4 4-4M44 12v10m-4-4 4 4 4-4" />
@@ -75,7 +83,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '이분 탐색' && (
+    glyph === '이분 탐색' && (
       <>
         <path d="M8 36h48M10 30v12M54 30v12" />
         <path d="M32 24v24" stroke-width="2" />
@@ -85,7 +93,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '누적 합' && (
+    glyph === '누적 합' && (
       <>
         <path d="M8 52h48" />
         <path d="M12 52V44h10v-8h10v-10h10v-8h10" />
@@ -95,7 +103,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '정렬' && (
+    glyph === '정렬' && (
       <>
         <path d="M8 52h48" />
         <rect x="11" y="40" width="8" height="12" rx="1.5" />
@@ -106,7 +114,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '자료구조' && (
+    glyph === '자료구조' && (
       <>
         <rect x="16" y="40" width="32" height="12" rx="2" />
         <rect x="16" y="26" width="32" height="12" rx="2" />
@@ -115,7 +123,7 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '문자열' && (
+    glyph === '문자열' && (
       <>
         <rect x="6" y="24" width="12" height="16" rx="2" />
         <rect x="20" y="24" width="12" height="16" rx="2" />
@@ -126,9 +134,69 @@ const { family, class: className } = Astro.props;
     )
   }
   {
-    family === '수학' && (
+    glyph === '수학' && (
       <>
         <path d="M46 14H18l14 18-14 18h28" />
+      </>
+    )
+  }
+  {
+    glyph === 'merge-sort' && (
+      <>
+        <path d="M32 18 18 28M32 18l14 10M18 36l-7.5 10M18 36l5.5 10M46 36l-5.5 10M46 36l7.5 10" />
+        <rect x="16" y="10" width="32" height="8" rx="1.5" fill="currentColor" stroke="none" />
+        <rect x="8" y="28" width="20" height="8" rx="1.5" />
+        <rect x="36" y="28" width="20" height="8" rx="1.5" />
+        <rect x="6" y="46" width="9" height="8" rx="1.5" />
+        <rect x="19" y="46" width="9" height="8" rx="1.5" />
+        <rect x="36" y="46" width="9" height="8" rx="1.5" />
+        <rect x="49" y="46" width="9" height="8" rx="1.5" />
+      </>
+    )
+  }
+  {
+    glyph === 'quickselect' && (
+      <>
+        <path d="M6 52h52" />
+        <path d="M6 24h52" stroke-dasharray="3 3" opacity="0.6" />
+        <rect x="9" y="38" width="8" height="14" rx="1.5" opacity="0.35" />
+        <rect x="19" y="32" width="8" height="20" rx="1.5" opacity="0.35" />
+        <rect x="29" y="24" width="8" height="28" rx="1.5" fill="currentColor" stroke="none" />
+        <rect x="39" y="12" width="8" height="40" rx="1.5" />
+        <rect x="49" y="18" width="8" height="34" rx="1.5" />
+      </>
+    )
+  }
+  {
+    glyph === 'three-way-partition' && (
+      <>
+        <rect x="8" y="22" width="48" height="14" rx="2" />
+        <path d="M16 22v14M24 22v14M32 22v14M40 22v14M48 22v14" />
+        <rect x="8" y="22" width="16" height="14" rx="2" fill="currentColor" stroke="none" />
+        <rect x="40" y="22" width="16" height="14" rx="2" fill="currentColor" stroke="none" opacity="0.3" />
+        <path d="M9 44v4h14v-4M26 44v4h12v-4M41 44v4h14v-4" />
+      </>
+    )
+  }
+  {
+    glyph === 'custom-comparator-sort' && (
+      <>
+        <rect x="10" y="20" width="16" height="24" rx="2.5" />
+        <rect x="38" y="20" width="16" height="24" rx="2.5" fill="currentColor" stroke="none" />
+        <path d="M18 14Q32 3 46 14M41.5 12.5 46 14l-1-4.5" />
+        <path d="M46 50Q32 61 18 50M22.5 51.5 18 50l1 4.5" />
+      </>
+    )
+  }
+  {
+    glyph === 'bucket-sort' && (
+      <>
+        <path d="M5 30v18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V30M19 30v18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V30M33 30v18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V30M47 30v18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V30" />
+        <circle cx="25" cy="45" r="3" />
+        <circle cx="53" cy="45" r="3" />
+        <circle cx="53" cy="37.5" r="3" />
+        <circle cx="39" cy="12" r="3.5" fill="currentColor" stroke="none" />
+        <path d="M39 19v6" stroke-dasharray="2 2" opacity="0.6" />
       </>
     )
   }

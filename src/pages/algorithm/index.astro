@@ -47,7 +47,7 @@ const BASE = import.meta.env.BASE_URL;
         <li class="tile-cell" data-family={entry.data.family}>
           <a href={`${BASE}algorithm/${entry.id}/`} class="tile surface press">
             <span class="tile-family">{entry.data.family}</span>
-            <FamilyGlyph family={entry.data.family} class="tile-glyph" />
+            <FamilyGlyph family={entry.data.family} slug={entry.id} class="tile-glyph" />
             <span class="tile-title">{entry.data.title}</span>
             {entry.data.complexity && <span class="tile-complexity">{entry.data.complexity.time}</span>}
           </a>
