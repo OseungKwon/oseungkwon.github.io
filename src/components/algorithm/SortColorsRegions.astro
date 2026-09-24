@@ -1,0 +1,40 @@
+---
+/**
+ * 본문용 정적 그림: 정렬 도중의 한 장면에서 네 구역과 세 포인터.
+ *
+ *   <SortColorsRegions nums={[0, 1, 1, 2, 0, 1, 2, 2]} lo={1} mid={3} hi={5} />
+ *
+ * [0, lo)는 0 구역, [lo, mid)는 1 구역, [mid, hi]는 안 본 칸, (hi, n)은 2 구역이다.
+ * 넘긴 장면이 이 약속을 지키지 않으면 빌드를 멈춘다. 도형은 단계 진행(SortColorsWalk)과 같은 SortColorsDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import SortColorsDiagram from './SortColorsDiagram.astro';
+
+interface Props {
+  nums: number[];
+  lo: number;
+  mid: number;
+  hi: number;
+  caption?: string;
+}
+
+const { nums, lo, mid, hi, caption } = Astro.props;
+
+const valid = nums.every((v, i) => (i < lo ? v === 0 : i < mid ? v === 1 : i > hi ? v === 2 : true));
+if (!valid || !(0 <= lo && lo <= mid && mid <= hi + 1 && hi < nums.length)) {
+  throw new Error('SortColorsRegions: 넘긴 장면이 네 구역의 약속([0,lo)=0, [lo,mid)=1, (hi,n)=2)을 지키지 않습니다.');
+}
+
+const cellStates = nums.map((_, i) => (i < lo ? 'zero' : i < mid ? 'one' : i > hi ? 'two' : i === mid ? 'active' : 'idle'));
+---
+
+<StaticFigure title={`네 구역 · nums = [${nums.join(', ')}]`} caption={caption}>
+  <SortColorsDiagram
+    nums={nums}
+    cellStates={cellStates}
+    lo={lo}
+    mid={mid}
+    hi={hi}
+    label={`lo = ${lo}, mid = ${mid}, hi = ${hi}일 때 네 구역: 0 구역 ${lo}칸, 1 구역 ${mid - lo}칸, 안 본 칸 ${hi - mid + 1}칸, 2 구역 ${nums.length - hi - 1}칸`}
+  />
+</StaticFigure>

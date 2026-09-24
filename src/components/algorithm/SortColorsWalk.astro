@@ -1,0 +1,326 @@
+---
+/**
+ * 세 구역 분할 — 색 정렬(LeetCode 75)을 lo·mid·hi 세 포인터로 한 번에 훑는 과정.
+ *
+ * 대표 도형은 네 구역으로 나뉜 칸 줄이다(그리기는 SortColorsDiagram). mid가 읽은 값에 따라
+ *
+ *   0 → lo 칸과 바꾸고 lo·mid가 함께 오른쪽으로 (0 구역이 한 칸 자람)
+ *   1 → mid만 오른쪽으로 (1 구역이 한 칸 자람)
+ *   2 → 교환 후보를 먼저 보여 준 뒤, hi 칸과 바꾸고 hi만 왼쪽으로 (2 구역이 한 칸 자람, mid는 그대로)
+ *
+ * 2를 바꾸는 경우만 두 단계로 나눈다. hi 칸에서 온 값은 아직 읽지 않은 값이라 mid가 제자리에
+ * 남는다는 것이 이 알고리즘에서 가장 헷갈리는 지점이어서, 교환과 "mid는 그대로"를 따로 보인다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import SortColorsDiagram from './SortColorsDiagram.astro';
+
+// LeetCode 75 예제 1
+const input = [2, 0, 2, 1, 1, 0];
+const n = input.length;
+
+// 칸: i 안 본 칸 / a 지금 읽는 칸 / z 0 구역 / o 1 구역 / t 2 구역 / d 끝(제자리)
+// 호: h 숨김 / c 교환 후보 / s 방금 교환
+interface Step {
+  note: string;
+  vals: string;
+  cells: string;
+  lo: number;
+  mid: number;
+  hi: number;
+  swap: [number, number] | null;
+  arc: string;
+  changed: string[];
+  result?: number[];
+}
+
+// 숫자 뒤 조사는 읽는 소리(영·일·이)의 받침으로 고른다
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const and = (v: number) => (noBatchim(v) ? '와' : '과');
+const topic = (v: number) => (noBatchim(v) ? '는' : '은');
+const particle = (v: number) => (noBatchim(v) ? '를' : '을');
+
+function trace(): Step[] {
+  const nums = [...input];
+  const steps: Step[] = [];
+  let lo = 0;
+  let mid = 0;
+  let hi = n - 1;
+  let last = { lo, mid, hi };
+
+  const snap = (note: string, opt: { swap?: [number, number]; arc?: string; end?: boolean } = {}) => {
+    const cells = nums
+      .map((_, i) => {
+        if (opt.end) return 'd';
+        if (i < lo) return 'z';
+        if (i < mid) return 'o';
+        if (i > hi) return 't';
+        return i === mid ? 'a' : 'i';
+      })
+      .join('');
+    const changed = (['lo', 'mid', 'hi'] as const).filter((k) => steps.length > 0 && last[k] !== { lo, mid, hi }[k]);
+    steps.push({
+      note,
+      vals: nums.join(''),
+      cells,
+      lo,
+      mid,
+      hi,
+      swap: opt.swap ?? null,
+      arc: opt.arc ?? 'h',
+      changed,
+      result: opt.end ? [...nums] : undefined,
+    });
+    last = { lo, mid, hi };
+  };
+
+  snap('lo와 mid는 맨 앞, hi는 맨 뒤에서 시작합니다. 여섯 칸 모두 아직 안 본 칸입니다. "다음"을 눌러 보세요');
+
+  // mid 칸의 값이 방금 hi 칸에서 넘어온 값인지, 바로 전에 읽은 값이 무엇이었는지에 따라 첫마디를 고른다
+  let fromHi = false;
+  let prevRead: number | null = null;
+  const head = (v: number) =>
+    fromHi
+      ? `mid가 방금 넘어온 ${v}${particle(v)} 읽습니다.`
+      : prevRead === v
+        ? `mid가 읽은 값은 이번에도 ${v}입니다.`
+        : `mid가 읽은 값은 ${v}입니다.`;
+
+  while (mid <= hi) {
+    const v = nums[mid];
+    const says = head(v);
+    if (v === 0) {
+      const self = lo === mid;
+      [nums[lo], nums[mid]] = [nums[mid], nums[lo]];
+      lo++;
+      mid++;
+      snap(
+        self
+          ? `${says} lo와 mid가 같은 칸이라 값은 그대로 두고 둘을 함께 오른쪽으로 옮깁니다. 0 구역이 ${lo}칸이 됩니다`
+          : `${says} lo 칸의 1과 바꾸고 lo와 mid를 함께 오른쪽으로 옮깁니다. 0 구역이 ${lo}칸이 됩니다`,
+      );
+      fromHi = false;
+    } else if (v === 1) {
+      mid++;
+      snap(
+        mid > hi
+          ? `${says} mid만 오른쪽으로 옮기면 mid가 hi를 지나쳐, 안 본 칸이 하나도 남지 않습니다`
+          : `${says} 1은 가운데 구역에 두면 되니 mid만 오른쪽으로 옮깁니다`,
+      );
+      fromHi = false;
+    } else {
+      const partner = nums[hi];
+      // ① 교환 후보
+      snap(`${says} 2는 뒤쪽으로 보내야 하니 hi 칸의 ${partner}${and(partner)} 바꿉니다`, {
+        swap: [mid, hi],
+        arc: 'c',
+      });
+      // ② 교환하고 hi만 옮긴다
+      const pair: [number, number] = [mid, hi];
+      [nums[mid], nums[hi]] = [nums[hi], nums[mid]];
+      hi--;
+      snap(`바꾼 뒤 hi만 왼쪽으로 옮깁니다. mid 칸에 새로 온 ${partner}${topic(partner)} 아직 읽지 않은 값이라 mid는 그대로 둡니다`, {
+        swap: pair,
+        arc: 's',
+      });
+      fromHi = true;
+    }
+    prevRead = v;
+  }
+
+  snap(`반복이 끝났습니다. 0 구역, 1 구역, 2 구역이 이어져 nums = [${nums.join(', ')}]입니다`, { end: true });
+  return steps;
+}
+
+const steps = trace();
+
+// 검증: 예제 1의 출력, 그리고 정렬한 결과와 같아야 한다. 포인터가 칸 밖으로 나가면 그림이 깨진다.
+const expected = [0, 0, 1, 1, 2, 2];
+const final = steps.at(-1)!;
+if (
+  JSON.stringify(final.result) !== JSON.stringify(expected) ||
+  JSON.stringify(final.result) !== JSON.stringify([...input].sort((a, b) => a - b)) ||
+  steps.some((s) => [s.lo, s.mid, s.hi].some((p) => p < 0 || p > n - 1))
+) {
+  throw new Error('SortColorsWalk: 결과가 LeetCode 75 예제 1 출력([0,0,1,1,2,2])과 다르거나 포인터가 칸 밖으로 나갔습니다.');
+}
+
+const first = steps[0];
+const CELL: Record<string, string> = { i: 'idle', a: 'active', z: 'zero', o: 'one', t: 'two', d: 'done' };
+---
+
+<Visualizer
+  modes={[{ id: 'main', label: '기본' }]}
+  steps={{ main: steps }}
+  title={`세 구역 분할 · nums = [${input.join(', ')}]`}
+  caption="LeetCode 75 예제 1. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '지금 읽는 칸 (mid)' },
+    { state: 'answer', label: '자리가 정해진 칸 (0 구역·2 구역)' },
+    { state: 'stack', label: '가운데에 모인 1' },
+    { state: 'idle', label: '아직 안 본 칸' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="sw" data-sc-watch>
+      <div class="sw-row">
+        <dt>lo</dt>
+        <dd><span class="sw-num" data-w="lo">{first.lo}</span><span class="sw-hint">다음 0이 들어갈 칸</span></dd>
+      </div>
+      <div class="sw-row">
+        <dt>mid</dt>
+        <dd><span class="sw-num" data-w="mid">{first.mid}</span><span class="sw-hint">지금 읽는 칸</span></dd>
+      </div>
+      <div class="sw-row">
+        <dt>hi</dt>
+        <dd><span class="sw-num" data-w="hi">{first.hi}</span><span class="sw-hint">다음 2가 들어갈 칸</span></dd>
+      </div>
+      <div class="sw-row">
+        <dt>nums</dt>
+        <dd><span class="sw-num" data-w="result">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <SortColorsDiagram
+      nums={input}
+      cellStates={[...first.cells].map((c) => CELL[c])}
+      lo={first.lo}
+      mid={first.mid}
+      hi={first.hi}
+      reserveArc
+      label={`nums = [${input.join(', ')}]을 lo·mid·hi로 세 구역에 나누는 과정`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .sw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .sw-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .sw-row dt {
+    min-width: 2.5rem;
+    color: var(--t-var);
+  }
+
+  .sw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .sw-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0;
+  }
+
+  .sw-num {
+    color: var(--t-num);
+  }
+
+  .sw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .sw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    vals: string;
+    cells: string;
+    lo: number;
+    mid: number;
+    hi: number;
+    swap: [number, number] | null;
+    arc: string;
+    changed: string[];
+    result?: number[];
+  }
+
+  const CELL: Record<string, string> = { i: 'idle', a: 'active', z: 'zero', o: 'one', t: 'two', d: 'done' };
+  const ARC: Record<string, string> = { h: 'hidden', c: 'candidate', s: 'swapped' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-sc-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const geo = JSON.parse(figure.dataset.geo!) as { left: number; pitch: number; cell: number; arcY: number; bracketY: number; n: number };
+    const watch = root.querySelector<HTMLElement>('[data-sc-watch]')!;
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const arc = figure.querySelector<SVGGElement>('[data-sc-arc]')!;
+    const cx = (i: number) => geo.left + i * geo.pitch + geo.cell / 2;
+    const arcDepth = (i: number, j: number) => 8 + Math.abs(j - i) * 7;
+
+    const moveBracket = (key: string, from: number, to: number) => {
+      const el = figure.querySelector<SVGGElement>(`[data-region="${key}"]`)!;
+      if (to <= from) {
+        el.setAttribute('hidden', '');
+        return;
+      }
+      el.removeAttribute('hidden');
+      const x1 = geo.left + from * geo.pitch + 3;
+      const x2 = geo.left + to * geo.pitch - (geo.pitch - geo.cell) - 3;
+      el.querySelector('path')!.setAttribute('d', `M ${x1} ${geo.bracketY - 5} V ${geo.bracketY} H ${x2} V ${geo.bracketY - 5}`);
+      el.querySelector('text')!.setAttribute('x', String((x1 + x2) / 2));
+    };
+
+    const render = (step: Step) => {
+      cells.forEach((el, i) => {
+        el.setAttribute('data-state', CELL[step.cells[i]]);
+        el.querySelector('text')!.textContent = step.vals[i];
+      });
+      for (const key of ['lo', 'mid', 'hi'] as const) {
+        figure.querySelector<SVGGElement>(`[data-ptr="${key}"]`)!.style.transform = `translateX(${cx(step[key])}px)`;
+        const w = watch.querySelector<HTMLElement>(`[data-w="${key}"]`)!;
+        w.textContent = String(step[key]);
+        w.toggleAttribute('data-changed', step.changed.includes(key));
+      }
+      const result = watch.querySelector<HTMLElement>('[data-w="result"]')!;
+      result.textContent = step.result ? `[${step.result.join(', ')}]` : '–';
+      result.toggleAttribute('data-changed', Boolean(step.result));
+
+      arc.setAttribute('data-state', ARC[step.arc]);
+      if (step.swap) {
+        const [i, j] = step.swap;
+        const x1 = cx(Math.min(i, j));
+        const x2 = cx(Math.max(i, j));
+        const depth = arcDepth(i, j);
+        arc.querySelector('path')!.setAttribute('d', `M ${x1} ${geo.arcY} Q ${(x1 + x2) / 2} ${geo.arcY + depth * 2} ${x2} ${geo.arcY}`);
+        const label = arc.querySelector('text')!;
+        label.setAttribute('x', String((x1 + x2) / 2));
+        label.setAttribute('y', String(geo.arcY + depth + 14));
+      }
+
+      moveBracket('zero', 0, step.lo);
+      moveBracket('one', step.lo, step.mid);
+      moveBracket('unknown', step.mid, step.hi + 1);
+      moveBracket('two', step.hi + 1, geo.n);
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>

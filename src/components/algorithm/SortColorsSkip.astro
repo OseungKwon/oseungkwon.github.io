@@ -1,0 +1,60 @@
+---
+/**
+ * 본문용 정적 그림: 2를 hi 칸과 바꾼 뒤 mid까지 옮겼을 때 끝나는 모습.
+ *
+ *   <SortColorsSkip nums={[1, 2, 0]} />
+ *
+ * 빌드 시점에 "hi와 바꾼 뒤에도 mid를 옮기는" 풀이를 실제로 돌려, 반복이 끝난 장면을 그린다.
+ * 구역에 맞지 않는 값이 남은 칸은 빨간 점선으로 표시하고, 마지막 교환을 호로 남긴다.
+ * 그 풀이가 이 입력을 우연히 맞게 정렬하면 보여줄 것이 없으므로 빌드를 멈춘다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import SortColorsDiagram from './SortColorsDiagram.astro';
+
+interface Props {
+  nums: number[];
+  caption?: string;
+}
+
+const { nums: input, caption } = Astro.props;
+const nums = [...input];
+let lo = 0;
+let mid = 0;
+let hi = nums.length - 1;
+let lastSwap: [number, number] | null = null;
+while (mid <= hi) {
+  if (nums[mid] === 0) {
+    [nums[lo], nums[mid]] = [nums[mid], nums[lo]];
+    lo++;
+    mid++;
+  } else if (nums[mid] === 1) {
+    mid++;
+  } else {
+    [nums[mid], nums[hi]] = [nums[hi], nums[mid]];
+    lastSwap = [mid, hi];
+    hi--;
+    mid++; // 이 줄이 실수다
+  }
+}
+
+const sorted = [...input].sort((a, b) => a - b);
+if (JSON.stringify(nums) === JSON.stringify(sorted)) {
+  throw new Error('SortColorsSkip: 이 입력은 mid를 옮겨도 우연히 정렬되어 실수를 보여줄 수 없습니다.');
+}
+
+const expect = (i: number) => (i < lo ? 0 : i < mid ? 1 : i > hi ? 2 : nums[i]);
+const cellStates = nums.map((v, i) => (v !== expect(i) ? 'wrong' : i < lo ? 'zero' : i < mid ? 'one' : 'two'));
+---
+
+<StaticFigure title={`hi와 바꾼 뒤 mid도 옮기면 · nums = [${input.join(', ')}]`} caption={caption}>
+  <SortColorsDiagram
+    nums={nums}
+    cellStates={cellStates}
+    lo={lo}
+    mid={mid}
+    hi={hi}
+    swap={lastSwap}
+    swapState="swapped"
+    label={`nums = [${input.join(', ')}]이 [${nums.join(', ')}]로 끝나 정렬되지 않은 모습`}
+  />
+</StaticFigure>
