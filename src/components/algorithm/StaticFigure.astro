@@ -1,0 +1,99 @@
+---
+/**
+ * StaticFigure — 본문 속 정적 도형의 틀. 조작부 없이 창과 캡션만 있다.
+ *
+ * 본문에서 도형을 설명할 때 텍스트 표나 ASCII 그림 대신 쓴다. 고정폭 글꼴에 기대는 표는
+ * 모바일·비례폭 글꼴에서 줄이 어긋나고, 아래 단계 진행 시각화와 다른 그림이 되어 독자가 두 번
+ * 배워야 한다. 도형은 단계 진행과 같은 도형 컴포넌트(예: PrefixSumDiagram)를 슬롯으로 넣는다.
+ * 색은 Visualizer와 같은 algo-theme.css를 쓴다.
+ */
+import './algo-theme.css';
+
+interface Props {
+  /** 창 제목 = 무엇의 그림인지 + 입력 */
+  title: string;
+  caption?: string;
+}
+
+const { title, caption } = Astro.props;
+---
+
+<figure class="sf algo-theme not-prose" aria-label={title}>
+  <div class="sf-window">
+    <div class="sf-title" aria-hidden="true">
+      <span class="sf-lights"><i></i><i></i><i></i></span>
+      <span class="sf-title__text">{title}</span>
+    </div>
+    <div class="sf-body">
+      <slot />
+    </div>
+  </div>
+  {caption && <figcaption class="sf-caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  /* 창 모양은 Visualizer와 같게 둔다. 색은 algo-theme.css의 .algo-theme가 정의한다. */
+  .sf {
+    margin: 2rem 0;
+    color: var(--fg);
+  }
+
+  .sf-window {
+    overflow: hidden;
+    border: 1px solid var(--window-border);
+    border-radius: 10px;
+    background: var(--bg);
+    box-shadow: var(--window-shadow);
+  }
+
+  .sf-title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    background: var(--bg-side);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sf-lights {
+    position: absolute;
+    left: 0.875rem;
+    display: flex;
+    gap: 0.4375rem;
+  }
+
+  .sf-lights i {
+    width: 0.6875rem;
+    height: 0.6875rem;
+    border-radius: 50%;
+    background: #ff5f57;
+  }
+
+  .sf-lights i:nth-child(2) {
+    background: #febc2e;
+  }
+
+  .sf-lights i:nth-child(3) {
+    background: #28c840;
+  }
+
+  .sf-title__text {
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+  }
+
+  .sf-body {
+    display: flex;
+    justify-content: center;
+    padding: 1.25rem 1rem;
+    background-image: radial-gradient(var(--figure-dot) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  .sf-caption {
+    margin-top: 0.625rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-tertiary);
+  }
+</style>
