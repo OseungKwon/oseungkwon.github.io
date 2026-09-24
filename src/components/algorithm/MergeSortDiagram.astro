@@ -1,0 +1,231 @@
+---
+/**
+ * 병합 정렬의 대표 도형 — 분할 트리. 노드 하나가 sortArray 호출 하나이고, 노드의 칸 줄이 그 호출이 다루는 배열이다.
+ *
+ * 위에서 아래로 반씩 나뉘어 한 칸짜리 줄에 닿고, 합칠 때는 두 자식 줄의 맨 앞끼리 비교해 작은 값부터 부모 줄을
+ * 왼쪽부터 채운다. 칸마다 호출이 받은 값(input)과 합친 뒤의 값(sorted)을 둘 다 미리 적어 두고, 상태에 따라
+ * 한쪽만 보인다. 그래서 스크립트는 글자를 고치지 않고 data-state만 바꾼다.
+ *
+ * 그리기만 맡는다. 단계 진행(MergeSortTree)과 본문 정적 그림(MergeSortMerge)이 같은 컴포넌트를 쓴다.
+ */
+import { buildTree } from './merge-sort-trace';
+
+interface Props {
+  nums: number[];
+  /** 칸 상태 (노드 순서 → 칸 순서): idle / called / split / blank / placed / new / head / taken / done / answer */
+  cellStates?: string[];
+  /** 간선 상태 (루트를 뺀 노드 순서): idle / called / done */
+  edgeStates?: string[];
+  label: string;
+}
+
+const { nums, cellStates = [], edgeStates = [], label } = Astro.props;
+const nodes = buildTree(nums);
+
+const CELL = 38;
+const LEAF_GAP = 20;
+const ROW = 82;
+const PAD_X = 6;
+const TOP = 8;
+
+// 한 칸짜리 줄(잎)을 왼쪽부터 같은 간격으로 놓고, 위 줄은 자기 아래 잎들이 차지한 폭의 가운데에 둔다.
+const center: number[] = [];
+let cursor = PAD_X;
+const place = (id: number): [number, number] => {
+  const node = nodes[id];
+  if (node.children.length === 0) {
+    const left = cursor;
+    cursor += node.input.length * CELL + LEAF_GAP;
+    center[id] = left + (node.input.length * CELL) / 2;
+    return [left, left + node.input.length * CELL];
+  }
+  const spans = node.children.map(place);
+  const from = spans[0][0];
+  const to = spans.at(-1)![1];
+  center[id] = (from + to) / 2;
+  return [from, to];
+};
+place(0);
+const width = cursor - LEAF_GAP + PAD_X;
+const depth = Math.max(...nodes.map((n) => n.depth));
+const height = TOP + depth * ROW + CELL + 8;
+
+const nodeX = (id: number) => center[id] - (nodes[id].input.length * CELL) / 2;
+const nodeY = (id: number) => TOP + nodes[id].depth * ROW;
+const cells = nodes.flatMap((node) =>
+  node.input.map((value, k) => ({ node, k, value, sorted: node.sorted[k], index: node.offset + k })),
+);
+const edges = nodes.slice(1).map((node) => ({
+  x1: center[node.parent!],
+  y1: nodeY(node.parent!) + CELL + 4,
+  x2: center[node.id],
+  y2: nodeY(node.id) - 4,
+}));
+---
+
+{/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
+<svg class="ms" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-ms-figure>
+  {/* 간선을 먼저 그려 칸 아래에 깔리게 한다 */}
+  {
+    edges.map((e, idx) => (
+      <line class="ms-edge" data-edge={idx} data-state={edgeStates[idx] ?? 'idle'} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} />
+    ))
+  }
+  {
+    cells.map(({ node, k, value, sorted, index }) => (
+      <g class="ms-cell" data-cell={index} data-state={cellStates[index] ?? 'idle'}>
+        <rect x={nodeX(node.id) + k * CELL + 1.5} y={nodeY(node.id)} width={CELL - 3} height={CELL} rx="6" />
+        <text class="ms-input" x={nodeX(node.id) + k * CELL + CELL / 2} y={nodeY(node.id) + CELL / 2} dy="0.36em" text-anchor="middle">
+          {value}
+        </text>
+        <text class="ms-sorted" x={nodeX(node.id) + k * CELL + CELL / 2} y={nodeY(node.id) + CELL / 2} dy="0.36em" text-anchor="middle">
+          {sorted}
+        </text>
+      </g>
+    ))
+  }
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .ms {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0 auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  /* ── 간선 ───────────────────────────── */
+  .ms-edge {
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: stroke 0.25s;
+  }
+
+  .ms-edge[data-state='idle'] {
+    stroke: var(--node-line);
+    stroke-dasharray: 3 4;
+  }
+
+  .ms-edge[data-state='called'] {
+    stroke: var(--fg-faint);
+  }
+
+  .ms-edge[data-state='done'] {
+    stroke: var(--done-line);
+  }
+
+  /* ── 칸 ─────────────────────────────── */
+  .ms-cell rect {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s, opacity 0.25s;
+  }
+
+  .ms-cell text {
+    font-size: 16px;
+    fill: var(--fg);
+    transition: fill 0.25s, opacity 0.2s;
+  }
+
+  /* 받은 값과 합친 값 중 한쪽만 보인다. 나누기 전·나누는 중에는 받은 값, 합친 뒤에는 합친 값, 채울 자리는 비운다 */
+  .ms-sorted {
+    opacity: 0;
+  }
+
+  .ms-cell:is([data-state='placed'], [data-state='new'], [data-state='head'], [data-state='taken'], [data-state='done'], [data-state='answer'])
+    .ms-input,
+  .ms-cell[data-state='blank'] text {
+    opacity: 0;
+  }
+
+  .ms-cell:is([data-state='placed'], [data-state='new'], [data-state='head'], [data-state='taken'], [data-state='done'], [data-state='answer'])
+    .ms-sorted {
+    opacity: 1;
+  }
+
+  /* 아직 나누지 않은 줄: 받을 값을 흐리게 미리 보인다 */
+  .ms-cell[data-state='idle'] rect {
+    stroke-dasharray: 3 3;
+  }
+
+  .ms-cell[data-state='idle'] text {
+    fill: var(--node-idle-text);
+  }
+
+  /* 나눠 두고 정렬을 기다리는 줄 */
+  .ms-cell[data-state='called'] rect {
+    stroke: var(--fg-faint);
+  }
+
+  /* 지금 나누는 줄, 방금 채운 칸 */
+  .ms-cell[data-state='split'] rect,
+  .ms-cell[data-state='new'] rect {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .ms-cell[data-state='split'] text,
+  .ms-cell[data-state='new'] text {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* 합치는 중인 줄: 채울 자리와 앞서 채운 칸 */
+  .ms-cell[data-state='blank'] rect {
+    fill: transparent;
+    stroke: var(--exec);
+    stroke-dasharray: 3 3;
+  }
+
+  .ms-cell[data-state='placed'] rect {
+    stroke: var(--exec);
+  }
+
+  .ms-cell[data-state='placed'] text {
+    font-weight: 700;
+  }
+
+  /* 비교하는 맨 앞 칸 */
+  .ms-cell[data-state='head'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2.5;
+  }
+
+  .ms-cell[data-state='head'] text {
+    fill: var(--stack-text);
+    font-weight: 700;
+  }
+
+  /* 이미 부모 줄로 옮긴 칸 */
+  .ms-cell[data-state='taken'] {
+    opacity: 0.35;
+  }
+
+  .ms-cell[data-state='taken'] rect,
+  .ms-cell[data-state='done'] rect {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+  }
+
+  .ms-cell[data-state='taken'] text,
+  .ms-cell[data-state='done'] text {
+    fill: var(--done-text);
+  }
+
+  .ms-cell[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2;
+  }
+
+  .ms-cell[data-state='answer'] text {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+</style>

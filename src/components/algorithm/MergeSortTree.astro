@@ -1,0 +1,176 @@
+---
+/**
+ * 병합 정렬 — LeetCode 912 예제 2의 분할 트리.
+ *
+ * 대표 도형은 분할 트리다(그리기는 MergeSortDiagram). 한 단계는 도형 사건 하나다.
+ *
+ *   나누기   → 줄 하나가 두 절반으로 갈라진다. 한 칸짜리 절반은 그 자리에서 정렬을 마친다
+ *   비교 한 번 → 두 자식 줄의 맨 앞끼리 비교해 작은 값이 부모 줄의 다음 칸으로 올라간다.
+ *               한쪽이 먼저 비면 남은 칸을 옮기는 일은 같은 단계에 합친다
+ *
+ * 변수 패널은 풀이 코드의 mid(나눌 때)와 i·j(합칠 때), 그리고 호출이 돌려준 배열이다.
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다(merge-sort-trace.ts).
+ */
+import Visualizer from './Visualizer.astro';
+import MergeSortDiagram from './MergeSortDiagram.astro';
+import { trace, arr, CELL_STATES, EDGE_STATES } from './merge-sort-trace';
+
+// LeetCode 912 예제 2
+const nums = [5, 1, 1, 2, 0, 0];
+const expected = [0, 0, 1, 1, 2, 5];
+const { steps } = trace(nums);
+
+// 검증: 끝 장면이 예제 2의 출력과 같아야 한다.
+if (JSON.stringify(steps.at(-1)!.ret) !== JSON.stringify(expected)) {
+  throw new Error('MergeSortTree: 마지막 단계의 결과가 LeetCode 912 예제 2 출력과 다릅니다.');
+}
+
+// 변수 패널에 보일 값만 남긴다 (data-steps 크기를 줄이려고 note·도형 상태·변수만 넘긴다)
+const viewSteps = steps.map(({ note, cells, edges, mid, i, j, ret }) => ({
+  note,
+  cells,
+  edges,
+  mid,
+  i,
+  j,
+  ret: ret ? arr(ret) : null,
+}));
+const first = steps[0];
+---
+
+<Visualizer
+  modes={[{ id: 'main', label: '기본' }]}
+  steps={{ main: viewSteps }}
+  title={`분할 트리 · nums = ${arr(nums)}`}
+  caption="LeetCode 912 예제 2. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '지금 나누거나 채우는 줄' },
+    { state: 'stack', label: '비교하는 맨 앞 칸' },
+    { state: 'done', label: '정렬을 마친 줄' },
+    { state: 'answer', label: '최종 결과' },
+    { state: 'idle', label: '아직 나누지 않은 줄' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="mw" data-ms-watch>
+      <div class="mw-row">
+        <dt>mid</dt>
+        <dd><span class="mw-num" data-w="mid">–</span><span class="mw-hint">왼쪽 절반의 길이</span></dd>
+      </div>
+      <div class="mw-row">
+        <dt>i</dt>
+        <dd><span class="mw-num" data-w="i">–</span><span class="mw-hint">왼쪽 줄에서 볼 칸</span></dd>
+      </div>
+      <div class="mw-row">
+        <dt>j</dt>
+        <dd><span class="mw-num" data-w="j">–</span><span class="mw-hint">오른쪽 줄에서 볼 칸</span></dd>
+      </div>
+      <div class="mw-row">
+        <dt>return</dt>
+        <dd><span class="mw-num" data-w="ret">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <MergeSortDiagram
+      nums={nums}
+      cellStates={[...first.cells].map((c) => CELL_STATES[c])}
+      edgeStates={[...first.edges].map((c) => EDGE_STATES[c])}
+      label={`nums = ${arr(nums)}의 병합 정렬 분할 트리`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .mw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .mw-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .mw-row dt {
+    min-width: 3.25rem;
+    color: var(--t-var);
+  }
+
+  .mw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .mw-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0;
+  }
+
+  .mw-num {
+    color: var(--t-num);
+  }
+
+  .mw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .mw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  import { CELL_STATES, EDGE_STATES } from './merge-sort-trace';
+
+  interface Step {
+    cells: string;
+    edges: string;
+    mid: number | null;
+    i: number | null;
+    j: number | null;
+    ret: string | null;
+  }
+
+  document.querySelectorAll<SVGSVGElement>('[data-ms-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림(MergeSortMerge)에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const watch = root.querySelector<HTMLElement>('[data-ms-watch]')!;
+    const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const edges = Array.from(figure.querySelectorAll<SVGLineElement>('[data-edge]'));
+    let last: Step | null = null;
+
+    const show = (name: 'mid' | 'i' | 'j' | 'ret', step: Step) => {
+      const value = step[name];
+      const el = w(name);
+      el.textContent = value === null ? '–' : String(value);
+      // 바로 앞 단계와 달라진 값만 강조한다
+      el.toggleAttribute('data-changed', value !== null && last !== null && last[name] !== value);
+    };
+
+    const render = (step: Step) => {
+      cells.forEach((el, index) => el.setAttribute('data-state', CELL_STATES[step.cells[index]]));
+      edges.forEach((el, index) => el.setAttribute('data-state', EDGE_STATES[step.edges[index]]));
+      (['mid', 'i', 'j', 'ret'] as const).forEach((name) => show(name, step));
+      last = step;
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>

@@ -1,0 +1,38 @@
+---
+/**
+ * 본문용 정적 그림: 합치기 한 장면.
+ *
+ *   <MergeSortMerge nums={[5, 1, 1, 2, 0, 0]} step={13} />
+ *
+ * 단계 진행(MergeSortTree)과 같은 trace를 돌려 step번째(1부터) 단계를 조작 없이 그린다. 그래서 본문 그림과
+ * 아래 단계 진행의 같은 번호 단계가 정확히 같은 모습이다. 합치기 단계가 아니면 빌드를 멈춘다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import MergeSortDiagram from './MergeSortDiagram.astro';
+import { trace, arr, CELL_STATES, EDGE_STATES } from './merge-sort-trace';
+
+interface Props {
+  nums: number[];
+  /** 몇 번째 단계를 그릴지 (1부터, 단계 진행 화면의 번호와 같다) */
+  step: number;
+  caption?: string;
+}
+
+const { nums, step, caption } = Astro.props;
+const { nodes, steps } = trace(nums);
+const scene = steps[step - 1];
+if (scene?.kind !== 'merge') {
+  throw new Error(`MergeSortMerge: ${step}번째 단계는 합치기 단계가 아닙니다.`);
+}
+const [left, right] = nodes[scene.node].children.map((c) => nodes[c].sorted);
+const gwa = '2459'.includes(String(left.at(-1)).at(-1)!) ? '와' : '과';
+---
+
+<StaticFigure title={`두 줄 합치기 · ${arr(left)}${gwa} ${arr(right)}`} caption={caption}>
+  <MergeSortDiagram
+    nums={nums}
+    cellStates={[...scene.cells].map((c) => CELL_STATES[c])}
+    edgeStates={[...scene.edges].map((c) => EDGE_STATES[c])}
+    label={scene.note}
+  />
+</StaticFigure>
