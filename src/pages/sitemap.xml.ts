@@ -1,7 +1,7 @@
 import type { APIContext } from 'astro';
 import { getPublishedPosts } from '../utils/posts';
 import { getArchivedTags } from '../utils/tags';
-import { getPublishedAlgorithms } from '../utils/algorithms';
+import { getAlgorithms } from '../utils/algorithms';
 
 type ChangeFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
@@ -112,7 +112,7 @@ export async function GET(context: APIContext) {
     priority: 0.6,
   }));
 
-  const algorithmEntries: SitemapEntry[] = (await getPublishedAlgorithms()).map(
+  const algorithmEntries: SitemapEntry[] = (await getAlgorithms()).map(
     (entry) => ({
       loc: new URL(`/algorithm/${entry.id}/`, site).href,
       lastmod: (entry.data.updatedDate ?? entry.data.pubDate).toISOString(),

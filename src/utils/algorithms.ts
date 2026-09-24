@@ -9,15 +9,8 @@ export const PLATFORM_LABELS = {
   programmers: '프로그래머스',
 } as const;
 
-// 글과 같은 노출 기준을 쓴다. 프로덕션에서는 draft를 빼고, dev에서는 미리보기를 위해 포함한다.
-export async function getPublishedAlgorithms() {
-  return getCollection('algorithm', ({ data }) =>
-    import.meta.env.PROD ? !data.draft : true,
-  );
-}
-
-// 페이지를 만들 항목 전체. draft도 링크로 직접 열 수 있게 포함한다(noindex가 붙는다).
-export async function getAllAlgorithms() {
+// 알고리즘 항목은 draft 없이 파일을 추가하면 바로 공개된다.
+export async function getAlgorithms() {
   return getCollection('algorithm');
 }
 

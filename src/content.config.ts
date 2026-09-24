@@ -48,7 +48,6 @@ const algorithm = defineCollection({
     relatedPost: z.string().optional(),
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
-    draft: z.boolean().default(false),
   }),
 });
 

@@ -1,9 +1,9 @@
 ---
 import FamilyGlyph from '../../components/algorithm/FamilyGlyph.astro';
 import SiteLayout from '../../layouts/SiteLayout.astro';
-import { getPublishedAlgorithms, groupByFamily } from '../../utils/algorithms';
+import { getAlgorithms, groupByFamily } from '../../utils/algorithms';
 
-const groups = groupByFamily(await getPublishedAlgorithms());
+const groups = groupByFamily(await getAlgorithms());
 // 분류 순서를 유지한 채 한 격자에 펼친다. 분류는 타일 안 라벨과 위쪽 필터로 구분한다.
 const entries = groups.flatMap((group) => group.entries);
 const BASE = import.meta.env.BASE_URL;
