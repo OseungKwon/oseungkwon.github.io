@@ -1,0 +1,439 @@
+---
+/**
+ * 다음 페이지를 요청하는 동안 무엇이 보이는가 — 대조 토글 + 직접 조작.
+ *
+ * 글(tanstack-query-beyond-use-query)의 "2페이지 요청 중에는 1페이지 결과가 이
+ * 구독자에게 임시로 표시됩니다. 이 값이 2페이지의 캐시 데이터로 저장되는 것은
+ * 아니며"를 보여준다. 두 방식 모두 같은 요청을 같은 시간 동안 보낸다. 요청 중에
+ * 화면이 무엇을 채우는지와, 그동안 캐시가 비어 있다는 사실만 확인한다.
+ */
+import Demo from './Demo.astro';
+
+const PAGES = [
+  ['강남점', '성수점', '홍대점'],
+  ['판교점', '분당점', '수원점'],
+  ['인천점', '부천점'],
+];
+---
+
+<Demo
+  title="다음 페이지를 기다리는 동안의 목록"
+  hint="방식을 고른 뒤 다음 페이지 누르기를 눌러 보세요."
+  caption="설명용 모형 · 각 페이지 요청은 1.5초 걸립니다. 3페이지가 마지막입니다."
+>
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="placeholderData 설정">
+      <button class="demo-seg__opt" type="button" data-mode="none" aria-pressed="false">placeholderData 없음</button>
+      <button class="demo-seg__opt" type="button" data-mode="keep" aria-pressed="true">keepPreviousData</button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="next">다음 페이지 누르기</button>
+  </Fragment>
+
+  <div class="pp" data-demo="placeholder-paging" data-pages={JSON.stringify(PAGES)}>
+    <div class="pp-screen">
+      <div class="pp-head">
+        <span>매장 목록</span>
+        <span class="pp-page" data-el="page">1페이지</span>
+      </div>
+      <div class="pp-progress" data-el="progress" aria-hidden="true"><span></span></div>
+      <div class="pp-body">
+        <ul class="pp-list" data-el="list">
+          {[0, 1, 2].map(() => <li class="pp-row" data-el="row" />)}
+        </ul>
+        <ul class="pp-skeleton" data-el="skeleton" aria-label="목록을 불러오는 중" hidden>
+          <li></li><li></li><li></li>
+        </ul>
+      </div>
+      <div class="pp-actions">
+        <span class="pp-badge" data-el="badge" hidden>1페이지 결과를 임시로 표시</span>
+        <!-- 그림 속 버튼. 조작부의 버튼이 이 모양을 바꾼다. -->
+        <span class="pp-fake-btn" data-el="fakeNext" aria-hidden="true">다음 페이지</span>
+      </div>
+    </div>
+
+    <div class="pp-side">
+      <div class="pp-label">이 구독자가 받은 값</div>
+      <dl class="pp-readout">
+        <dt><code class="demo-code">data</code></dt>
+        <dd data-el="data">1페이지 매장</dd>
+        <dt><code class="demo-code">isPlaceholderData</code></dt>
+        <dd data-el="placeholder">false</dd>
+        <dt><code class="demo-code">isFetching</code></dt>
+        <dd data-el="fetching">false</dd>
+      </dl>
+
+      <div class="pp-label">
+        QueryCache <code class="demo-code pp-prefix">['stores', 'list', …]</code>
+      </div>
+      <ul class="pp-cache">
+        {
+          PAGES.map((_, i) => (
+            <li class="pp-entry" data-entry={i + 1}>
+              <code class="demo-code">{`{ page: ${i + 1} }`}</code>
+              <span data-el="entryState" />
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .pp {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .pp-screen {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.875rem;
+  }
+
+  .pp-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--color-bg-tertiary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .pp-page {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--demo-a);
+  }
+
+  .pp-progress {
+    height: 2px;
+    overflow: hidden;
+  }
+
+  .pp-progress span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background-color: var(--demo-a);
+  }
+
+  .pp-progress[data-on] span {
+    width: 100%;
+    transition: width 1.5s linear;
+  }
+
+  .pp-body {
+    flex: 1;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .pp-list,
+  .pp-skeleton {
+    display: grid;
+    gap: 0.3125rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pp-list[hidden],
+  .pp-skeleton[hidden] {
+    display: none;
+  }
+
+  .pp-row,
+  .pp-skeleton li {
+    min-height: 1.875rem;
+    border-radius: 0.5rem;
+  }
+
+  .pp-row {
+    display: flex;
+    align-items: center;
+    padding: 0 0.625rem;
+    background-color: var(--color-bg-tertiary);
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+    transition: opacity 0.16s ease;
+  }
+
+  .pp-row[hidden] {
+    display: none;
+  }
+
+  .pp-list[data-dim] .pp-row {
+    opacity: 0.5;
+  }
+
+  .pp-skeleton li {
+    border: 1px dashed var(--color-border-primary);
+  }
+
+  .pp-badge {
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--demo-a);
+    border-radius: 9999px;
+    background-color: var(--surface-bg);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--demo-a);
+  }
+
+  .pp-badge[hidden] {
+    display: none;
+  }
+
+  .pp-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .pp-fake-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    transition:
+      opacity 0.16s ease,
+      scale 0.12s ease;
+  }
+
+  .pp-fake-btn[data-disabled] {
+    opacity: 0.4;
+  }
+
+  .pp-fake-btn[data-pressed] {
+    scale: 0.92;
+    border-color: var(--demo-a);
+    color: var(--demo-a);
+  }
+
+  .pp-side {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .pp-label {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .pp-label + .pp-readout,
+  .pp-label + .pp-cache {
+    margin-bottom: 0.5rem;
+  }
+
+  .pp-prefix {
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+  }
+
+  .pp-readout {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.375rem 0.75rem;
+    margin: 0;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.625rem;
+    background-color: var(--color-bg-tertiary);
+    font-size: 0.75rem;
+  }
+
+  .pp-readout dt .demo-code {
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .pp-readout dd {
+    margin: 0;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    text-align: right;
+  }
+
+  .pp-readout dd[data-on] {
+    color: var(--demo-a);
+  }
+
+  .pp-readout dd[data-empty] {
+    color: var(--color-text-tertiary);
+  }
+
+  .pp-cache {
+    display: grid;
+    gap: 0.3125rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pp-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 2rem;
+    padding: 0 0.625rem;
+    border: 1px dashed var(--color-border-primary);
+    border-radius: 0.625rem;
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .pp-entry .demo-code {
+    font-size: 0.6875rem;
+  }
+
+  .pp-entry[data-state='cached'] {
+    border-style: solid;
+    color: var(--color-text-secondary);
+  }
+
+  .pp-entry[data-state='cached'] .demo-code {
+    color: var(--color-text-primary);
+  }
+
+  .pp-entry[data-state='fetching'] {
+    border-color: var(--demo-a);
+    color: var(--demo-a);
+  }
+
+  /* 지금 구독 중인 key */
+  .pp-entry[data-current] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+  }
+
+  @media (max-width: 34rem) {
+    .pp {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-demo="placeholder-paging"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    const el = (name: string) => root.querySelector<HTMLElement>(`[data-el="${name}"]`)!;
+    const PAGES = JSON.parse(root.dataset.pages!) as string[][];
+    const modeButtons = frame.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const nextBtn = frame.querySelector<HTMLButtonElement>('[data-act="next"]')!;
+    const rows = root.querySelectorAll<HTMLElement>('[data-el="row"]');
+    const entries = root.querySelectorAll<HTMLElement>('[data-entry]');
+
+    const FETCH_MS = 1500;
+
+    let mode: 'none' | 'keep' = 'keep';
+    /** 현재 queryKey의 페이지 */
+    let page = 1;
+    /** 마지막으로 성공해 화면에 보였던 페이지. keepPreviousData가 넘겨주는 값이다. */
+    let shown = 1;
+    const cached = new Set([1]);
+    let timer = 0;
+    let pressTimer = 0;
+
+    const render = () => {
+      const fetching = !cached.has(page);
+      const placeholder = fetching && mode === 'keep';
+      // data가 가리키는 페이지. 없음 모드에서 요청 중이면 undefined다.
+      const dataPage = fetching ? (placeholder ? shown : null) : page;
+      const hasMore = dataPage !== null && dataPage < PAGES.length;
+
+      el('page').textContent = `${page}페이지`;
+      el('progress').toggleAttribute('data-on', fetching);
+      el('list').hidden = dataPage === null;
+      el('skeleton').hidden = dataPage !== null;
+      el('list').toggleAttribute('data-dim', placeholder);
+      el('badge').hidden = !placeholder;
+      el('badge').textContent = `${shown}페이지 결과를 임시로 표시`;
+      rows.forEach((row, i) => {
+        const name = dataPage === null ? undefined : PAGES[dataPage - 1][i];
+        row.textContent = name ?? '';
+        row.hidden = name === undefined;
+      });
+      // 글의 예제처럼 placeholder이거나 다음 페이지가 없으면 그림 속 버튼은 비활성이다.
+      // 조작부 버튼은 요청 중에만 막고, 마지막 페이지에서는 처음으로 되돌리는 일을 맡는다.
+      const atEnd = !fetching && !hasMore;
+      el('fakeNext').toggleAttribute('data-disabled', placeholder || !hasMore);
+      nextBtn.disabled = fetching;
+      nextBtn.textContent = atEnd ? '1페이지부터 다시' : '다음 페이지 누르기';
+
+      el('data').textContent = dataPage === null ? 'undefined' : `${dataPage}페이지 매장`;
+      el('data').toggleAttribute('data-empty', dataPage === null);
+      el('data').toggleAttribute('data-on', placeholder);
+      el('placeholder').textContent = String(placeholder);
+      el('placeholder').toggleAttribute('data-on', placeholder);
+      el('fetching').textContent = String(fetching);
+      el('fetching').toggleAttribute('data-on', fetching);
+
+      entries.forEach((entry) => {
+        const n = Number(entry.dataset.entry);
+        const state = cached.has(n) ? 'cached' : n === page ? 'fetching' : 'empty';
+        entry.dataset.state = state;
+        entry.toggleAttribute('data-current', n === page);
+        entry.querySelector('[data-el="entryState"]')!.textContent =
+          state === 'cached' ? '저장됨' : state === 'fetching' ? '요청 중 · 비어 있음' : '비어 있음';
+      });
+
+      modeButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    };
+
+    const restart = () => {
+      clearTimeout(timer);
+      clearTimeout(pressTimer);
+      el('fakeNext').removeAttribute('data-pressed');
+      page = 1;
+      shown = 1;
+      cached.clear();
+      cached.add(1);
+      render();
+    };
+
+    nextBtn.addEventListener('click', () => {
+      if (cached.has(page) && page >= PAGES.length) {
+        restart();
+        return;
+      }
+      el('fakeNext').setAttribute('data-pressed', '');
+      pressTimer = window.setTimeout(() => el('fakeNext').removeAttribute('data-pressed'), 160);
+      page += 1;
+      render();
+      const requested = page;
+      timer = window.setTimeout(() => {
+        cached.add(requested);
+        shown = requested;
+        render();
+      }, FETCH_MS);
+    });
+    modeButtons.forEach((b) =>
+      b.addEventListener('click', () => {
+        mode = b.dataset.mode as 'none' | 'keep';
+        restart();
+      }),
+    );
+    render();
+  });
+</script>

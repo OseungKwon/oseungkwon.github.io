@@ -1,0 +1,597 @@
+---
+/**
+ * 메뉴 품절 스위치의 낙관적 업데이트 — 대조 토글 + 버튼 하나.
+ *
+ * 글(tanstack-query-beyond-use-query)의 toggleSoldOut 예제를 따라간다. 관리자가 강남점
+ * 메뉴 관리 화면에서 시즌 한정 에이드의 품절 스위치를 누르면, 스위치는 서버 응답 전에
+ * 움직이고(onMutate), 실패하면 보관한 목록으로 돌아가며(onError), 어느 쪽이든 서버 값을
+ * 다시 확인한다(onSettled). onSettled는 품절 메뉴 수를 담은 매장 상세도 함께 무효화하므로,
+ * 성공하면 화면의 요약까지 서버 값으로 맞춰진다.
+ */
+import Demo from './Demo.astro';
+
+const MENUS = ['아메리카노', '카페라테'];
+---
+
+<Demo
+  title="품절 스위치를 눌렀을 때 화면, 캐시, 서버의 값"
+  hint="서버 응답을 고른 뒤 품절 스위치 누르기로 시작해, 다음을 눌러 한 단계씩 진행합니다."
+  caption="설명용 모형 · 강남점 메뉴 관리에서 시즌 한정 에이드를 품절로 바꿉니다. 글의 toggleSoldOut 예제 그대로입니다."
+>
+  <Fragment slot="controls">
+    <span class="demo-label">서버 응답</span>
+    <div class="demo-seg" role="group" aria-label="서버 응답">
+      <button class="demo-seg__opt" type="button" data-mode="ok" aria-pressed="true">성공</button>
+      <button class="demo-seg__opt" type="button" data-mode="fail" aria-pressed="false">실패</button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="next">품절 스위치 누르기</button>
+  </Fragment>
+
+  <div class="sos" data-demo="optimistic-sold-out">
+    <ol class="sos-steps">
+      {
+        [1, 2, 3, 4].map((n) => (
+          <li class="sos-step" data-step={n}>
+            <span class="sos-step__no">{n}</span>
+            <span data-el="stepName" />
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="sos-scene">
+      <!-- 화면: 강남점 메뉴 관리. 위쪽 요약은 매장 상세 query에서 온다 -->
+      <div class="sos-screen" aria-hidden="true">
+        <div class="sos-screen__head">
+          <span class="sos-screen__title">강남점 메뉴 관리</span>
+          <span class="sos-summary" data-el="summary">품절 메뉴 0개</span>
+        </div>
+        <ul class="sos-menus">
+          {
+            MENUS.map((name) => (
+              <li class="sos-menu">
+                <span>{name}</span>
+                <span class="sos-switch" data-on>
+                  <span class="sos-switch__text">판매 중</span>
+                  <span class="sos-switch__knob" />
+                </span>
+              </li>
+            ))
+          }
+          <li class="sos-menu" data-target>
+            <span>시즌 한정 에이드</span>
+            <span class="sos-switch" data-el="switch" data-on>
+              <span class="sos-switch__text" data-el="switchText">판매 중</span>
+              <span class="sos-switch__knob" />
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 캐시·보관한 값·서버 -->
+      <div class="sos-table" role="table" aria-label="캐시와 서버의 값">
+        <div class="sos-head" role="row">
+          <span role="columnheader">위치</span>
+          <span role="columnheader">값</span>
+          <span role="columnheader">이번 단계</span>
+        </div>
+
+        <div class="sos-group" role="row"><span role="cell">QueryCache</span></div>
+        <div class="sos-row" role="row" data-row="menus">
+          <code class="demo-code sos-row__key" role="cell"><span>menus</span> 'store-42'</code>
+          <span class="sos-row__value" role="cell" data-el="value">에이드 판매 중</span>
+          <span class="sos-row__tag" role="cell" data-el="tag"></span>
+        </div>
+        <div class="sos-row" role="row" data-row="detail">
+          <code class="demo-code sos-row__key" role="cell"><span>detail</span> 'store-42'</code>
+          <span class="sos-row__value" role="cell" data-el="value">품절 0개</span>
+          <span class="sos-row__tag" role="cell" data-el="tag"></span>
+        </div>
+
+        <div class="sos-group" role="row"><span role="cell">onMutate가 보관한 값</span></div>
+        <div class="sos-row" role="row" data-row="previous">
+          <code class="demo-code sos-row__key" role="cell">previous</code>
+          <span class="sos-row__value" role="cell" data-el="value">없음</span>
+          <span class="sos-row__tag" role="cell" data-el="tag"></span>
+        </div>
+
+        <div class="sos-group" role="row"><span role="cell">서버</span></div>
+        <div class="sos-row" role="row" data-row="server">
+          <span class="sos-row__key sos-row__key--plain" role="cell">시즌 한정 에이드</span>
+          <span class="sos-row__value" role="cell" data-el="value">판매 중</span>
+          <span class="sos-row__tag" role="cell" data-el="tag"></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="sos-line" data-el="line" aria-live="polite">에이드는 판매 중입니다</p>
+  </div>
+</Demo>
+
+<style>
+  .sos {
+    display: grid;
+    gap: 0.875rem;
+  }
+
+  /* ── 단계 ── */
+  .sos-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sos-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.1875rem 0.625rem 0.1875rem 0.1875rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    color: var(--demo-idle);
+  }
+
+  .sos-step[hidden] {
+    display: none;
+  }
+
+  .sos-step__no {
+    display: inline-grid;
+    place-items: center;
+    width: 1.0625rem;
+    height: 1.0625rem;
+    border-radius: 9999px;
+    background-color: var(--color-bg-tertiary);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 700;
+  }
+
+  .sos-step[data-done] {
+    color: var(--color-text-secondary);
+  }
+
+  .sos-step[data-current] {
+    border-color: var(--demo-a);
+    font-weight: 700;
+    color: var(--demo-a);
+  }
+
+  .sos-step[data-current] .sos-step__no {
+    background-color: var(--demo-a-soft);
+  }
+
+  .sos-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    align-items: start;
+    gap: 1rem;
+  }
+
+  /* ── 화면 ── */
+  .sos-screen {
+    overflow: hidden;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 0.75rem;
+  }
+
+  .sos-screen__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4375rem 0.625rem;
+    border-bottom: 1px solid var(--color-border-secondary);
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .sos-screen__title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  /* 매장 상세 query에서 오는 요약. 서버 값으로 새로 받으면 블루 */
+  .sos-summary {
+    padding: 0 0.4375rem;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .sos-summary[data-new] {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a-soft);
+    font-weight: 600;
+    color: var(--demo-a);
+  }
+
+  .sos-menus {
+    display: grid;
+    gap: 0.125rem;
+    margin: 0;
+    padding: 0.375rem;
+    list-style: none;
+  }
+
+  .sos-menu {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.3125rem 0.375rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+  }
+
+  .sos-menu[data-target] {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  /* 판매 중(켜짐) ↔ 품절(꺼짐) 스위치 그림 */
+  .sos-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    flex-direction: row-reverse;
+    transition: scale 0.12s ease;
+  }
+
+  .sos-switch__text {
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .sos-switch__knob {
+    position: relative;
+    width: 1.625rem;
+    height: 0.9375rem;
+    border-radius: 9999px;
+    background-color: var(--color-border-primary);
+    transition: background-color 0.2s ease;
+  }
+
+  .sos-switch__knob::after {
+    content: '';
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    width: 0.6875rem;
+    height: 0.6875rem;
+    border-radius: 50%;
+    background-color: var(--surface-bg);
+    transition: transform 0.2s ease;
+  }
+
+  .sos-switch[data-on] .sos-switch__knob {
+    background-color: var(--demo-a);
+  }
+
+  .sos-switch[data-on] .sos-switch__knob::after {
+    transform: translateX(0.6875rem);
+  }
+
+  .sos-switch:not([data-on]) .sos-switch__text {
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  .sos-switch[data-pressed] {
+    scale: 0.88;
+  }
+
+  /* ── 표 ── */
+  .sos-table {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: 0.625rem;
+    font-size: 0.6875rem;
+  }
+
+  .sos-head,
+  .sos-group,
+  .sos-row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+  }
+
+  .sos-head {
+    padding: 0 0.5rem 0.25rem;
+    border-bottom: 1px solid var(--color-border-primary);
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .sos-head span:last-child {
+    justify-self: end;
+  }
+
+  .sos-group {
+    padding: 0.4375rem 0.5rem 0.125rem;
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .sos-group span {
+    grid-column: 1 / -1;
+  }
+
+  .sos-row {
+    min-height: 1.75rem;
+    padding: 0 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.2s ease;
+  }
+
+  .sos-row__key {
+    overflow: hidden;
+    font-size: 0.6875rem;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* 한글 라벨은 모노 서체에서 자간이 벌어지므로 본문 서체로 둔다 */
+  .sos-row__key--plain {
+    font-family: var(--font-sans);
+  }
+
+  .sos-row__key span {
+    color: var(--color-text-tertiary);
+  }
+
+  .sos-row__value {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .sos-row[data-empty] .sos-row__value {
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+  }
+
+  .sos-row__tag {
+    justify-self: end;
+    padding: 0.0625rem 0.4375rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .sos-row__tag:empty {
+    visibility: hidden;
+  }
+
+  /* 이번 단계에서 값이 바뀐 행 */
+  .sos-row[data-current] {
+    background-color: var(--demo-a-soft);
+  }
+
+  .sos-row[data-current] .sos-row__value,
+  .sos-row[data-current] .sos-row__tag {
+    color: var(--demo-a);
+  }
+
+  .sos-row[data-current] .sos-row__tag {
+    border-color: var(--demo-a);
+  }
+
+  /* 실패했거나 서버와 어긋난 채 남은 행 */
+  .sos-row[data-warn] {
+    background-color: var(--demo-warn-soft);
+  }
+
+  .sos-row[data-warn] .sos-row__value,
+  .sos-row[data-warn] .sos-row__tag {
+    color: var(--demo-warn);
+  }
+
+  .sos-row[data-warn] .sos-row__tag {
+    border-color: var(--demo-warn);
+  }
+
+  .sos-line {
+    margin: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border-secondary);
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  @media (max-width: 40rem) {
+    .sos-scene {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+  }
+</style>
+
+<script>
+  type Mode = 'ok' | 'fail';
+  type Row = 'menus' | 'detail' | 'previous' | 'server';
+  type Cell = { value: string; tag?: string; mark?: 'current' | 'warn'; empty?: boolean };
+  type Snap = {
+    name: string;
+    line: string;
+    /** 화면의 에이드 스위치가 판매 중인가 */
+    switchOn: boolean;
+    /** 매장 상세 요약의 품절 메뉴 수 */
+    soldOut: number;
+    rows: Record<Row, Cell>;
+  };
+
+  const START: Snap = {
+    name: '',
+    line: '에이드는 판매 중입니다',
+    switchOn: true,
+    soldOut: 0,
+    rows: {
+      menus: { value: '에이드 판매 중' },
+      detail: { value: '품절 0개' },
+      previous: { value: '없음', empty: true },
+      server: { value: '판매 중' },
+    },
+  };
+
+  const MUTATE: Snap = {
+    name: '스위치 클릭 · onMutate',
+    line: '누르자마자 스위치가 품절로 바뀝니다',
+    switchOn: false,
+    soldOut: 0,
+    rows: {
+      menus: { value: '에이드 품절', tag: 'setQueryData', mark: 'current' },
+      detail: { value: '품절 0개' },
+      previous: { value: '에이드 판매 중', tag: '보관', mark: 'current' },
+      server: { value: '판매 중', tag: '요청 중' },
+    },
+  };
+
+  const FLOWS: Record<Mode, Snap[]> = {
+    ok: [
+      MUTATE,
+      {
+        ...MUTATE,
+        name: '서버 응답 성공',
+        line: '서버도 품절로 저장했습니다',
+        rows: {
+          ...MUTATE.rows,
+          menus: { value: '에이드 품절' },
+          previous: { value: '에이드 판매 중' },
+          server: { value: '품절', tag: '저장됨', mark: 'current' },
+        },
+      },
+      {
+        ...MUTATE,
+        name: 'onSettled 재조회',
+        line: '메뉴와 매장 상세 모두 서버 값으로 맞춰집니다',
+        soldOut: 1,
+        rows: {
+          menus: { value: '에이드 품절', tag: '무효화 → 다시 받음', mark: 'current' },
+          detail: { value: '품절 1개', tag: '무효화 → 다시 받음', mark: 'current' },
+          previous: { value: '에이드 판매 중' },
+          server: { value: '품절' },
+        },
+      },
+    ],
+    fail: [
+      MUTATE,
+      {
+        ...MUTATE,
+        name: '서버 응답 실패',
+        line: '서버는 저장하지 못했습니다',
+        rows: {
+          ...MUTATE.rows,
+          menus: { value: '에이드 품절', tag: '서버와 다름', mark: 'warn' },
+          previous: { value: '에이드 판매 중' },
+          server: { value: '판매 중', tag: '저장 실패', mark: 'warn' },
+        },
+      },
+      {
+        ...MUTATE,
+        name: 'onError 복구',
+        line: '보관한 previous로 스위치를 되돌립니다',
+        switchOn: true,
+        rows: {
+          ...MUTATE.rows,
+          menus: { value: '에이드 판매 중', tag: 'previous로 복구', mark: 'current' },
+          previous: { value: '에이드 판매 중' },
+          server: { value: '판매 중' },
+        },
+      },
+      {
+        ...MUTATE,
+        name: 'onSettled 재조회',
+        line: '서버 값으로 한 번 더 확인합니다',
+        switchOn: true,
+        rows: {
+          ...MUTATE.rows,
+          menus: { value: '에이드 판매 중', tag: '무효화 → 다시 받음', mark: 'current' },
+          detail: { value: '품절 0개', tag: '무효화 → 다시 받음', mark: 'current' },
+          previous: { value: '에이드 판매 중' },
+          server: { value: '판매 중' },
+        },
+      },
+    ],
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-demo="optimistic-sold-out"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    const el = (name: string) => root.querySelector<HTMLElement>(`[data-el="${name}"]`)!;
+    const modeButtons = frame.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const next = frame.querySelector<HTMLButtonElement>('[data-act="next"]')!;
+    const chips = root.querySelectorAll<HTMLElement>('[data-step]');
+
+    let mode: Mode = 'ok';
+    /** 0은 누르기 전 */
+    let step = 0;
+    let pressTimer = 0;
+
+    const render = () => {
+      const flow = FLOWS[mode];
+      const s = step === 0 ? START : flow[step - 1];
+
+      chips.forEach((chip, i) => {
+        chip.hidden = i >= flow.length;
+        chip.querySelector('[data-el="stepName"]')!.textContent = flow[i]?.name ?? '';
+        chip.toggleAttribute('data-current', i + 1 === step);
+        chip.toggleAttribute('data-done', i + 1 < step);
+      });
+
+      // 화면은 각자 구독하는 캐시를 그대로 그린다
+      el('switch').toggleAttribute('data-on', s.switchOn);
+      el('switchText').textContent = s.switchOn ? '판매 중' : '품절';
+      el('summary').textContent = `품절 메뉴 ${s.soldOut}개`;
+      el('summary').toggleAttribute('data-new', s.soldOut > 0);
+
+      (Object.keys(s.rows) as Row[]).forEach((key) => {
+        const cell = s.rows[key];
+        const row = root.querySelector<HTMLElement>(`[data-row="${key}"]`)!;
+        row.querySelector('[data-el="value"]')!.textContent = cell.value;
+        row.querySelector('[data-el="tag"]')!.textContent = cell.tag ?? '';
+        row.toggleAttribute('data-current', cell.mark === 'current');
+        row.toggleAttribute('data-warn', cell.mark === 'warn');
+        row.toggleAttribute('data-empty', !!cell.empty);
+      });
+
+      el('line').textContent = s.line;
+      // 버튼 하나가 처음부터 끝까지 진행하고, 마지막에는 처음으로 되돌린다
+      next.textContent = step === 0 ? '품절 스위치 누르기' : step === flow.length ? '처음부터' : '다음';
+      modeButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    };
+
+    next.addEventListener('click', () => {
+      step = step === FLOWS[mode].length ? 0 : step + 1;
+      if (step === 1) {
+        // 조작부 버튼을 누르면 그림 속 스위치가 눌리는 모양을 잠깐 보인다
+        clearTimeout(pressTimer);
+        el('switch').setAttribute('data-pressed', '');
+        pressTimer = window.setTimeout(() => el('switch').removeAttribute('data-pressed'), 160);
+      }
+      render();
+    });
+
+    modeButtons.forEach((b) =>
+      b.addEventListener('click', () => {
+        mode = b.dataset.mode as Mode;
+        step = 0;
+        render();
+      }),
+    );
+
+    render();
+  });
+</script>

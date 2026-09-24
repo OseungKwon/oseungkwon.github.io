@@ -1,0 +1,989 @@
+---
+import Demo from './Demo.astro';
+
+/*
+ * 한 관리자의 2분 40초를 재생하는 시나리오. 아래 타임라인 레인과 스크립트가
+ * 같은 시각을 쓰도록 여기서 한 번만 정하고 data-times로 넘긴다.
+ */
+const STALE = 30;
+const GC = 60;
+const T = { leave1: 40, back1: 70, leave2: 80, back2: 150, end: 160 };
+const removed = T.leave2 + GC;
+
+type Seg = { from: number; to: number; kind: string; label?: string };
+const lanes: { name: string; segs: Seg[] }[] = [
+  {
+    name: '보는 화면',
+    segs: [
+      { from: 0, to: T.leave1, kind: 'on', label: '매장 관리' },
+      { from: T.leave1, to: T.back1, kind: 'off', label: '메뉴' },
+      { from: T.back1, to: T.leave2, kind: 'on' },
+      { from: T.leave2, to: T.back2, kind: 'off', label: '메뉴 관리' },
+      { from: T.back2, to: T.end, kind: 'on' },
+    ],
+  },
+  {
+    name: '캐시 데이터',
+    segs: [
+      { from: 0, to: STALE, kind: 'on', label: 'fresh' },
+      { from: STALE, to: T.back1, kind: 'line', label: 'stale' },
+      { from: T.back1, to: T.back1 + STALE, kind: 'on', label: 'fresh' },
+      { from: T.back1 + STALE, to: removed, kind: 'line', label: 'stale' },
+      { from: removed, to: T.back2, kind: 'empty' },
+      { from: T.back2, to: T.end, kind: 'on' },
+    ],
+  },
+  {
+    name: 'gcTime',
+    segs: [
+      { from: T.leave1, to: T.back1, kind: 'on', label: '30초' },
+      { from: T.leave2, to: removed, kind: 'on', label: '60초 → 제거' },
+    ],
+  },
+];
+const ticks = [0, 60, 120, T.end];
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+---
+
+<Demo
+  title="매장 관리 페이지를 떠났다가 돌아오면 무엇이 보일까요?"
+  hint="재생을 누르면 관리자 한 명이 두 페이지를 오가는 2분 40초를 천천히 보여줍니다."
+  caption="설명용 시간 모형입니다. staleTime 30초, gcTime 60초를 적용했습니다."
+>
+  <Fragment slot="controls">
+    <button class="demo-btn demo-btn--primary" type="button" data-act="play">재생</button>
+    <span class="demo__spacer"></span>
+    <span class="demo-label">경과 시간</span>
+    <strong class="qc-clock" data-el="now">0:00</strong>
+  </Fragment>
+
+  <div
+    class="qc"
+    data-demo="query-lifetime"
+    data-times={JSON.stringify({ ...T, stale: STALE, gc: GC })}
+    style={`--end: ${T.end}; --t: 0`}
+  >
+    <div class="qc-scene">
+      <div class="qc-browser" data-el="browser">
+        <div class="qc-bar" aria-hidden="true">
+          <span class="qc-dots"><i></i><i></i><i></i></span>
+          <span class="qc-url" data-el="url">admin.app/stores</span>
+        </div>
+        <div class="qc-nav" aria-hidden="true">
+          <span class="qc-tab" data-tab="stores" data-current>매장 관리</span>
+          <span class="qc-tab" data-tab="menus">메뉴 관리</span>
+        </div>
+        <div class="qc-progress" data-el="progress" aria-hidden="true"><span></span></div>
+
+        <div class="qc-page" data-el="page-stores">
+          <div class="qc-page__head">
+            <span>매장 목록</span>
+            <span class="qc-chip" data-el="chip" data-state="idle">요청 없음</span>
+          </div>
+          <ul class="qc-list" data-el="list">
+            <li class="qc-row" data-el="row-new" data-new hidden>
+              <span>판교점</span><span class="qc-row__meta">신규 오픈</span>
+            </li>
+            <li class="qc-row"><span>강남점</span><span class="qc-row__meta">영업 중</span></li>
+            <li class="qc-row"><span>성수점</span><span class="qc-row__meta">영업 중</span></li>
+            <li class="qc-row" data-el="row-old"><span>홍대점</span><span class="qc-row__meta">휴점</span></li>
+          </ul>
+          <ul class="qc-skeleton" data-el="skeleton" aria-label="목록을 불러오는 중" hidden>
+            <li></li><li></li><li></li>
+          </ul>
+          <div class="qc-stamp" data-el="stamp">v1 · 0:00에 받은 목록</div>
+        </div>
+
+        <div class="qc-page" data-el="page-menus" hidden>
+          <div class="qc-page__head"><span>메뉴 목록</span></div>
+          <ul class="qc-list">
+            <li class="qc-row"><span>아메리카노</span><span class="qc-switch" data-on></span></li>
+            <li class="qc-row"><span>카페라테</span><span class="qc-switch" data-on></span></li>
+            <li class="qc-row"><span>시즌 한정 에이드</span><span class="qc-switch"></span></li>
+          </ul>
+          <div class="qc-stamp">이 페이지는 매장 목록을 쓰지 않습니다</div>
+        </div>
+
+        <svg class="qc-cursor" data-el="cursor" viewBox="0 0 16 20" aria-hidden="true">
+          <path d="M1 1 L1 16 L5 12 L8 19 L10.5 18 L7.5 11 L13 11 Z"></path>
+        </svg>
+      </div>
+
+      <div class="qc-link" data-el="link" data-state="on" aria-hidden="true">
+        <span class="qc-link__line"></span>
+        <span class="qc-link__label" data-el="link-label">구독 1</span>
+        <span class="qc-link__line"></span>
+      </div>
+
+      <div class="qc-cache">
+        <div class="qc-cache__head">
+          <span class="qc-label">QueryCache</span>
+          <code class="demo-code">['stores', 'list']</code>
+        </div>
+        <div class="qc-entry" data-el="entry" data-state="fresh">
+          <strong data-el="entry-data">매장 목록 v1</strong>
+          <span class="qc-entry__state" data-el="entry-state">fresh</span>
+        </div>
+
+        <div class="qc-timer" data-el="stale-timer" data-state="running">
+          <div class="qc-timer__head">
+            <span><strong>staleTime</strong><span class="qc-limit">{STALE}초</span></span>
+            <span class="qc-num" data-el="stale-count">0초 지남</span>
+          </div>
+          <div class="qc-track"><span class="qc-track__fill" data-el="stale-fill"></span></div>
+          <div class="qc-timer__foot" data-el="stale-foot">데이터를 받은 순간부터 셉니다</div>
+        </div>
+
+        <div class="qc-timer" data-el="gc-timer" data-state="waiting">
+          <div class="qc-timer__head">
+            <span><strong>gcTime</strong><span class="qc-limit">{GC}초</span></span>
+            <span class="qc-num" data-el="gc-count">멈춤</span>
+          </div>
+          <div class="qc-track"><span class="qc-track__fill" data-el="gc-fill"></span></div>
+          <div class="qc-timer__foot" data-el="gc-foot">구독자가 0명이 되면 셉니다</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="qc-event" data-el="event" aria-live="polite">재생하면 매장 목록을 받은 직후부터 시작합니다.</div>
+
+    <div class="qc-lanes" aria-hidden="true">
+      {
+        lanes.map((lane, i) => (
+          <>
+            <span class="qc-lane__name" style={`grid-row: ${i + 1}`}>
+              {lane.name}
+            </span>
+            <div class="qc-lane" style={`grid-row: ${i + 1}`}>
+              {lane.segs.map((s) => (
+                <span class="qc-seg" data-kind={s.kind} style={`--from: ${s.from}; --to: ${s.to}`}>
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          </>
+        ))
+      }
+      <div class="qc-axis">
+        {ticks.map((s) => <span style={`--at: ${s}`}>{clock(s)}</span>)}
+      </div>
+      <div class="qc-head-layer">
+        <span class="qc-future"></span>
+        <span class="qc-playhead"></span>
+      </div>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .qc {
+    display: grid;
+    gap: 1rem;
+  }
+  .qc-clock {
+    min-width: 2.75rem;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--demo-a);
+    text-align: right;
+  }
+  .qc-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) auto minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  /* 미니 브라우저 */
+  .qc-browser {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.875rem;
+    background: var(--surface-bg);
+  }
+  .qc-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-bg-tertiary);
+  }
+  .qc-dots {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .qc-dots i {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 50%;
+    background: var(--color-border-primary);
+  }
+  .qc-url {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    background: var(--surface-bg);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .qc-nav {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem 0;
+    border-bottom: 1px solid var(--color-border-secondary);
+  }
+  .qc-tab {
+    padding: 0.3125rem 0.625rem 0.4375rem;
+    border-bottom: 2px solid transparent;
+    font-size: 0.8125rem;
+    color: var(--color-text-tertiary);
+  }
+  .qc-tab[data-current] {
+    border-bottom-color: var(--demo-a);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .qc-progress {
+    height: 2px;
+    overflow: hidden;
+  }
+  .qc-progress span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--demo-a);
+  }
+  .qc-progress[data-on] span {
+    width: 100%;
+    transition: width 1.6s ease-out;
+  }
+  .qc-page {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    flex: 1;
+    padding: 0.625rem 0.75rem 0.75rem;
+  }
+  .qc-page[hidden] {
+    display: none;
+  }
+  .qc-page__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .qc-chip {
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  .qc-chip[data-state='fetching'] {
+    border-color: var(--demo-a);
+    background: var(--demo-a-soft);
+    color: var(--demo-a);
+  }
+  .qc-list,
+  .qc-skeleton {
+    display: grid;
+    gap: 0.3125rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .qc-list[hidden],
+  .qc-skeleton[hidden] {
+    display: none;
+  }
+  .qc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 1.875rem;
+    padding: 0 0.625rem;
+    border-radius: 0.5rem;
+    background: var(--color-bg-tertiary);
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+  }
+  .qc-row[hidden] {
+    display: none;
+  }
+  .qc-row[data-new] {
+    background: var(--demo-a-soft);
+  }
+  .qc-row[data-new] .qc-row__meta {
+    color: var(--demo-a);
+  }
+  .qc-row__meta {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  .qc-list[data-dim] {
+    opacity: 0.55;
+  }
+  .qc-skeleton li {
+    height: 1.875rem;
+    border: 1px dashed var(--color-border-primary);
+    border-radius: 0.5rem;
+  }
+  .qc-switch {
+    position: relative;
+    flex: none;
+    width: 1.5rem;
+    height: 0.875rem;
+    border-radius: 999px;
+    background: var(--color-border-primary);
+  }
+  .qc-switch::after {
+    content: '';
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--surface-bg);
+  }
+  .qc-switch[data-on] {
+    background: var(--color-text-tertiary);
+  }
+  .qc-switch[data-on]::after {
+    left: auto;
+    right: 0.125rem;
+  }
+  .qc-stamp {
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .qc-cursor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1rem;
+    height: 1.25rem;
+    opacity: 0;
+    fill: var(--color-text-primary);
+    stroke: var(--surface-bg);
+    stroke-width: 1.2;
+    pointer-events: none;
+    transform: translate(12rem, 9rem);
+    transition:
+      transform 0.7s ease-in-out,
+      opacity 0.3s ease,
+      scale 0.12s ease;
+  }
+  .qc-cursor[data-on] {
+    opacity: 1;
+  }
+  .qc-cursor[data-press] {
+    scale: 0.8;
+  }
+
+  /* 구독 연결선 */
+  .qc-link {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 4.25rem;
+  }
+  .qc-link__line {
+    flex: 1;
+    border-top: 2px solid var(--demo-a);
+  }
+  .qc-link__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--demo-a);
+    white-space: nowrap;
+  }
+  .qc-link[data-state='off'] .qc-link__line {
+    border-top-style: dashed;
+    border-top-color: var(--color-border-primary);
+  }
+  .qc-link[data-state='off'] .qc-link__label {
+    color: var(--color-text-tertiary);
+  }
+
+  /* 캐시 패널 */
+  .qc-cache {
+    display: grid;
+    align-content: start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.875rem;
+    background: var(--surface-bg);
+  }
+  .qc-cache__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+  }
+  .qc-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+  .qc-cache__head .demo-code {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+  .qc-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 0.625rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-primary);
+  }
+  .qc-entry[data-state='fresh'] {
+    border-color: var(--demo-a);
+    background: var(--demo-a-soft);
+  }
+  .qc-entry[data-state='empty'] {
+    border-style: dashed;
+    color: var(--color-text-tertiary);
+  }
+  .qc-entry__state {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+  .qc-entry[data-state='fresh'] .qc-entry__state {
+    color: var(--demo-a);
+  }
+  .qc-entry[data-state='empty'] .qc-entry__state {
+    font-family: var(--font-sans);
+  }
+  .qc-timer {
+    display: grid;
+    gap: 0.3125rem;
+  }
+  .qc-timer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+  }
+  .qc-timer__head strong {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .qc-limit {
+    margin-left: 0.375rem;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 999px;
+    background: var(--color-bg-tertiary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .qc-num {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+  .qc-timer[data-state='running'] .qc-num {
+    color: var(--demo-a);
+  }
+  .qc-track {
+    height: 0.4375rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-bg-tertiary);
+  }
+  .qc-track__fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--demo-a);
+  }
+  .qc-timer[data-state='done'] .qc-track__fill {
+    background: var(--demo-idle);
+  }
+  .qc-timer__foot {
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+
+  .qc-event {
+    min-height: 2.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  /* 타임라인 레인 */
+  .qc-lanes {
+    display: grid;
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.375rem 0.625rem;
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--color-border-secondary);
+  }
+  .qc-lane__name {
+    grid-column: 1;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+  .qc-lane {
+    position: relative;
+    grid-column: 2;
+    height: 1.25rem;
+    border-radius: 0.375rem;
+    background: var(--color-bg-tertiary);
+  }
+  .qc-seg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--from) / var(--end) * 100%);
+    width: calc((var(--to) - var(--from)) / var(--end) * 100%);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    box-sizing: border-box;
+    padding-left: 0.3125rem;
+    border-radius: 0.375rem;
+    font-size: 0.625rem;
+    white-space: nowrap;
+  }
+  .qc-seg[data-kind='on'] {
+    border: 1px solid var(--demo-a);
+    background: var(--demo-a-soft);
+    color: var(--demo-a);
+  }
+  .qc-seg[data-kind='off'] {
+    color: var(--color-text-tertiary);
+  }
+  .qc-seg[data-kind='line'] {
+    border: 1px solid var(--color-border-primary);
+    background: var(--surface-bg);
+    color: var(--color-text-secondary);
+  }
+  .qc-seg[data-kind='empty'] {
+    border: 1px dashed var(--color-border-primary);
+    background: var(--surface-bg);
+  }
+  .qc-axis {
+    position: relative;
+    grid-row: 4;
+    grid-column: 2;
+    height: 0.875rem;
+  }
+  .qc-axis span {
+    position: absolute;
+    left: calc(var(--at) / var(--end) * 100%);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+    transform: translateX(-50%);
+  }
+  .qc-axis span:first-child {
+    transform: none;
+  }
+  .qc-axis span:last-child {
+    transform: translateX(-100%);
+  }
+  .qc-head-layer {
+    position: relative;
+    grid-row: 1 / 4;
+    grid-column: 2;
+    align-self: stretch;
+    pointer-events: none;
+  }
+  .qc-playhead {
+    position: absolute;
+    top: -0.25rem;
+    bottom: -0.25rem;
+    left: calc(var(--t) / var(--end) * 100%);
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: var(--color-text-primary);
+  }
+  .qc-future {
+    position: absolute;
+    top: -0.25rem;
+    bottom: -0.25rem;
+    left: calc(var(--t) / var(--end) * 100%);
+    right: 0;
+    background: var(--surface-bg);
+    opacity: 0;
+  }
+  .qc[data-started] .qc-future {
+    opacity: 0.6;
+  }
+
+  /* 좁은 화면에서도 브라우저와 캐시를 한 줄에 두고, 안쪽 글자와 여백을 줄인다 */
+  @media (max-width: 34rem) {
+    .qc-link {
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.1875rem;
+      width: 2.25rem;
+    }
+    .qc-link__line {
+      flex: none;
+      width: 100%;
+    }
+    .qc-link__line:last-child {
+      display: none;
+    }
+    .qc-link__label {
+      order: -1;
+      font-size: 0.5625rem;
+    }
+    .qc-bar {
+      padding: 0.375rem 0.5rem;
+    }
+    .qc-dots {
+      display: none;
+    }
+    .qc-url {
+      font-size: 0.5625rem;
+    }
+    .qc-nav {
+      gap: 0;
+      padding: 0.25rem 0.375rem 0;
+    }
+    .qc-tab {
+      padding: 0.25rem 0.3125rem 0.3125rem;
+      font-size: 0.6875rem;
+    }
+    .qc-page {
+      padding: 0.5rem;
+      gap: 0.375rem;
+    }
+    .qc-page__head {
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      font-size: 0.6875rem;
+    }
+    .qc-chip {
+      padding: 0 0.375rem;
+      font-size: 0.5625rem;
+    }
+    .qc-row {
+      min-height: 1.625rem;
+      padding: 0 0.4375rem;
+      font-size: 0.6875rem;
+    }
+    .qc-row__meta,
+    .qc-stamp {
+      font-size: 0.5625rem;
+    }
+    .qc-skeleton li {
+      height: 1.625rem;
+    }
+    .qc-switch {
+      width: 1.25rem;
+      height: 0.75rem;
+    }
+    .qc-switch::after {
+      width: 0.5rem;
+      height: 0.5rem;
+    }
+    .qc-cache {
+      gap: 0.5rem;
+      padding: 0.5rem;
+    }
+    .qc-label,
+    .qc-cache__head .demo-code {
+      font-size: 0.625rem;
+    }
+    .qc-entry {
+      min-height: 2rem;
+      padding: 0 0.5rem;
+      font-size: 0.6875rem;
+    }
+    .qc-entry__state {
+      font-size: 0.5625rem;
+    }
+    .qc-timer__head {
+      flex-wrap: wrap;
+      gap: 0.125rem 0.375rem;
+      font-size: 0.6875rem;
+    }
+    .qc-limit {
+      margin-left: 0.25rem;
+      padding: 0 0.3125rem;
+      font-size: 0.5625rem;
+    }
+    .qc-timer__foot {
+      font-size: 0.5625rem;
+    }
+    .qc-lanes {
+      grid-template-columns: 3.75rem minmax(0, 1fr);
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-demo="query-lifetime"]').forEach((root) => {
+    const demo = root.closest('.demo')!;
+    const el = (name: string) => demo.querySelector<HTMLElement>(`[data-el="${name}"]`)!;
+    const play = demo.querySelector<HTMLButtonElement>('[data-act="play"]')!;
+    const tabs = [...root.querySelectorAll<HTMLElement>('[data-tab]')];
+    const T = JSON.parse(root.dataset.times!) as Record<
+      'stale' | 'gc' | 'leave1' | 'back1' | 'leave2' | 'back2' | 'end',
+      number
+    >;
+
+    // 모형 시간 1초를 화면에서 몇 ms로 보여줄지
+    const MS_PER_SECOND = 110;
+
+    type Page = 'stores' | 'menus';
+    let t = 0;
+    let page: Page = 'stores';
+    let cached = true;
+    let version = 1;
+    let updatedAt = 0;
+    let leftAt: number | null = null;
+    let removedAt: number | null = null;
+    let fetching: 'background' | 'initial' | null = null;
+    let event = '재생하면 매장 목록을 받은 직후부터 시작합니다.';
+
+    let mode: 'idle' | 'playing' | 'paused' | 'done' = 'idle';
+    let runId = 0;
+
+    const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+    const pct = (v: number) => `${Math.max(0, Math.min(v, 1)) * 100}%`;
+
+    const render = () => {
+      const now = Math.floor(t);
+      const onStores = page === 'stores';
+      const age = now - updatedAt;
+      const stale = cached && age >= T.stale;
+      const idle = leftAt === null ? 0 : now - leftAt;
+
+      root.style.setProperty('--t', String(t));
+      root.toggleAttribute('data-started', mode !== 'idle');
+      el('now').textContent = clock(now);
+      el('event').textContent = event;
+      play.textContent = { idle: '재생', playing: '일시정지', paused: '이어서 재생', done: '다시 재생' }[mode];
+
+      // 미니 사이트
+      el('url').textContent = onStores ? 'admin.app/stores' : 'admin.app/menus';
+      tabs.forEach((tab) => tab.toggleAttribute('data-current', tab.dataset.tab === page));
+      el('page-stores').hidden = !onStores;
+      el('page-menus').hidden = onStores;
+      el('progress').toggleAttribute('data-on', !!fetching);
+      el('chip').dataset.state = fetching ? 'fetching' : 'idle';
+      el('chip').textContent =
+        fetching === 'background' ? '백그라운드 요청 중' : fetching === 'initial' ? '첫 요청 중' : '요청 없음';
+      el('list').hidden = !cached;
+      el('list').toggleAttribute('data-dim', fetching === 'background');
+      el('skeleton').hidden = cached;
+      // 새 목록은 휴점 매장 하나가 빠지고 신규 매장 하나가 들어와 높이가 유지된다
+      el('row-new').hidden = version < 2;
+      el('row-old').hidden = version >= 2;
+      el('stamp').textContent = cached ? `v${version} · ${clock(updatedAt)}에 받은 목록` : '표시할 목록이 없습니다';
+
+      // 구독 연결
+      el('link').dataset.state = onStores ? 'on' : 'off';
+      el('link-label').textContent = onStores ? '구독 1' : '구독 0';
+
+      // 캐시 항목
+      el('entry').dataset.state = !cached ? 'empty' : stale ? 'stale' : 'fresh';
+      el('entry-data').textContent = cached ? `매장 목록 v${version}` : '비어 있음';
+      el('entry-state').textContent = !cached ? '제거됨' : stale ? 'stale' : 'fresh';
+
+      // staleTime
+      el('stale-timer').dataset.state = !cached ? 'waiting' : stale ? 'done' : 'running';
+      el('stale-count').textContent = !cached ? '데이터 없음' : stale ? '지남' : `${age}초 지남`;
+      el('stale-fill').style.width = cached ? pct(age / T.stale) : '0%';
+      el('stale-foot').textContent = !cached
+        ? '데이터를 받으면 다시 셉니다'
+        : stale
+          ? `${clock(updatedAt + T.stale)}부터 stale · 데이터는 그대로`
+          : `${clock(updatedAt)}에 데이터를 받은 순간부터 셉니다`;
+
+      // gcTime
+      el('gc-timer').dataset.state = !cached ? 'done' : leftAt === null ? 'waiting' : 'running';
+      el('gc-count').textContent = !cached ? '제거됨' : leftAt === null ? '멈춤' : `${idle}초 지남`;
+      el('gc-fill').style.width = !cached ? '100%' : leftAt === null ? '0%' : pct(idle / T.gc);
+      el('gc-foot').textContent = !cached
+        ? `${clock(removedAt!)}에 캐시에서 제거`
+        : leftAt === null
+          ? '구독자가 0명이 되면 셉니다'
+          : `${clock(leftAt)}에 매장 관리를 떠난 순간부터 셉니다`;
+    };
+
+    const resetState = () => {
+      t = 0;
+      page = 'stores';
+      cached = true;
+      version = 1;
+      updatedAt = 0;
+      leftAt = null;
+      removedAt = null;
+      fetching = null;
+      el('cursor').removeAttribute('data-on');
+    };
+
+    // 일시정지 중에는 흐르지 않는 대기. 다시 재생하면 이전 재생은 여기서 끊긴다.
+    const halt = Symbol('halt');
+    const frame = () => new Promise<number>((r) => requestAnimationFrame(r));
+    const sleep = async (id: number, ms: number) => {
+      let last = await frame();
+      while (ms > 0) {
+        const nowMs = await frame();
+        if (id !== runId) throw halt;
+        if (mode === 'playing') ms -= nowMs - last;
+        last = nowMs;
+      }
+    };
+    const runTo = async (id: number, target: number) => {
+      let last = await frame();
+      while (t < target) {
+        const nowMs = await frame();
+        if (id !== runId) throw halt;
+        if (mode === 'playing') {
+          const next = Math.min(target, t + (nowMs - last) / MS_PER_SECOND);
+          // 매장 관리를 보는 중에 stale이 되는 순간을 알린다
+          if (cached && page === 'stores' && t - updatedAt < T.stale && next - updatedAt >= T.stale) {
+            event = 'staleTime 30초가 지나 stale이 됐지만, 목록도 요청도 그대로입니다.';
+          }
+          t = next;
+          render();
+        }
+        last = nowMs;
+      }
+    };
+    const click = async (id: number, target: Page) => {
+      const cursor = el('cursor');
+      const tab = tabs.find((x) => x.dataset.tab === target)!;
+      cursor.setAttribute('data-on', '');
+      cursor.style.transform = `translate(${tab.offsetLeft + tab.offsetWidth / 2}px, ${tab.offsetTop + tab.offsetHeight / 2}px)`;
+      await sleep(id, 800);
+      cursor.setAttribute('data-press', '');
+      await sleep(id, 160);
+      cursor.removeAttribute('data-press');
+    };
+
+    const leave = (message: string) => {
+      page = 'menus';
+      leftAt = Math.floor(t);
+      event = message;
+    };
+    const back = () => {
+      page = 'stores';
+      leftAt = null;
+      if (!cached) {
+        fetching = 'initial';
+        event = '캐시가 비어 있어 빈 화면으로 목록을 기다립니다.';
+      } else {
+        fetching = 'background';
+        event = `캐시에 남은 v${version} 목록을 바로 보여주고, stale이라 뒤에서 다시 요청합니다.`;
+      }
+    };
+    const fetched = () => {
+      version += 1;
+      cached = true;
+      updatedAt = Math.floor(t);
+      fetching = null;
+      event = `새 목록 v${version}을 받아 staleTime을 처음부터 다시 셉니다.`;
+    };
+
+    const scenario = async (id: number) => {
+      event = '매장 관리가 목록을 받아 구독 중입니다. 구독자가 있어 gcTime은 멈춰 있습니다.';
+      render();
+      await sleep(id, 1600);
+      await runTo(id, T.leave1);
+      await click(id, 'menus');
+      leave('메뉴 관리로 이동했습니다. 구독자가 0명이 되어 gcTime이 흐르기 시작합니다.');
+      render();
+      await sleep(id, 1800);
+
+      await runTo(id, T.back1);
+      event = '30초 만에 매장 관리로 돌아갑니다. gcTime 60초가 다 차기 전입니다.';
+      render();
+      await click(id, 'stores');
+      back();
+      render();
+      await sleep(id, 2000);
+      fetched();
+      render();
+      await sleep(id, 1600);
+
+      await runTo(id, T.leave2);
+      await click(id, 'menus');
+      leave('다시 메뉴 관리로 이동합니다. 이번에는 60초 넘게 머뭅니다.');
+      render();
+      await sleep(id, 1800);
+
+      await runTo(id, T.leave2 + T.gc);
+      cached = false;
+      removedAt = Math.floor(t);
+      event = '구독자 없이 gcTime 60초가 지나 캐시에서 제거됐습니다.';
+      render();
+      await sleep(id, 2200);
+
+      await runTo(id, T.back2);
+      await click(id, 'stores');
+      back();
+      render();
+      await sleep(id, 2000);
+      fetched();
+      render();
+      await sleep(id, 1200);
+
+      await runTo(id, T.end);
+      el('cursor').removeAttribute('data-on');
+      mode = 'done';
+      event = '같은 복귀라도 캐시가 남아 있으면 목록이 바로, 제거됐으면 빈 화면이 먼저 보입니다.';
+      render();
+    };
+
+    const start = () => {
+      runId += 1;
+      resetState();
+      mode = 'playing';
+      scenario(runId).catch((e) => {
+        if (e !== halt) throw e;
+      });
+    };
+
+    play.addEventListener('click', () => {
+      if (mode === 'idle' || mode === 'done') start();
+      else mode = mode === 'playing' ? 'paused' : 'playing';
+      render();
+    });
+
+    render();
+  });
+</script>

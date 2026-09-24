@@ -1,0 +1,655 @@
+---
+/**
+ * 담당 매니저 배정 뒤 어느 캐시가 갱신되는가 — 대조 토글 + 버튼 하나.
+ *
+ * 글(tanstack-query-beyond-use-query)의 "화면에는 목록과 강남점 상세가 함께 열려 있고,
+ * 캐시에는 지금 보지 않는 목록 페이지와 다른 매장의 상세도 남아 있습니다"를 무대로
+ * 옮긴다. 왼쪽은 화면, 오른쪽은 QueryCache 표다. 표는 화면이 구독 중인 두 줄과 화면 밖에
+ * 남은 세 줄로 나뉘고, onSuccess가 무엇을 지정했을 때 어느 줄이 곧바로 다시 요청되고
+ * 어느 줄이 stale 표시만 받는지를 상태 칸이 보여준다.
+ */
+import Demo from './Demo.astro';
+
+type Entry = { id: string; group: string; key: string; holds: boolean };
+const ACTIVE: Entry[] = [
+  { id: 'all1', group: 'list', key: '{ all, 1 }', holds: true },
+  { id: 'd42', group: 'detail', key: "'store-42'", holds: true },
+];
+const IDLE: Entry[] = [
+  { id: 'all2', group: 'list', key: '{ all, 2 }', holds: false },
+  { id: 'open1', group: 'list', key: '{ open, 1 }', holds: true },
+  { id: 'd7', group: 'detail', key: "'store-7'", holds: false },
+];
+---
+
+<Demo
+  title="매니저를 배정했을 때 화면과 캐시에서 바뀌는 것"
+  hint="onSuccess에서 할 일을 고른 뒤 홍길동 배정하기를 눌러 보세요."
+  caption="설명용 모형 · 강남점(store-42)에 홍길동을 배정합니다. lists()는 list로 시작하는 세 항목에 모두 걸립니다. 모든 query는 staleTime 안에 있다고 가정합니다."
+>
+  <Fragment slot="controls">
+    <span class="demo-label">onSuccess에서</span>
+    <div class="demo-seg" role="group" aria-label="onSuccess에서 할 일">
+      <button class="demo-seg__opt" type="button" data-mode="none" aria-pressed="false">안 함</button>
+      <button class="demo-seg__opt" type="button" data-mode="invalidate" aria-pressed="true">모두 무효화</button>
+      <button class="demo-seg__opt" type="button" data-mode="set" aria-pressed="false">무효화 + 교체</button>
+    </div>
+    <span class="demo__spacer"></span>
+    <button class="demo-btn demo-btn--primary" type="button" data-act="run">홍길동 배정하기</button>
+  </Fragment>
+
+  <div class="mas" data-demo="manager-assign">
+    <!-- 지금 고른 onSuccess가 실제로 부르는 코드. 모드마다 한 벌씩 두고 hidden으로 고른다. -->
+    <div class="mas-code">
+      <span class="mas-code__label">onSuccess</span>
+      <code class="demo-code mas-code__body" data-code="none" hidden>
+        <span class="mas-code__none">아무것도 호출하지 않음</span>
+      </code>
+      <code class="demo-code mas-code__body" data-code="invalidate">
+        <span>invalidateQueries(<b>lists()</b>)</span>
+        <span>invalidateQueries(<b>detail(id)</b>)</span>
+      </code>
+      <code class="demo-code mas-code__body" data-code="set" hidden>
+        <span>invalidateQueries(<b>lists()</b>)</span>
+        <span>setQueryData(<b>detail(id)</b>, 응답)</span>
+      </code>
+    </div>
+
+    <div class="mas-scene">
+      <!-- 화면: 목록과 강남점 상세가 함께 열려 있다 -->
+      <div class="mas-screen" aria-hidden="true">
+        <div class="mas-screen__bar">
+          <span class="mas-tab" data-current>전체</span>
+          <span class="mas-tab">영업 중</span>
+          <span class="mas-screen__page">1 / 2</span>
+        </div>
+        <div class="mas-panes">
+          <div class="mas-pane">
+            <span class="mas-pane__title">매장 목록</span>
+            <span class="mas-row" data-selected>
+              <span>강남점</span>
+              <span class="mas-mgr" data-el="mgr-all1">미배정</span>
+            </span>
+            <span class="mas-row">
+              <span>성수점</span>
+              <span>전우치</span>
+            </span>
+          </div>
+          <div class="mas-pane">
+            <span class="mas-pane__title">강남점 상세</span>
+            <span class="mas-field">
+              <span class="mas-field__label">담당자</span>
+              <span class="mas-mgr" data-el="mgr-d42">미배정</span>
+            </span>
+            <span class="mas-field">
+              <span class="mas-field__label">주소</span>
+              <span>서울 강남구</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 캐시: 화면이 구독 중인 두 줄과 화면 밖에 남은 세 줄 -->
+      <div class="mas-cache" role="table" aria-label="QueryCache">
+        <div class="mas-cache__head" role="row">
+          <span role="columnheader">QueryCache</span>
+          <span role="columnheader">강남점 담당자</span>
+          <span role="columnheader">상태</span>
+        </div>
+        <div class="mas-group" role="row"><span role="cell">화면이 구독 중</span></div>
+        {
+          ACTIVE.map((e) => (
+            <div class="mas-entry" role="row" data-entry={e.id} data-state="fresh" data-active>
+              <code class="demo-code mas-entry__key" role="cell">
+                <span class="mas-entry__group">{e.group}</span> {e.key}
+              </code>
+              <span class="mas-entry__value" role="cell" data-el="value">
+                미배정
+              </span>
+              <span class="mas-entry__tag" role="cell" data-el="tag">
+                fresh
+              </span>
+            </div>
+          ))
+        }
+        <div class="mas-group" role="row"><span role="cell">화면 밖에 남은 항목</span></div>
+        {
+          IDLE.map((e) => (
+            <div class="mas-entry" role="row" data-entry={e.id} data-state="fresh">
+              <code class="demo-code mas-entry__key" role="cell">
+                <span class="mas-entry__group">{e.group}</span> {e.key}
+              </code>
+              <span class="mas-entry__value" role="cell" data-el="value" data-none={!e.holds || undefined}>
+                {e.holds ? '미배정' : '없음'}
+              </span>
+              <span class="mas-entry__tag" role="cell" data-el="tag">
+                fresh
+              </span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="mas-foot">
+      <p class="mas-line" data-el="line" aria-live="polite">화면은 캐시 다섯 항목 중 둘만 구독합니다</p>
+      <dl class="mas-readout">
+        <div>
+          <dt>서버 담당자</dt>
+          <dd data-el="server">미배정</dd>
+        </div>
+        <div>
+          <dt>다시 보낸 조회</dt>
+          <dd class="mas-num" data-el="requests">0</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .mas {
+    display: grid;
+    gap: 0.875rem;
+  }
+
+  .mas-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    align-items: start;
+    gap: 1rem;
+  }
+
+  /* ── onSuccess 코드 ── */
+  .mas-code {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .mas-code__label {
+    flex: none;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .mas-code__body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.125rem 1rem;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .mas-code__body[hidden] {
+    display: none;
+  }
+
+  /* 호출 대상 key를 캐시 표의 행과 연결해 읽게 한다 */
+  .mas-code__body b {
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .mas-code__none {
+    font-family: var(--font-sans);
+    color: var(--color-text-tertiary);
+  }
+
+  /* ── 화면 ── */
+  .mas-screen {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 0.75rem;
+  }
+
+  .mas-screen__bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.125rem;
+    padding: 0.375rem 0.625rem 0;
+    border-bottom: 1px solid var(--color-border-secondary);
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .mas-tab {
+    padding: 0.125rem 0.5rem 0.3125rem;
+    border-bottom: 2px solid transparent;
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .mas-tab[data-current] {
+    border-bottom-color: var(--demo-a);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .mas-screen__page {
+    margin-left: auto;
+    padding-bottom: 0.3125rem;
+    font-size: 0.625rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+
+  .mas-panes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .mas-pane {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 0.5rem 0.625rem 0.625rem;
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+  }
+
+  .mas-pane + .mas-pane {
+    border-left: 1px solid var(--color-border-secondary);
+  }
+
+  .mas-pane__title {
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .mas-row,
+  .mas-field {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .mas-row {
+    padding: 0.1875rem 0.375rem;
+    border-radius: 0.3125rem;
+  }
+
+  .mas-row[data-selected] {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .mas-field {
+    padding: 0.1875rem 0;
+  }
+
+  .mas-field__label {
+    color: var(--color-text-tertiary);
+  }
+
+  /* 담당자 칸: 새 값은 블루, 서버와 어긋난 값은 warn, 요청 중에는 흐리게 */
+  .mas-mgr {
+    font-weight: 700;
+    transition:
+      color 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .mas-mgr[data-state='new'] {
+    color: var(--demo-a);
+  }
+
+  .mas-mgr[data-state='old'] {
+    color: var(--demo-warn);
+  }
+
+  .mas-mgr[data-state='loading'] {
+    opacity: 0.35;
+  }
+
+  /* ── 캐시 표 ── */
+  .mas-cache {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: 0.625rem;
+    font-size: 0.6875rem;
+  }
+
+  .mas-cache__head,
+  .mas-group,
+  .mas-entry {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+  }
+
+  .mas-cache__head {
+    padding: 0 0.5rem 0.25rem;
+    border-bottom: 1px solid var(--color-border-primary);
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+
+  /* 상태 칸은 오른쪽 정렬이라 머리글도 맞춘다 */
+  .mas-cache__head span:last-child {
+    justify-self: end;
+  }
+
+  .mas-cache__head span:first-child {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .mas-group {
+    padding: 0.4375rem 0.5rem 0.125rem;
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .mas-group span {
+    grid-column: 1 / -1;
+  }
+
+  .mas-entry {
+    min-height: 1.75rem;
+    padding: 0 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.2s ease;
+  }
+
+  .mas-entry__key {
+    overflow: hidden;
+    font-size: 0.6875rem;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .mas-entry__group {
+    color: var(--color-text-tertiary);
+  }
+
+  .mas-entry:not([data-active]) .mas-entry__key {
+    color: var(--color-text-secondary);
+  }
+
+  .mas-entry__value {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .mas-entry__value[data-none] {
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+  }
+
+  .mas-entry__value[data-new] {
+    color: var(--demo-a);
+  }
+
+  /* 상태 칸: 테두리의 성질로 단계를 나눈다 */
+  .mas-entry__tag {
+    justify-self: end;
+    padding: 0.0625rem 0.4375rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+
+  .mas-entry[data-state='stale'] .mas-entry__tag {
+    border-style: dashed;
+    border-color: var(--color-text-tertiary);
+    color: var(--color-text-secondary);
+  }
+
+  .mas-entry[data-state='fetching'] {
+    background-color: var(--demo-a-soft);
+  }
+
+  .mas-entry[data-state='fetching'] .mas-entry__tag {
+    border-color: var(--demo-a);
+    background-color: var(--demo-a);
+    color: var(--surface-bg);
+  }
+
+  .mas-entry[data-state='updated'] .mas-entry__tag {
+    border-color: var(--demo-a);
+    color: var(--demo-a);
+  }
+
+  .mas-entry[data-state='outdated'] {
+    background-color: var(--demo-warn-soft);
+  }
+
+  .mas-entry[data-state='outdated'] .mas-entry__tag {
+    border-color: var(--demo-warn);
+    color: var(--demo-warn);
+  }
+
+  /* ── 아래 줄: 방금 일어난 일과 두 수치 ── */
+  .mas-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border-secondary);
+  }
+
+  .mas-line {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  .mas-readout {
+    display: flex;
+    flex: none;
+    gap: 1rem;
+    margin: 0;
+  }
+
+  .mas-readout div {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+  }
+
+  .mas-readout dt {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .mas-readout dd {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  .mas-readout dd[data-changed] {
+    color: var(--demo-a);
+  }
+
+  .mas-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 40rem) {
+    .mas-scene {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .mas-foot {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+
+<script>
+  type Mode = 'none' | 'invalidate' | 'set';
+  type Id = 'all1' | 'd42' | 'all2' | 'open1' | 'd7';
+  type State = 'fresh' | 'stale' | 'fetching' | 'updated' | 'outdated';
+  type Entry = { state: State; tag: string; value?: string };
+
+  const OLD = '미배정';
+  const NEW = '홍길동';
+  const ACTIVE: Id[] = ['all1', 'd42'];
+  const INTRO = '화면은 캐시 다섯 항목 중 둘만 구독합니다';
+
+  document.querySelectorAll<HTMLElement>('[data-demo="manager-assign"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    const el = (name: string) => root.querySelector<HTMLElement>(`[data-el="${name}"]`)!;
+    const modeButtons = frame.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const run = frame.querySelector<HTMLButtonElement>('[data-act="run"]')!;
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let mode: Mode = 'invalidate';
+    let status: 'idle' | 'running' | 'done' = 'idle';
+    let runId = 0;
+    let server = OLD;
+    let requests = 0;
+    let line = INTRO;
+    let entries = {} as Record<Id, Entry>;
+
+    const reset = () => {
+      server = OLD;
+      requests = 0;
+      line = INTRO;
+      // value가 없는 항목은 강남점을 담고 있지 않다
+      entries = {
+        all1: { state: 'fresh', tag: 'fresh', value: OLD },
+        d42: { state: 'fresh', tag: 'fresh', value: OLD },
+        all2: { state: 'fresh', tag: 'fresh' },
+        open1: { state: 'fresh', tag: 'fresh', value: OLD },
+        d7: { state: 'fresh', tag: 'fresh' },
+      };
+    };
+
+    const render = () => {
+      el('server').textContent = server;
+      el('server').toggleAttribute('data-changed', server === NEW);
+      el('requests').textContent = String(requests);
+      el('line').textContent = line;
+
+      (Object.keys(entries) as Id[]).forEach((id) => {
+        const entry = entries[id];
+        const node = root.querySelector<HTMLElement>(`[data-entry="${id}"]`)!;
+        node.dataset.state = entry.state;
+        node.querySelector('[data-el="tag"]')!.textContent = entry.tag;
+        if (entry.value) {
+          const value = node.querySelector<HTMLElement>('[data-el="value"]')!;
+          value.textContent = entry.value;
+          value.toggleAttribute('data-new', entry.value === NEW);
+        }
+      });
+
+      // 화면은 자기가 구독하는 캐시 항목을 그대로 그린다
+      ACTIVE.forEach((id) => {
+        const entry = entries[id];
+        const cell = el(`mgr-${id}`);
+        cell.textContent = entry.value!;
+        cell.dataset.state =
+          entry.state === 'fetching'
+            ? 'loading'
+            : entry.value === NEW
+              ? 'new'
+              : entry.state === 'outdated'
+                ? 'old'
+                : '';
+      });
+
+      run.textContent = { idle: '홍길동 배정하기', running: '배정하는 중…', done: '배정 전으로 되돌리기' }[status];
+      run.disabled = status === 'running';
+      modeButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+      root.querySelectorAll<HTMLElement>('[data-code]').forEach((c) => (c.hidden = c.dataset.code !== mode));
+    };
+
+    const halt = Symbol('halt');
+    const wait = (id: number, ms: number) =>
+      new Promise<void>((resolve, reject) =>
+        setTimeout(() => (id === runId ? resolve() : reject(halt)), calm ? 0 : ms),
+      );
+    const patch = (ids: Id[], next: Partial<Entry>) =>
+      ids.forEach((id) => (entries[id] = { ...entries[id], ...next }));
+
+    const scenario = async (id: number) => {
+      server = NEW;
+      line = '서버가 배정을 저장했습니다';
+      render();
+      await wait(id, 900);
+
+      if (mode === 'none') {
+        patch(ACTIVE, { state: 'outdated', tag: '서버와 다름' });
+        line = 'onSuccess가 없어 캐시는 그대로입니다';
+        status = 'done';
+        render();
+        return;
+      }
+
+      // onSuccess: 무효화한 항목은 stale 표시, setQueryData는 요청 없이 값 교체
+      patch(['all1', 'all2', 'open1'], { state: 'stale', tag: '무효화 → stale' });
+      if (mode === 'invalidate') {
+        patch(['d42'], { state: 'stale', tag: '무효화 → stale' });
+        line = '목록 셋과 상세 하나가 stale로 표시됐습니다';
+      } else {
+        patch(['d42'], { state: 'updated', tag: 'setQueryData로 교체', value: NEW });
+        line = '상세는 요청 없이 바뀌고, 무효화한 목록 셋은 stale';
+      }
+      render();
+      await wait(id, 1000);
+
+      // 화면이 구독 중인 stale 항목만 곧바로 다시 요청한다
+      const refetch = ACTIVE.filter((x) => entries[x].state === 'stale');
+      patch(refetch, { state: 'fetching', tag: '무효화 → 요청 중' });
+      requests = refetch.length;
+      line = '구독 중인 stale 항목만 다시 요청합니다';
+      render();
+      await wait(id, 1100);
+
+      patch(refetch, { state: 'updated', tag: '무효화 → 다시 받음', value: NEW });
+      patch(['d7'], { tag: '대상 아님' });
+      line = '화면 밖 목록은 stale로 남아 열 때 확인합니다';
+      status = 'done';
+      render();
+    };
+
+    run.addEventListener('click', () => {
+      runId += 1;
+      reset();
+      if (status === 'done') {
+        status = 'idle';
+        render();
+        return;
+      }
+      status = 'running';
+      scenario(runId).catch((e) => {
+        if (e !== halt) throw e;
+      });
+    });
+
+    modeButtons.forEach((b) =>
+      b.addEventListener('click', () => {
+        mode = b.dataset.mode as Mode;
+        runId += 1;
+        status = 'idle';
+        reset();
+        render();
+      }),
+    );
+
+    reset();
+    render();
+  });
+</script>
