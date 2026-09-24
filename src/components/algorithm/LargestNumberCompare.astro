@@ -1,0 +1,37 @@
+---
+/**
+ * 본문용 정적 그림: 두 수를 비교 규칙에 넣은 한 장면.
+ *
+ *   <LargestNumberCompare a="3" b="30" />
+ *
+ * a를 앞에, b를 뒤에 둔 카드 두 장과, a + b / b + a 두 가지 이어 붙이기를 그린다. 더 큰 쪽에 "더 큼"이 붙는다.
+ * 도형은 단계 진행(LargestNumberSort)과 같은 LargestNumberDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import LargestNumberDiagram from './LargestNumberDiagram.astro';
+
+interface Props {
+  a: string;
+  b: string;
+  caption?: string;
+}
+
+const { a, b, caption } = Astro.props;
+const ab = a + b;
+const ba = b + a;
+const front = ab >= ba ? a : b;
+const noBatchim = (s: string) => '2459'.includes(s.at(-1)!);
+const and = (s: string) => (noBatchim(s) ? '와' : '과');
+const subject = (s: string) => (noBatchim(s) ? '가' : '이');
+---
+
+<StaticFigure title={`비교 규칙 · a = "${a}", b = "${b}"`} caption={caption}>
+  <LargestNumberDiagram
+    strs={[a, b]}
+    cardStates={['stack', 'active']}
+    compare={{ a, b }}
+    cardTags={['a', 'b']}
+    liftSpace={false}
+    label={`${a}${and(a)} ${b}${noBatchim(b) ? '를' : '을'} 이어 붙이면 ${ab}, 거꾸로 붙이면 ${ba}. ${front}${subject(front)} 앞에 섭니다`}
+  />
+</StaticFigure>
