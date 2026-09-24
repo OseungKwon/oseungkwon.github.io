@@ -1,0 +1,305 @@
+---
+/**
+ * 동적 계획법 — 집도둑(LeetCode 198)의 1차원 dp 표.
+ *
+ * 대표 도형은 dp 표다(그리기는 DpTableDiagram). 집을 왼쪽부터 보며 dp[i]를 채운다.
+ *
+ *   두 후보 비교 → 건너뛰기(dp[i-1])와 털기(dp[i-2] + nums[i]) 화살표가 나타난다
+ *   칸 채우기   → 더 큰 쪽이 dp[i]에 적히고, 고른 화살표는 청록·버린 화살표는 흐리게
+ *   거꾸로 따라가기 → 끝 칸에서 털기를 고른 칸만 거슬러 올라가 실제로 턴 집을 표시한다
+ *
+ * 변수 패널은 풀이 코드의 prev2·prev1·cur다. dp[i]가 읽는 칸이 i-2와 i-1 두 개뿐이라
+ * 배열 없이 변수 두 개로 굴릴 수 있다는 것이 표 위에서 보인다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import DpTableDiagram from './DpTableDiagram.astro';
+
+// LeetCode 198 예제 2
+const nums = [2, 7, 9, 3, 1];
+const n = nums.length;
+
+// ── 풀이와 같은 계산으로 dp 값과 선택을 구한다 (앞의 0 두 칸 포함)
+const dp = [0, 0];
+const choice: ('skip' | 'rob')[] = [];
+for (let i = 0; i < n; i++) {
+  const skip = dp[i + 1];
+  const rob = dp[i] + nums[i];
+  dp.push(Math.max(skip, rob));
+  choice.push(rob > skip ? 'rob' : 'skip');
+}
+const labels = nums.flatMap((x, i) => [`건너뛰기 ${dp[i + 1]}`, `털기 ${dp[i]} + ${x} = ${dp[i] + x}`]);
+
+// 칸: g 가상 0 / i 빈칸 / q 비교 중(값 숨김) / a 지금 / s 읽는 칸 / d 채움 / w 답
+// 집: i 보통 / a 지금 / w 턴 집
+// 화살표: h 숨김 / c 후보 / v 고름 / l 버림 / p 역추적
+interface Step {
+  note: string;
+  houses: string;
+  cells: string;
+  arcs: string;
+  prev2: number;
+  prev1: number;
+  cur: number | null;
+  changed?: string[];
+  result?: number;
+}
+
+const particle = (n: number) => ('2459'.includes(String(n).at(-1)!) ? '를' : '을');
+
+function trace(): Step[] {
+  const steps: Step[] = [];
+  const filled = new Set<number>();
+  let prev2 = 0;
+  let prev1 = 0;
+
+  const snap = (
+    note: string,
+    opt: { current?: number; pending?: boolean; sources?: number[]; arcs?: Record<number, string>; houses?: Record<number, string>; answer?: Set<number> } & Partial<Step>,
+  ) => {
+    const { current, pending, sources = [], arcs = {}, houses = {}, answer, ...rest } = opt;
+    const cells = dp
+      .map((_, col) => {
+        if (col < 2) return sources.includes(col) ? 's' : 'g';
+        const i = col - 2;
+        if (answer?.has(i)) return 'w';
+        if (i === current) return pending ? 'q' : 'a';
+        if (sources.includes(col)) return 's';
+        return filled.has(i) ? 'd' : 'i';
+      })
+      .join('');
+    steps.push({
+      note,
+      houses: nums.map((_, i) => houses[i] ?? (i === current ? 'a' : 'i')).join(''),
+      cells,
+      arcs: labels.map((_, a) => arcs[a] ?? 'h').join(''),
+      prev2,
+      prev1,
+      cur: null,
+      ...rest,
+    });
+  };
+
+  snap('집마다 "여기까지 털 수 있는 최대 금액"을 dp 칸에 적어 나갑니다. 첫 집 앞에는 0 두 칸을 두고 시작합니다', {});
+
+  for (let i = 0; i < n; i++) {
+    const skipArc = i * 2;
+    const robArc = i * 2 + 1;
+    const skip = prev1;
+    const rob = prev2 + nums[i];
+    // ① 두 후보
+    snap(`집 ${i}(${nums[i]}원): 건너뛰면 바로 앞 칸의 ${skip}, 털면 두 칸 앞 ${prev2}에 ${nums[i]}${particle(nums[i])} 더한 ${rob}`, {
+      current: i,
+      pending: true,
+      sources: [i + 1, i],
+      arcs: { [skipArc]: 'c', [robArc]: 'c' },
+    });
+    // ② 더 큰 쪽을 적는다
+    const cur = Math.max(rob, prev1);
+    filled.add(i);
+    const robWins = rob > skip;
+    snap(
+      rob === skip
+        ? `두 후보가 ${cur}로 같아 dp[${i}]에 ${cur}${particle(cur)} 적습니다`
+        : `${robWins ? '털기' : '건너뛰기'}가 더 커서 dp[${i}]에 ${cur}${particle(cur)} 적습니다`,
+      {
+        current: i,
+        arcs: { [skipArc]: robWins ? 'l' : 'v', [robArc]: robWins ? 'v' : 'l' },
+        cur,
+      },
+    );
+    prev2 = prev1;
+    prev1 = cur;
+  }
+
+  // ③ 거꾸로 따라가며 실제로 턴 집을 찾는다
+  const robbed = new Set<number>();
+  const pathArcs: Record<number, string> = {};
+  for (let i = n - 1; i >= 0; ) {
+    if (choice[i] === 'rob') {
+      robbed.add(i);
+      pathArcs[i * 2 + 1] = 'p';
+      i -= 2;
+    } else {
+      pathArcs[i * 2] = 'p';
+      i -= 1;
+    }
+  }
+  const order = [...robbed].sort((a, b) => a - b);
+  snap(
+    `끝 칸에서 털기를 고른 칸만 거슬러 올라가면 집 ${[...robbed].join(', ')}입니다. ${order.map((i) => nums[i]).join(' + ')} = ${prev1}`,
+    {
+      arcs: pathArcs,
+      houses: Object.fromEntries(order.map((i) => [i, 'w'])),
+      answer: robbed,
+      result: prev1,
+    },
+  );
+  return steps;
+}
+
+const steps = trace();
+
+// 검증: 예제 2의 출력(12), 그리고 서로 이웃하지 않는 집의 모든 조합을 직접 따진 최댓값과 같아야 한다.
+let brute = 0;
+for (let mask = 0; mask < 1 << n; mask++) {
+  if (mask & (mask >> 1)) continue;
+  let sum = 0;
+  for (let i = 0; i < n; i++) if (mask & (1 << i)) sum += nums[i];
+  brute = Math.max(brute, sum);
+}
+if (steps.at(-1)!.result !== 12 || brute !== 12) {
+  throw new Error('HouseRobberTable: 결과가 LeetCode 198 예제 2 출력(12)이나 완전 탐색 값과 다릅니다.');
+}
+
+const first = steps[0];
+const HOUSE: Record<string, string> = { i: 'idle', a: 'active', w: 'answer' };
+const CELL: Record<string, string> = { g: 'ghost', i: 'idle', q: 'pending', a: 'active', s: 'source', d: 'done', w: 'answer' };
+---
+
+<Visualizer
+  modes={[{ id: 'main', label: '기본' }]}
+  steps={{ main: steps }}
+  title={`dp 표 · nums = [${nums.join(', ')}]`}
+  caption="LeetCode 198 예제 2. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '지금 채우는 칸' },
+    { state: 'stack', label: '두 후보가 읽는 칸' },
+    { state: 'answer', label: '고른 후보 · 턴 집' },
+    { state: 'idle', label: '아직 안 채운 칸' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="hw" data-dt-watch>
+      <div class="hw-row">
+        <dt>prev2</dt>
+        <dd><span class="hw-num" data-w="prev2">0</span><span class="hw-hint">두 칸 앞</span></dd>
+      </div>
+      <div class="hw-row">
+        <dt>prev1</dt>
+        <dd><span class="hw-num" data-w="prev1">0</span><span class="hw-hint">바로 앞 칸</span></dd>
+      </div>
+      <div class="hw-row">
+        <dt>cur</dt>
+        <dd><span class="hw-num" data-w="cur">–</span></dd>
+      </div>
+      <div class="hw-row">
+        <dt>return</dt>
+        <dd><span class="hw-num" data-w="result">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <DpTableDiagram
+      nums={nums}
+      values={dp}
+      houseStates={[...first.houses].map((c) => HOUSE[c])}
+      cellStates={[...first.cells].map((c) => CELL[c])}
+      arcLabels={labels}
+      label={`nums = [${nums.join(', ')}]의 dp 표`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .hw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .hw-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .hw-row dt {
+    min-width: 3.25rem;
+    color: var(--t-var);
+  }
+
+  .hw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .hw-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0;
+  }
+
+  .hw-num {
+    color: var(--t-num);
+  }
+
+  .hw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .hw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    houses: string;
+    cells: string;
+    arcs: string;
+    prev2: number;
+    prev1: number;
+    cur: number | null;
+    result?: number;
+  }
+
+  const HOUSE: Record<string, string> = { i: 'idle', a: 'active', w: 'answer' };
+  const CELL: Record<string, string> = { g: 'ghost', i: 'idle', q: 'pending', a: 'active', s: 'source', d: 'done', w: 'answer' };
+  const ARC: Record<string, string> = { h: 'hidden', c: 'candidate', v: 'win', l: 'lose', p: 'path' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-dt-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림(HouseRobberChoice)에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const watch = root.querySelector<HTMLElement>('[data-dt-watch]')!;
+    const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
+    const houses = Array.from(figure.querySelectorAll<SVGGElement>('[data-house]'));
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const arcs = Array.from(figure.querySelectorAll<SVGGElement>('[data-arc]'));
+    let last: Step | null = null;
+
+    const set = (name: string, value: string, changed: boolean) => {
+      const el = w(name);
+      el.textContent = value;
+      el.toggleAttribute('data-changed', changed);
+    };
+
+    const render = (step: Step) => {
+      houses.forEach((el, i) => el.setAttribute('data-state', HOUSE[step.houses[i]]));
+      cells.forEach((el, i) => el.setAttribute('data-state', CELL[step.cells[i]]));
+      // 화살표는 그리는 순서와 번호가 달라 data-arc 값으로 찾는다
+      arcs.forEach((el) => el.setAttribute('data-state', ARC[step.arcs[Number(el.dataset.arc)]]));
+      // 바로 앞 단계에서 달라진 값만 강조한다
+      set('prev2', String(step.prev2), last !== null && last.prev2 !== step.prev2);
+      set('prev1', String(step.prev1), last !== null && last.prev1 !== step.prev1);
+      set('cur', step.cur === null ? '–' : String(step.cur), step.cur !== null);
+      set('result', step.result === undefined ? '–' : String(step.result), step.result !== undefined);
+      last = step;
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>

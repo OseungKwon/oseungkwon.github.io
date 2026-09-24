@@ -1,0 +1,45 @@
+---
+/**
+ * 본문용 정적 그림: 집 하나 앞에서 고르는 두 후보.
+ *
+ *   <HouseRobberChoice nums={[2, 7, 9]} at={2} />
+ *
+ * 집 at 앞의 dp 칸을 채워 두고, dp[at]으로 들어오는 건너뛰기·털기 화살표와 두 후보 값을 그린다.
+ * dp[at] 자리는 아직 고르기 전이라 "?"로 둔다. 도형은 단계 진행(HouseRobberTable)과 같은 DpTableDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import DpTableDiagram from './DpTableDiagram.astro';
+
+interface Props {
+  nums: number[];
+  at: number;
+  caption?: string;
+}
+
+const { nums, at, caption } = Astro.props;
+const dp = [0, 0];
+for (let i = 0; i < nums.length; i++) dp.push(Math.max(dp[i + 1], dp[i] + nums[i]));
+
+const values: (number | string)[] = dp.map((v, col) => (col === at + 2 ? '?' : v));
+const cellStates = dp.map((_, col) => {
+  if (col === at + 2) return 'active';
+  if (col === at + 1 || col === at) return 'source';
+  if (col < 2) return 'ghost';
+  return col < at + 2 ? 'done' : 'idle';
+});
+const houseStates = nums.map((_, i) => (i === at ? 'active' : 'idle'));
+const arcStates = nums.flatMap((_, i) => (i === at ? ['candidate', 'candidate'] : ['hidden', 'hidden']));
+const arcLabels = nums.flatMap((x, i) => [`건너뛰기 ${dp[i + 1]}`, `털기 ${dp[i]} + ${x} = ${dp[i] + x}`]);
+---
+
+<StaticFigure title={`집 ${at} 앞에서 고르는 두 후보 · nums = [${nums.join(', ')}]`} caption={caption}>
+  <DpTableDiagram
+    nums={nums}
+    values={values}
+    houseStates={houseStates}
+    cellStates={cellStates}
+    arcStates={arcStates}
+    arcLabels={arcLabels}
+    label={`집 ${at}: 건너뛰면 ${dp[at + 1]}, 털면 ${dp[at] + nums[at]}`}
+  />
+</StaticFigure>
