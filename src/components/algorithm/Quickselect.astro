@@ -1,0 +1,432 @@
+---
+/**
+ * 퀵셀렉트 — k번째로 큰 수 찾기(LeetCode 215)와, 같은 분할을 쓰는 퀵 정렬.
+ *
+ * 대표 도형은 값이 높이인 막대다(그리기는 QuickselectDiagram). 범위의 맨 끝 막대를 pivot으로
+ * 고르고 그 높이에 기준선을 그은 뒤, 왼쪽부터 한 막대씩 비교한다.
+ *
+ *   pivot 고르기 → 기준선이 그어진다
+ *   비교         → pivot보다 작으면 작은 쪽(파랑)으로 모이고, 크면 그 자리에 남는다
+ *   pivot 놓기   → 작은 쪽 바로 뒤로 pivot이 옮겨 가고, 그 자리가 정렬했을 때의 자리로 확정된다
+ *   한쪽 버리기  → (퀵셀렉트) 찾는 자리가 없는 쪽 막대가 꺼진다
+ *
+ * '퀵 정렬' 모드는 같은 분할을 양쪽 모두에 되풀이한다. 퀵셀렉트가 한쪽만 따라 들어가서
+ * 몇 단계 만에 끝나는지를 같은 막대 위에서 비교하게 하려는 것이다.
+ *
+ * 시각화는 단계를 재현할 수 있게 pivot을 늘 범위의 맨 끝으로 고른다. 본문의 풀이 코드는
+ * 여기에 무작위 pivot 한 줄을 더한다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import QuickselectDiagram from './QuickselectDiagram.astro';
+
+// LeetCode 215 예제 1
+const nums = [3, 2, 1, 5, 6, 4];
+const k = 2;
+const n = nums.length;
+const target = n - k;
+
+// 막대: i 아직 / a 지금 비교 / s 작은 쪽 / l 큰 쪽 / v pivot / d 제자리 확정 / o 버림 / q 차례 기다림 / w 답
+interface Step {
+  note: string;
+  order: string;
+  states: string;
+  i: number;
+  j: number;
+  line: [number, number, number] | null;
+  showTarget: boolean;
+  lo: number | null;
+  hi: number | null;
+  pivot: number | null;
+  target: number | null;
+  result?: number | number[];
+}
+
+const noBatchim = (n: number) => '2459'.includes(String(n).at(-1)!);
+const topic = (n: number) => (noBatchim(n) ? '는' : '은');
+const subject = (n: number) => (noBatchim(n) ? '가' : '이');
+const object = (n: number) => (noBatchim(n) ? '를' : '을');
+const and = (n: number) => (noBatchim(n) ? '와' : '과');
+const direction = (n: number) => ('1245789'.includes(String(n).at(-1)!) ? '로' : '으로');
+const count = (n: number) => ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟'][n];
+const range = (lo: number, hi: number) => `[${lo}, ${hi}]`;
+
+function trace(mode: 'select' | 'sort'): Step[] {
+  const steps: Step[] = [];
+  const order = nums.map((_, id) => id);
+  const cls: string[] = nums.map(() => 'i');
+  const val = (pos: number) => nums[order[pos]];
+  const swap = (a: number, b: number) => {
+    [order[a], order[b]] = [order[b], order[a]];
+    [cls[a], cls[b]] = [cls[b], cls[a]];
+  };
+  let lo: number | null = 0;
+  let hi: number | null = n - 1;
+  let pivot: number | null = null;
+
+  const snap = (note: string, extra: Partial<Step> = {}) => {
+    steps.push({
+      note,
+      order: order.join(''),
+      states: cls.join(''),
+      i: -1,
+      j: -1,
+      line: null,
+      showTarget: mode === 'select',
+      lo,
+      hi,
+      pivot,
+      target: mode === 'select' ? target : null,
+      ...extra,
+    });
+  };
+
+  // 범위 [l, r]을 나눈다. pivot이 선 자리를 돌려준다. (풀이 코드의 partition과 같은 로직)
+  const partition = (l: number, r: number, intro: string) => {
+    // 새 범위를 시작한다: 범위 안은 아직 비교 전, 밖에서 확정되지 않은 막대는 버렸거나 차례를 기다린다
+    for (let pos = 0; pos < n; pos++) {
+      if (cls[pos] === 'd' || cls[pos] === 'o') continue;
+      cls[pos] = pos < l || pos > r ? 'q' : 'i';
+    }
+    lo = l;
+    hi = r;
+    pivot = val(r);
+    const p0 = pivot;
+    cls[r] = 'v';
+    const line: Step['line'] = [l, r, p0];
+    snap(`${intro} 맨 끝 ${p0}${object(p0)} pivot으로 고릅니다. ${p0}보다 작은 수를 왼쪽부터 모읍니다`, { i: l, line });
+
+    let i = l;
+    let last = '';
+    for (let j = l; j < r; j++) {
+      const v = val(j);
+      if (v < p0) {
+        let note: string;
+        if (i !== j) {
+          const other = val(i);
+          swap(i, j);
+          note = `${v}${topic(v)} ${p0}보다 작아서, 작은 쪽 바로 뒤인 인덱스 ${i}의 ${other}${and(other)} 자리를 바꿉니다`;
+        } else {
+          note = last === 's' ? `${v}도 ${p0}보다 작아 작은 쪽에 들어갑니다` : `${v}${topic(v)} ${p0}보다 작아 작은 쪽에 들어갑니다`;
+        }
+        cls[i] = 'a';
+        snap(note, { i: i + 1, j, line });
+        cls[i] = 's';
+        i++;
+        last = 's';
+      } else {
+        cls[j] = 'a';
+        snap(last === 'l' ? `${v}도 ${p0}보다 커서 그대로 둡니다` : `${v}${topic(v)} ${p0}보다 커서 그 자리에 둡니다`, { i, j, line });
+        cls[j] = 'l';
+        last = 'l';
+      }
+    }
+
+    // pivot을 작은 쪽 바로 뒤로 옮긴다
+    let placed: string;
+    if (i !== r) {
+      const other = val(i);
+      swap(i, r);
+      placed = `작은 쪽 바로 뒤인 인덱스 ${i}의 ${other}${and(other)} pivot ${p0}의 자리를 바꿉니다. ${p0}${topic(p0)} 이제 정렬했을 때의 자리에 섰습니다`;
+    } else {
+      placed = `작은 쪽 바로 뒤가 pivot이 있던 인덱스 ${i}라서, ${p0}${topic(p0)} 움직이지 않고 그 자리가 정렬했을 때의 자리가 됩니다`;
+    }
+    cls[i] = 'd';
+    return { p: i, placed, line };
+  };
+
+  if (mode === 'select') {
+    snap(`막대 높이가 값입니다. k = ${k}이므로, 작은 순서로 세웠을 때 인덱스 ${target}(${n} − ${k})에 올 수를 찾습니다. "다음"을 눌러 보세요`);
+    let l = 0;
+    let r = n - 1;
+    let first = true;
+    for (;;) {
+      const { p, placed, line } = partition(l, r, first ? `범위 ${range(l, r)}의` : `남은 범위 ${range(l, r)}의`);
+      first = false;
+      const v = val(p);
+      snap(placed, { line });
+      if (p === target) {
+        cls[p] = 'w';
+        pivot = null;
+        snap(`${v}${subject(v)} 선 인덱스 ${p}${subject(p)} 찾는 자리입니다. 두 번째로 큰 수는 ${v}입니다`, { result: v });
+        break;
+      }
+      // 찾는 자리가 없는 쪽을 버린다
+      const [dropFrom, dropTo] = p < target ? [l, p] : [p, r];
+      for (let pos = dropFrom; pos <= dropTo; pos++) cls[pos] = 'o';
+      const side = p < target ? '오른쪽' : '왼쪽';
+      const dropped = dropTo - dropFrom + 1;
+      if (p < target) l = p + 1;
+      else r = p - 1;
+      for (let pos = l; pos <= r; pos++) cls[pos] = 'i';
+      lo = l;
+      hi = r;
+      pivot = null;
+      snap(`${v}${subject(v)} 선 인덱스 ${p}${topic(p)} 찾는 자리 ${target}보다 ${p < target ? '왼쪽' : '오른쪽'}이라 답은 ${side}에 있습니다. ${v}${and(v)} 그 ${p < target ? '왼쪽' : '오른쪽'}까지 ${count(dropped)} 칸은 더 보지 않습니다`);
+    }
+    return steps;
+  }
+
+  // 퀵 정렬: 같은 분할을 양쪽에 되풀이한다
+  snap(`막대 높이가 값입니다. 이번에는 찾는 자리 없이 배열 전체를 정렬합니다. "다음"을 눌러 보세요`);
+  const sort = (l: number, r: number, intro: string) => {
+    if (l >= r) return;
+    const { p, placed, line } = partition(l, r, intro);
+    const parts: string[] = [];
+    const sides: [number, number, string][] = [];
+    if (p - 1 >= l) sides.push([l, p - 1, '왼쪽']);
+    if (p + 1 <= r) sides.push([p + 1, r, '오른쪽']);
+    for (const [a, b, name] of sides) {
+      if (a === b) {
+        cls[a] = 'd';
+        parts.push(`${name}에 남은 ${val(a)}${topic(val(a))} 한 칸뿐이라 그대로 제자리입니다`);
+      }
+    }
+    const next = sides.filter(([a, b]) => a < b);
+    if (next.length === 2) parts.push(`${next[0][2]} ${range(next[0][0], next[0][1])}${and(next[0][1])} ${next[1][2]} ${range(next[1][0], next[1][1])}도 같은 방법으로 나눕니다`);
+    else if (next.length === 1) parts.push(`${next[0][2]} ${range(next[0][0], next[0][1])}도 같은 방법으로 나눕니다`);
+    snap([placed, ...parts].join('. '), { line });
+    for (const [a, b, name] of next) sort(a, b, `${name} 범위 ${range(a, b)}의`);
+  };
+  sort(0, n - 1, `범위 ${range(0, n - 1)}의`);
+
+  for (let pos = 0; pos < n; pos++) cls[pos] = 'w';
+  lo = null;
+  hi = null;
+  pivot = null;
+  const sorted = order.map((id) => nums[id]);
+  snap(`나눌 범위가 더 없습니다. 모든 막대가 제자리에 서서 [${sorted.join(', ')}]${direction(sorted.at(-1)!)} 정렬됐습니다`, { result: sorted });
+  return steps;
+}
+
+const selectSteps = trace('select');
+const sortSteps = trace('sort');
+
+// 검증: 퀵셀렉트의 답은 예제 1의 출력(5), 퀵 정렬의 결과는 정렬된 배열이어야 한다.
+const expectedSorted = [...nums].sort((a, b) => a - b);
+if (selectSteps.at(-1)!.result !== 5 || expectedSorted[target] !== 5) {
+  throw new Error('Quickselect: 퀵셀렉트 결과가 LeetCode 215 예제 1 출력(5)과 다릅니다.');
+}
+if (JSON.stringify(sortSteps.at(-1)!.result) !== JSON.stringify(expectedSorted)) {
+  throw new Error('Quickselect: 퀵 정렬 결과가 정렬된 배열과 다릅니다.');
+}
+for (const steps of [selectSteps, sortSteps]) {
+  if (steps.length < 10 || steps.length > 25) throw new Error(`Quickselect: 단계 수 ${steps.length}가 10~25를 벗어납니다.`);
+}
+
+const MODES = [
+  { id: 'select', label: '한쪽만 (퀵셀렉트)' },
+  { id: 'sort', label: '양쪽 다 (퀵 정렬)' },
+];
+const STATE: Record<string, string> = { i: 'idle', a: 'active', s: 'small', l: 'large', v: 'pivot', d: 'done', o: 'off', q: 'wait', w: 'answer' };
+const first = selectSteps[0];
+---
+
+<Visualizer
+  modes={MODES}
+  steps={{ select: selectSteps, sort: sortSteps }}
+  title={`막대 · nums = [${nums.join(', ')}], k = ${k}`}
+  caption="LeetCode 215 예제 1. 빌드할 때 풀이를 실제로 돌려 기록한 단계이고, pivot은 늘 범위의 맨 끝으로 골랐습니다."
+  legend={[
+    { state: 'active', label: '지금 비교하는 막대 (j)' },
+    { state: 'stack', label: 'pivot보다 작은 쪽' },
+    { state: 'done', label: '제자리가 확정된 pivot' },
+    { state: 'answer', label: '찾는 답' },
+    { state: 'idle', label: '아직 비교 전' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="qw" data-qs-watch>
+      <div class="qw-row">
+        <dt>target</dt>
+        <dd><span class="qw-num" data-w="target">{target}</span><span class="qw-hint">찾는 자리</span></dd>
+      </div>
+      <div class="qw-row">
+        <dt>lo</dt>
+        <dd><span class="qw-num" data-w="lo">0</span></dd>
+      </div>
+      <div class="qw-row">
+        <dt>hi</dt>
+        <dd><span class="qw-num" data-w="hi">{n - 1}</span></dd>
+      </div>
+      <div class="qw-row">
+        <dt>pivot</dt>
+        <dd><span class="qw-num" data-w="pivot">–</span></dd>
+      </div>
+      <div class="qw-row">
+        <dt>return</dt>
+        <dd><span class="qw-num" data-w="result">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <QuickselectDiagram
+      nums={nums}
+      order={[...first.order].map(Number)}
+      states={[...first.states].map((c) => STATE[c])}
+      target={target}
+      label={`nums = [${nums.join(', ')}]의 막대`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .qw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .qw-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .qw-row dt {
+    min-width: 3.25rem;
+    color: var(--t-var);
+  }
+
+  .qw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .qw-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .qw-num {
+    color: var(--t-num);
+    white-space: normal;
+  }
+
+  .qw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .qw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    order: string;
+    states: string;
+    i: number;
+    j: number;
+    line: [number, number, number] | null;
+    showTarget: boolean;
+    lo: number | null;
+    hi: number | null;
+    pivot: number | null;
+    target: number | null;
+    result?: number | number[];
+  }
+
+  const STATE: Record<string, string> = { i: 'idle', a: 'active', s: 'small', l: 'large', v: 'pivot', d: 'done', o: 'off', q: 'wait', w: 'answer' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-qs-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림(QuickselectSplit)에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const watch = root.querySelector<HTMLElement>('[data-qs-watch]')!;
+    const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
+    const col = Number(figure.dataset.col);
+    const left = Number(figure.dataset.left);
+    const base = Number(figure.dataset.base);
+    const unit = Number(figure.dataset.unit);
+    const labelX = Number(figure.dataset.labelX);
+    const bars = Array.from(figure.querySelectorAll<SVGGElement>('[data-bar]'));
+    const markerI = figure.querySelector<SVGGElement>('[data-marker="i"]')!;
+    const markerJ = figure.querySelector<SVGGElement>('[data-marker="j"]')!;
+    const line = figure.querySelector<SVGGElement>('[data-pivot-line]')!;
+    const reach = line.querySelector<SVGLineElement>('[data-line="reach"]')!;
+    const span = line.querySelector<SVGLineElement>('[data-line="range"]')!;
+    const label = line.querySelector<SVGTextElement>('[data-line="label"]')!;
+    const x = (pos: number) => left + pos * col;
+    let last: Step | null = null;
+
+    const place = (el: SVGGElement, pos: number) => {
+      if (pos < 0) {
+        el.setAttribute('hidden', '');
+        return;
+      }
+      el.removeAttribute('hidden');
+      el.style.transform = `translate(${x(pos)}px, 0px)`;
+    };
+
+    const show = (value: number | number[] | null | undefined) => {
+      if (value === null || value === undefined) return '–';
+      return Array.isArray(value) ? `[${value.join(', ')}]` : String(value);
+    };
+
+    const set = (name: string, value: string, changed: boolean) => {
+      const el = w(name);
+      el.textContent = value;
+      el.toggleAttribute('data-changed', changed);
+    };
+
+    const render = (step: Step) => {
+      [...step.order].forEach((id, pos) => {
+        const bar = bars[Number(id)];
+        bar.setAttribute('data-state', STATE[step.states[pos]]);
+        bar.style.transform = `translate(${x(pos)}px, 0px)`;
+      });
+      place(markerI, step.i);
+      place(markerJ, step.j);
+
+      if (step.line) {
+        const [lo, hi, value] = step.line;
+        const y = String(base - value * unit);
+        span.setAttribute('x1', String(x(lo) + 2));
+        span.setAttribute('x2', String(x(hi + 1) - 2));
+        reach.setAttribute('x1', String(x(hi + 1)));
+        reach.setAttribute('x2', String(labelX - 2));
+        for (const el of [span, reach]) {
+          el.setAttribute('y1', y);
+          el.setAttribute('y2', y);
+        }
+        label.setAttribute('y', y);
+        label.textContent = `pivot ${value}`;
+        line.removeAttribute('hidden');
+      } else {
+        line.setAttribute('hidden', '');
+      }
+      figure.toggleAttribute('data-hide-target', !step.showTarget);
+
+      // 바로 앞 단계에서 달라진 값만 강조한다
+      const changed = (key: keyof Step) => last !== null && JSON.stringify(last[key]) !== JSON.stringify(step[key]);
+      set('target', show(step.target), false);
+      set('lo', show(step.lo), changed('lo'));
+      set('hi', show(step.hi), changed('hi'));
+      set('pivot', show(step.pivot), changed('pivot') && step.pivot !== null);
+      set('result', show(step.result), step.result !== undefined);
+      last = step;
+    };
+
+    root.addEventListener('algo:step', (event) => {
+      const { index, step } = (event as CustomEvent).detail;
+      // 모드를 바꾸거나 처음으로 돌아가면 강조 기준도 새로 잡는다
+      if (index === 0) last = null;
+      render(step);
+    });
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>

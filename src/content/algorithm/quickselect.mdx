@@ -1,0 +1,154 @@
+---
+title: '퀵 정렬·퀵셀렉트'
+summary: 'pivot 하나를 기준으로 작은 수와 큰 수를 양쪽으로 나누면 pivot의 자리가 확정됩니다. 찾는 순위가 있는 쪽만 다시 나누면, 전체를 정렬하지 않고도 k번째로 큰 수를 평균 O(n)에 찾습니다.'
+family: '정렬'
+complexity:
+  time: 'O(n) 평균, O(n²) 최악'
+  space: 'O(1)'
+problems:
+  - platform: 'leetcode'
+    id: '215'
+    title: 'Kth Largest Element in an Array'
+    url: 'https://leetcode.com/problems/kth-largest-element-in-an-array/'
+    difficulty: 'Medium'
+pubDate: '2026-09-25'
+draft: true
+---
+
+import Quickselect from '@components/algorithm/Quickselect.astro';
+import QuickselectSplit from '@components/algorithm/QuickselectSplit.astro';
+
+## 언제 쓰나
+
+배열 전체의 순서가 아니라 **순위 하나**만 알면 될 때 씁니다. 전부 정렬하면 O(n log n)이 들지만, 원하는 순위의 수 하나만 제자리에 세우면 평균 O(n)으로 줄어듭니다.
+
+- "k번째로 큰 수", "k번째로 작은 수", "중앙값"을 묻습니다.
+- 상위 k개를 순서와 상관없이 골라내야 합니다. 답이 선 자리의 오른쪽에는 답보다 크거나 같은 수만 남기 때문에, 답을 찾은 뒤의 배열에서 그 자리부터 끝까지가 상위 k개입니다.
+- 입력 배열을 바꿔도 됩니다. 새 배열을 만들지 않고 제자리에서 수의 자리를 바꾸며 나누기 때문입니다.
+
+## 어떻게 동작하나
+
+### 정렬하면 답의 자리가 정해진다
+
+`nums = [3, 2, 1, 5, 6, 4]`에서 두 번째로 큰 수를 찾는다고 해 보겠습니다. 수를 막대 높이로 그려 작은 순서로 세우면, 두 번째로 큰 5는 오른쪽 끝에서 두 번째인 인덱스 4에 섭니다.
+
+<QuickselectSplit nums={[3, 2, 1, 5, 6, 4]} k={2} scene="sorted" />
+
+길이가 n인 배열에서 k번째로 큰 수는 작은 순서로 정렬했을 때 인덱스 `n - k`에 옵니다. 그래서 이 문제는 "정렬했을 때 인덱스 4에 올 수는 무엇인가"로 바꿔 읽을 수 있습니다. 전부 정렬하면 답은 바로 나오지만, 필요한 것은 인덱스 4 한 칸인데 나머지 다섯 칸의 순서까지 맞추느라 계산을 더 쓰게 됩니다.
+
+### pivot 하나로 나눈다
+
+수 하나의 자리만 확정하는 방법이 있습니다. 수 하나를 골라, 그보다 작은 수는 왼쪽으로 모으고 큰 수는 오른쪽에 남기는 것입니다. 맨 끝의 4를 골라 해 보겠습니다.
+
+1. 3, 2, 1은 4보다 작아서 왼쪽부터 차례로 모읍니다.
+2. 5와 6은 4보다 커서 그 자리에 둡니다.
+3. 작은 수 세 개 바로 뒤인 인덱스 3의 5와 4의 자리를 바꿉니다.
+
+<QuickselectSplit nums={[3, 2, 1, 5, 6, 4]} k={2} scene="split" />
+
+이때 기준으로 고른 수를 **pivot**이라고 하고, pivot보다 작은 쪽과 큰 쪽으로 가르는 일을 **분할**(partition)이라고 합니다. 분할이 끝나도 양쪽 안의 순서는 정리되지 않았습니다. 하지만 4보다 작은 수가 정확히 세 개라는 사실은 순서를 어떻게 바꿔도 그대로라서, 4는 정렬을 마쳤을 때도 인덱스 3에 섭니다. 분할을 한 번 할 때마다 pivot 하나의 자리가 확정되는 것입니다.
+
+### 한쪽만 따라 들어간다
+
+분할을 왼쪽과 오른쪽에 계속 되풀이하면 결국 모든 수가 제자리에 서는데, 이것이 **퀵 정렬**(quick sort)입니다. 그런데 찾는 자리는 인덱스 4이고 pivot 4는 인덱스 3에 섰으니, 답은 오른쪽의 `[6, 5]` 안에 있습니다. 4와 그 왼쪽 칸들은 안의 순서가 어떻든 답과 상관이 없으므로 다시 나눌 필요가 없습니다. 이렇게 찾는 자리가 있는 쪽만 골라 분할을 되풀이하는 방법을 **퀵셀렉트**(quickselect)라고 합니다.
+
+한쪽을 버리는 만큼 계산이 줄어듭니다. pivot이 범위를 대략 절반씩 나눈다면 비교 횟수는 n + n/2 + n/4 + …로 2n을 넘지 않아 평균 O(n)입니다. 퀵 정렬은 나뉜 양쪽을 모두 처리하므로 평균 O(n log n)입니다.
+
+### 직접 따라가 보기
+
+아래는 같은 입력을 한 단계씩 나눕니다. 막대 아래의 `j`는 지금 비교하는 자리이고, `i`는 다음 작은 수가 들어갈 자리입니다. 변수 칸의 `lo`와 `hi`는 지금 나누는 범위의 양 끝이고, `target`은 찾는 자리 `n - k`입니다.
+
+3~7번째 단계에서 `j`가 한 칸씩 오른쪽으로 가며 막대를 비교하고, 작은 수가 들어올 때마다 `i`도 한 칸씩 따라옵니다. 8번째 단계에서 4와 5가 자리를 바꾸고, 9번째 단계에서 4와 그 왼쪽 막대들이 흐려집니다. 남은 두 막대를 한 번 더 나누면 13번째 단계에서 5가 찾는 자리에 서며 끝납니다.
+
+<Quickselect />
+
+위쪽에서 "양쪽 다 (퀵 정렬)"를 고르면 같은 분할을 양쪽에 모두 되풀이합니다. 퀵셀렉트는 비교 6번, 13단계로 끝나지만 퀵 정렬은 비교 9번, 19단계를 거쳐야 모든 막대가 제자리에 섭니다.
+
+## 대표 문제 풀이
+
+[LeetCode 215](https://leetcode.com/problems/kth-largest-element-in-an-array/)는 정수 배열 `nums`와 정수 `k`를 받아, 정렬했을 때 k번째로 큰 수를 돌려주는 문제입니다. 서로 다른 값 중 k번째가 아니라 정렬한 순서의 k번째라서, 같은 수가 여러 번 나오면 각각 따로 셉니다. `nums = [3, 2, 1, 5, 6, 4]`, `k = 2`이면 5를 돌려줍니다.
+
+아래는 위 시각화와 같은 분할을 쓰는 참고 풀이입니다.
+
+```js
+var findKthLargest = function (nums, k) {
+  const target = nums.length - k; // 정렬했을 때 답이 설 자리
+  let lo = 0;
+  let hi = nums.length - 1;
+
+  while (true) {
+    const p = partition(nums, lo, hi);
+    if (p === target) return nums[p]; // ③ pivot이 찾는 자리에 섰다
+    if (p < target) lo = p + 1; // 답은 오른쪽에 있다
+    else hi = p - 1; // 답은 왼쪽에 있다
+  }
+};
+
+function partition(nums, lo, hi) {
+  // 범위 안에서 무작위로 고른 수를 맨 끝으로 옮겨 pivot으로 쓴다
+  const r = lo + Math.floor(Math.random() * (hi - lo + 1));
+  [nums[r], nums[hi]] = [nums[hi], nums[r]];
+
+  const pivot = nums[hi];
+  let i = lo; // 다음 작은 수가 들어갈 자리
+  for (let j = lo; j < hi; j++) {
+    // ① pivot보다 작으면 작은 쪽 끝으로 옮긴다
+    if (nums[j] < pivot) {
+      [nums[i], nums[j]] = [nums[j], nums[i]];
+      i++;
+    }
+  }
+  // ② pivot을 작은 쪽 바로 뒤로 옮긴다
+  [nums[i], nums[hi]] = [nums[hi], nums[i]];
+  return i;
+}
+```
+
+①이 시각화에서 막대를 하나씩 비교하는 단계이고, ②가 pivot이 작은 쪽 바로 뒤로 옮겨 가는 단계입니다. `partition`이 돌려준 pivot의 자리 `p`를 `target`과 비교해 범위를 한쪽으로 좁히고, 둘이 같아지면 ③에서 답을 돌려줍니다.
+
+시각화는 단계를 매번 같게 보여 주려고 무작위로 고르는 두 줄을 빼고 늘 범위의 맨 끝을 pivot으로 썼습니다. 나머지는 이 코드와 같습니다. 무작위 pivot이 필요한 이유는 아래 "자주 하는 실수"에 정리했습니다.
+
+평균 시간은 O(n)이고, pivot이 계속 범위의 한쪽 끝에 서는 최악의 경우에는 O(n²)입니다. 재귀 없이 반복문으로 범위만 좁히므로 추가 공간은 O(1)입니다.
+
+## 자주 하는 실수
+
+**k와 인덱스를 섞습니다.** k번째로 큰 수의 자리는 작은 순서의 인덱스 `n - k`입니다. 습관처럼 `k - 1`을 쓰면 k번째로 **작은** 수를 찾게 되어, 예제에서 5가 아니라 인덱스 1의 2가 나옵니다.
+
+**분할 뒤 양쪽을 모두 다시 나눕니다.** 답은 맞지만 그것은 퀵 정렬이라 평균 O(n log n)이 됩니다. 위 시각화의 "양쪽 다" 모드가 이 경우이고, 한쪽만 따라 들어갈 때보다 비교가 늘어납니다.
+
+**pivot을 늘 같은 자리에서 고릅니다.** 맨 끝을 pivot으로 고정하면 이미 정렬된 `[1, 2, 3, 4, 5, 6]`에서 pivot이 매번 범위의 가장 큰 수가 됩니다. 분할할 때마다 범위가 한 칸씩만 줄어 비교가 5 + 4 + 3 + …번, 즉 O(n²)이 됩니다. pivot을 무작위로 고르면 이런 입력에서도 매번 한쪽 끝만 걸릴 가능성이 낮아져 평균 O(n)이 유지됩니다.
+
+**같은 수가 아주 많은 입력을 생각하지 않습니다.** 모든 수가 같으면 `nums[j] < pivot`이 한 번도 참이 되지 않아, pivot이 늘 범위의 맨 앞에 서고 범위가 한 칸씩만 줄어듭니다. 이 경우는 무작위 pivot으로도 피할 수 없습니다. 문제의 최대 길이인 10만 칸을 모두 같은 수로 채워 위 참고 풀이를 Node.js로 돌려 보면 2초 남짓 걸려, 채점에서 시간 초과가 날 수 있습니다.
+
+이런 입력까지 대비하려면 pivot과 같은 수를 가운데에 따로 모으는 [세 구역 분할](/algorithm/three-way-partition/)로 바꿉니다. 분할이 끝나면 `lt`부터 `gt`까지가 모두 pivot과 같은 수라, 찾는 자리가 그 안에 있으면 바로 답이 됩니다. 같은 입력에서 이 코드는 1밀리초도 걸리지 않습니다.
+
+```js
+var findKthLargest = function (nums, k) {
+  const target = nums.length - k;
+  let lo = 0;
+  let hi = nums.length - 1;
+
+  while (true) {
+    const pivot = nums[lo + Math.floor(Math.random() * (hi - lo + 1))];
+    // lt 앞은 pivot보다 작은 수, gt 뒤는 큰 수, 그 사이는 pivot과 같은 수
+    let lt = lo;
+    let i = lo;
+    let gt = hi;
+    while (i <= gt) {
+      if (nums[i] < pivot) {
+        [nums[lt], nums[i]] = [nums[i], nums[lt]];
+        lt++;
+        i++;
+      } else if (nums[i] > pivot) {
+        [nums[i], nums[gt]] = [nums[gt], nums[i]];
+        gt--;
+      } else {
+        i++;
+      }
+    }
+    if (target < lt) hi = lt - 1; // 답은 작은 쪽에 있다
+    else if (target > gt) lo = gt + 1; // 답은 큰 쪽에 있다
+    else return pivot; // 찾는 자리가 pivot과 같은 수 구역 안에 있다
+  }
+};
+```

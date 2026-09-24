@@ -1,0 +1,62 @@
+---
+/**
+ * 본문용 정적 그림: 막대 한 장면.
+ *
+ *   <QuickselectSplit nums={[3, 2, 1, 5, 6, 4]} k={2} scene="sorted" />  ← 다 정렬했다면 답이 설 자리
+ *   <QuickselectSplit nums={[3, 2, 1, 5, 6, 4]} k={2} scene="split" />   ← 맨 끝 pivot으로 한 번 나눈 뒤
+ *
+ * 창이 좁아도 제목이 신호등 점과 겹치지 않게 제목에는 입력을 싣지 않는다. 입력은 본문이 바로 앞에서 말한다.
+ * 'split'은 단계 진행(Quickselect)과 같은 분할(맨 끝 pivot, 작은 수를 왼쪽부터 모음)을 한 번 돌린
+ * 결과다. 도형은 단계 진행과 같은 QuickselectDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import QuickselectDiagram from './QuickselectDiagram.astro';
+
+interface Props {
+  nums: number[];
+  k: number;
+  scene: 'sorted' | 'split';
+  caption?: string;
+}
+
+const { nums, k, scene, caption } = Astro.props;
+const n = nums.length;
+const target = n - k;
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const subject = (v: number) => (noBatchim(v) ? '가' : '이');
+const topic = (v: number) => (noBatchim(v) ? '는' : '은');
+const direction = (v: number) => ('1245789'.includes(String(v).at(-1)!) ? '로' : '으로');
+
+let order: number[];
+let states: string[];
+let pivotLine: { lo: number; hi: number; value: number } | null = null;
+let title: string;
+let label: string;
+
+if (scene === 'sorted') {
+  order = nums.map((_, id) => id).sort((a, b) => nums[a] - nums[b]);
+  states = order.map((_, pos) => (pos === target ? 'answer' : 'large'));
+  title = '작은 순서로 세운 막대';
+  label = `정렬하면 인덱스 ${target}에 ${nums[order[target]]}${subject(nums[order[target]])} 옵니다`;
+} else {
+  order = nums.map((_, id) => id);
+  const val = (pos: number) => nums[order[pos]];
+  const pivot = val(n - 1);
+  let i = 0;
+  for (let j = 0; j < n - 1; j++) {
+    if (val(j) < pivot) {
+      [order[i], order[j]] = [order[j], order[i]];
+      i++;
+    }
+  }
+  [order[i], order[n - 1]] = [order[n - 1], order[i]];
+  states = order.map((_, pos) => (pos < i ? 'small' : pos === i ? 'done' : 'large'));
+  pivotLine = { lo: 0, hi: n - 1, value: pivot };
+  title = `pivot ${pivot}${direction(pivot)} 한 번 나눈 뒤`;
+  label = `pivot ${pivot}보다 작은 수는 왼쪽, 큰 수는 오른쪽에 모이고 ${pivot}${topic(pivot)} 인덱스 ${i}에 섭니다`;
+}
+---
+
+<StaticFigure title={title} caption={caption}>
+  <QuickselectDiagram nums={nums} order={order} states={states} pivotLine={pivotLine} target={target} label={label} />
+</StaticFigure>

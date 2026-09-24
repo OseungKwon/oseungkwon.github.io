@@ -1,0 +1,296 @@
+---
+/**
+ * 분할(partition)의 대표 도형 — 값이 높이인 막대 + pivot 높이의 기준선 + 인덱스 줄.
+ *
+ * 막대는 값 하나에 하나씩 그리고, 자리(인덱스)는 transform으로 옮긴다. 그래서 두 수가 자리를
+ * 바꾸면 막대가 실제로 미끄러져 바뀐다. 기준선은 지금 나누는 범위 위에만 진하게 긋고,
+ * 오른쪽 끝 라벨까지는 옅게 이어 "pivot보다 작은가"를 높이로 읽게 한다.
+ * 막대 아래에는 인덱스, 지금 비교하는 자리 j, 작은 쪽이 끝나는 자리 i, 찾는 자리 표시가 있다.
+ *
+ * 그리기만 맡는다. 단계 진행(Quickselect)과 본문 정적 그림(QuickselectSplit)이 같은 컴포넌트를 쓴다.
+ * 상태는 data-state로 두므로 Quickselect의 스크립트가 단계마다 바꿀 수 있다.
+ */
+interface Props {
+  nums: number[];
+  /** 자리마다 놓인 막대 번호(= nums의 원래 인덱스). 생략하면 입력 순서 그대로 */
+  order?: number[];
+  /** 자리마다 막대 상태: idle / active / small / large / pivot / done / off / wait / answer */
+  states?: string[];
+  /** 기준선: 지금 나누는 범위 [lo, hi]와 pivot 값 */
+  pivotLine?: { lo: number; hi: number; value: number } | null;
+  /** 작은 쪽이 끝나는 자리 i, 지금 비교하는 자리 j (-1이면 숨김) */
+  markerI?: number;
+  markerJ?: number;
+  /** 찾는 자리 (정렬했을 때 답이 놓일 인덱스). 생략하면 숨김 */
+  target?: number | null;
+  label: string;
+}
+
+const { nums, order = nums.map((_, i) => i), states = [], pivotLine = null, markerI = -1, markerJ = -1, target = null, label } = Astro.props;
+const n = nums.length;
+
+const COL = 54;
+const BAR_W = 40;
+const LEFT = 16;
+const UNIT = 20;
+const TOP = 30;
+const BASE = TOP + Math.max(...nums) * UNIT;
+const INDEX_Y = BASE + 17;
+const J_Y = BASE + 35;
+const I_Y = BASE + 51;
+const TARGET_Y = BASE + 69;
+const LABEL_X = LEFT + n * COL + 6;
+const width = LABEL_X + 58;
+const height = TARGET_Y + 8;
+const colX = (pos: number) => LEFT + pos * COL;
+const lineY = (value: number) => BASE - value * UNIT;
+const move = (pos: number) => `transform: translate(${pos < 0 ? 0 : colX(pos)}px, 0px)`;
+const posOf = (id: number) => order.indexOf(id);
+---
+
+{/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
+<svg class="qs" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-qs-figure data-col={COL} data-left={LEFT} data-base={BASE} data-unit={UNIT} data-label-x={LABEL_X}>
+  <line class="qs-floor" x1={LEFT} y1={BASE} x2={colX(n)} y2={BASE} />
+
+  {/* 막대: 값마다 하나, 자리는 transform */}
+  {
+    nums.map((value, id) => (
+      <g class="qs-bar" data-bar={id} data-state={states[posOf(id)] ?? 'idle'} style={move(posOf(id))}>
+        <rect x={(COL - BAR_W) / 2} y={BASE - value * UNIT} width={BAR_W} height={value * UNIT} rx="6" />
+        <text class="qs-value" x={COL / 2} y={BASE - value * UNIT - 7} text-anchor="middle">{value}</text>
+      </g>
+    ))
+  }
+
+  {/* 기준선: 범위 위는 진하게, 라벨까지는 옅게 */}
+  <g class="qs-pivot-line" data-pivot-line hidden={pivotLine ? undefined : true}>
+    <line class="qs-pivot-reach" data-line="reach" x1={pivotLine ? colX(pivotLine.hi + 1) : 0} y1={lineY(pivotLine?.value ?? 0)} x2={LABEL_X - 2} y2={lineY(pivotLine?.value ?? 0)} />
+    <line class="qs-pivot-range" data-line="range" x1={pivotLine ? colX(pivotLine.lo) + 2 : 0} y1={lineY(pivotLine?.value ?? 0)} x2={pivotLine ? colX(pivotLine.hi + 1) - 2 : 0} y2={lineY(pivotLine?.value ?? 0)} />
+    <text class="qs-pivot-label" data-line="label" x={LABEL_X} y={lineY(pivotLine?.value ?? 0)} dy="0.36em">pivot {pivotLine?.value ?? ''}</text>
+  </g>
+
+  {/* 인덱스 줄 (자리는 움직이지 않는다) */}
+  {
+    nums.map((_, pos) => (
+      <g class="qs-index" data-target-mark={pos === target ? '' : undefined}>
+        {pos === target && <rect class="qs-target-pill" x={colX(pos) + COL / 2 - 11} y={INDEX_Y - 9} width="22" height="16" rx="8" />}
+        <text x={colX(pos) + COL / 2} y={INDEX_Y} dy="0.1em" text-anchor="middle">{pos}</text>
+      </g>
+    ))
+  }
+
+  {/* 자리 표시: j = 지금 비교하는 자리, i = 작은 쪽이 끝나는 자리 */}
+  <g class="qs-marker" data-marker="j" style={move(markerJ)} hidden={markerJ < 0 ? true : undefined}>
+    <text x={COL / 2} y={J_Y} text-anchor="middle">j</text>
+  </g>
+  <g class="qs-marker" data-marker="i" style={move(markerI)} hidden={markerI < 0 ? true : undefined}>
+    <text x={COL / 2} y={I_Y} text-anchor="middle">i</text>
+  </g>
+
+  {target !== null && (
+    <text class="qs-target-label" x={colX(target) + COL / 2} y={TARGET_Y} text-anchor="middle">찾는 자리</text>
+  )}
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .qs {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  .qs [hidden] {
+    display: none;
+  }
+
+  .qs-floor {
+    stroke: var(--node-line);
+    stroke-width: 1;
+  }
+
+  /* ── 막대 ───────────────────────────── */
+  .qs-bar {
+    transition: transform 0.4s ease;
+  }
+
+  .qs-bar rect {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s, opacity 0.25s;
+  }
+
+  .qs-value {
+    font-size: 14px;
+    fill: var(--fg);
+    transition: opacity 0.25s;
+  }
+
+  /* 아직 비교하지 않은 막대 */
+  .qs-bar[data-state='idle'] rect {
+    stroke: var(--fg-faint);
+    stroke-dasharray: 3 3;
+  }
+
+  .qs-bar[data-state='idle'] .qs-value {
+    fill: var(--fg-dim);
+  }
+
+  /* 지금 비교하는 막대 */
+  .qs-bar[data-state='active'] rect {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .qs-bar[data-state='active'] .qs-value {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* pivot보다 작은 쪽 */
+  .qs-bar[data-state='small'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  .qs-bar[data-state='small'] .qs-value {
+    fill: var(--stack-text);
+    font-weight: 700;
+  }
+
+  /* pivot보다 크거나 같은 쪽 */
+  .qs-bar[data-state='large'] rect {
+    stroke: var(--fg-dim);
+  }
+
+  /* pivot 자신 */
+  .qs-bar[data-state='pivot'] rect {
+    fill: var(--bg-side);
+    stroke: var(--fg);
+    stroke-width: 2.5;
+  }
+
+  .qs-bar[data-state='pivot'] .qs-value {
+    font-weight: 700;
+  }
+
+  /* 정렬했을 때의 자리에 선 pivot */
+  .qs-bar[data-state='done'] rect {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+  }
+
+  .qs-bar[data-state='done'] .qs-value {
+    fill: var(--done-text);
+  }
+
+  /* 퀵셀렉트가 버린 쪽 */
+  .qs-bar[data-state='off'] rect {
+    stroke-dasharray: 3 3;
+    opacity: 0.25;
+  }
+
+  .qs-bar[data-state='off'] .qs-value {
+    opacity: 0.25;
+  }
+
+  /* 퀵 정렬에서 차례를 기다리는 다른 범위 */
+  .qs-bar[data-state='wait'] {
+    opacity: 0.55;
+  }
+
+  .qs-bar[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2.5;
+  }
+
+  .qs-bar[data-state='answer'] .qs-value {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+
+  /* ── 기준선 ─────────────────────────── */
+  .qs-pivot-range {
+    stroke: var(--fg);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+  }
+
+  .qs-pivot-reach {
+    stroke: var(--fg-faint);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+  }
+
+  .qs-pivot-label {
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 600;
+    fill: var(--fg);
+  }
+
+  /* ── 막대 아래 ───────────────────────── */
+  .qs-index text {
+    font-size: 11px;
+    fill: var(--node-idle-text);
+  }
+
+  .qs-target-pill {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 1.25;
+  }
+
+  .qs-index[data-target-mark] text {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+
+  .qs-target-label {
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    fill: var(--answer);
+  }
+
+  /* 퀵 정렬 모드에서는 찾는 자리가 없다 */
+  .qs[data-hide-target] .qs-target-pill,
+  .qs[data-hide-target] .qs-target-label {
+    display: none;
+  }
+
+  .qs[data-hide-target] .qs-index[data-target-mark] text {
+    fill: var(--node-idle-text);
+    font-weight: 400;
+  }
+
+  .qs-marker {
+    transition: transform 0.3s ease;
+  }
+
+  .qs-marker text {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .qs-marker[data-marker='j'] text {
+    fill: var(--exec-text);
+  }
+
+  .qs-marker[data-marker='i'] text {
+    fill: var(--stack-text);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .qs-bar,
+    .qs-marker {
+      transition: none;
+    }
+  }
+</style>
