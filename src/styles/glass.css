@@ -46,7 +46,9 @@
 .featured-halo::before {
   content: '';
   position: absolute;
-  inset: -10% -4%;
+  /* 좌우는 main의 가장 좁은 여백(px-4)보다 덜 나가게 고정값으로 둔다.
+     %로 두면 태블릿 폭에서 여백을 넘어 가로 스크롤이 생긴다. */
+  inset: -10% -1rem;
   z-index: -1;
   pointer-events: none;
   background:
