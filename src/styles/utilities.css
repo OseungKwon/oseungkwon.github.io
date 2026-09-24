@@ -43,6 +43,9 @@
   .text-token-tertiary {
     color: var(--color-text-tertiary);
   }
+  .text-token-aside {
+    color: var(--color-text-aside);
+  }
   .text-token-date {
     color: var(--color-text-date);
   }

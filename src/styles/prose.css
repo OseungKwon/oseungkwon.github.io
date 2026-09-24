@@ -7,7 +7,10 @@
   /* 기본 prose 스타일 */
   .prose {
     @apply max-w-none;
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-primary) !important;
+    /* Wanted Sans 400은 macOS의 antialiased 렌더링에서 획이 가늘어 흐려 보인다.
+       가변 폰트라 450으로 살짝만 올려 본문 농도를 맞춘다. */
+    font-weight: 450;
     /* 긴 영어 토큰(식별자·URL)이 모바일에서 넘치지 않도록 강제 줄바꿈.
        overflow-wrap은 상속되므로 소제목·인라인코드·링크까지 함께 적용된다. */
     overflow-wrap: break-word;
@@ -137,7 +140,7 @@
   }
 
   .prose .table-wrapper td {
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-primary) !important;
   }
 
   /* 마지막 행의 아래 구분선 제거 */
@@ -181,7 +184,7 @@
     border: 1px solid var(--prose-aside-border) !important;
     background-color: var(--prose-aside-bg) !important;
     font-style: normal !important;
-    font-weight: 400 !important;
+    font-weight: 450 !important;
   }
 
   .dark .prose blockquote:not(:where(.not-prose, .not-prose *)) {
@@ -194,7 +197,7 @@
   .prose blockquote p:not(:where(.not-prose, .not-prose *)) {
     @apply text-[15px];
     line-height: 1.75;
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-aside) !important;
   }
 
   /* 첫 문단의 윗여백은 플러그인이 넣은 것으로, 지우지 않으면 글자가 박스 안에서
@@ -234,16 +237,16 @@
   /* 리스트 스타일 */
   .prose ul:not(:where(.not-prose, .not-prose *)) {
     @apply list-disc pl-6 mb-6 space-y-2;
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-primary) !important;
   }
 
   .prose ol:not(:where(.not-prose, .not-prose *)) {
     @apply list-decimal pl-6 mb-6 space-y-2;
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-primary) !important;
   }
 
   .prose li:not(:where(.not-prose, .not-prose *)) {
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-primary) !important;
   }
 
   /* 강조 스타일 */
@@ -253,7 +256,7 @@
   }
 
   .prose em:not(:where(.not-prose, .not-prose *)) {
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-primary) !important;
   }
 
   /* 구분선 스타일 */
