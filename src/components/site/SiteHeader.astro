@@ -13,7 +13,6 @@ const isHome = path === base;
 const isTags = path === `${base}/tags` || path.startsWith(`${base}/tags/`);
 const isAlgorithm = path === `${base}/algorithm` || path.startsWith(`${base}/algorithm/`);
 const isAbout = path === `${base}/about`;
-const isContact = path === `${base}/contact`;
 ---
 
 <header class:list={['sticky z-50 mx-auto w-full px-4 sm:px-6 lg:px-8 top-3 sm:top-4', container === 'wide' ? 'max-w-6xl' : 'max-w-5xl']}>
@@ -81,17 +80,6 @@ const isContact = path === `${base}/contact`;
         >
           {isAbout && <span class="nav-pill-bg" aria-hidden="true" />}
           About
-        </a>
-        <a
-          href={`${BASE}contact/`}
-          aria-current={isContact ? 'page' : undefined}
-          class:list={[
-            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
-            isContact ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
-          ]}
-        >
-          {isContact && <span class="nav-pill-bg" aria-hidden="true" />}
-          Contact
         </a>
       </div>
       <ThemeToggle />
