@@ -94,8 +94,9 @@ interface Step {
 }
 
 const particle = (n: number) => ('2459'.includes(String(n).at(-1)!) ? '를' : '을');
-// 숫자 발음의 받침에 따라 '로'/'으로'를 고른다 ([1]로가 아니라 [1]으로, [2]로).
-const direction = (n: number) => ('2459'.includes(String(n).at(-1)!) ? '로' : '으로');
+// 숫자 발음의 받침에 따라 '로'/'으로'를 고른다. 받침이 없거나 ㄹ받침(1 일, 7 칠, 8 팔)이면 '로'.
+// [1]로, [2]로, [3]으로
+const direction = (n: number) => ('1245789'.includes(String(n).at(-1)!) ? '로' : '으로');
 const show = (arr: number[]) => `[${arr.join(', ')}]`;
 
 function trace(undo: boolean): Step[] {
@@ -130,14 +131,15 @@ function trace(undo: boolean): Step[] {
       ...extra,
     });
 
-  const flush = (note?: string) => {
+  // next: 되돌린 직후 고를 수. 한 줄 설명에 '다음에 무엇을 하는지'를 구체적으로 적는다.
+  const flush = (note?: string, next?: number) => {
     if (pendingLeaves === 0) return;
     const popped = pendingPops;
     snap(
       note ??
         (undo
-          ? `${popped.join(', ')}${particle(popped.at(-1)!)} 되돌리고 ${path.length === 0 ? '루트로' : `${show(path)}${direction(path.at(-1)!)}`} 올라옵니다`
-          : '되돌리지 않고 위로 올라옵니다. path는 그대로입니다'),
+          ? `${popped.join(', ')}${particle(popped.at(-1)!)} 빼고 ${path.length === 0 ? '맨 위로' : `${show(path)}${direction(path.at(-1)!)}`} 올라옵니다${next === undefined ? '' : `. 이번엔 ${next}${particle(next)} 넣어 봅니다`}`
+          : '수를 빼지 않고 위로 올라옵니다. path와 used가 그대로 남습니다'),
       { popped, usedChanged: pendingUsed },
     );
     pendingPops = [];
@@ -149,7 +151,7 @@ function trace(undo: boolean): Step[] {
   function backtrack() {
     for (let i = 0; i < nums.length; i++) {
       if (used[i]) continue;
-      flush();
+      flush(undefined, nums[i]);
 
       used[i] = true;
       path.push(nums[i]);
@@ -159,9 +161,9 @@ function trace(undo: boolean): Step[] {
 
       if (path.length === nums.length) {
         result.push([...path]);
-        snap(`${nums[i]}${particle(nums[i])} 고르면 순열 ${show(path)} 완성. result에 담습니다`, { pushed: true, usedChanged: [i], resultAdded: true });
+        snap(`${nums[i]}${particle(nums[i])} 고르면 자리가 다 찹니다. 순열 ${show(path)} 완성, result에 담습니다`, { pushed: true, usedChanged: [i], resultAdded: true });
       } else {
-        snap(`${nums[i]}${particle(nums[i])} 고릅니다`, { pushed: true, usedChanged: [i] });
+        snap(`${nums[i]}${particle(nums[i])} 골라 한 칸 내려갑니다`, { pushed: true, usedChanged: [i] });
         backtrack();
       }
 
@@ -175,12 +177,12 @@ function trace(undo: boolean): Step[] {
     }
   }
 
-  snap('아무것도 고르지 않은 루트에서 시작합니다');
+  snap('아직 아무것도 고르지 않은 맨 위에서 시작합니다. "다음"을 눌러 보세요');
   backtrack();
   flush(
     undo
-      ? `루트로 돌아와 탐색이 끝났습니다. 순열 ${result.length}개`
-      : `루트로 돌아왔지만 used가 모두 true라 더 고를 수 없습니다. 순열 ${result.length}개에서 끝`,
+      ? `모든 가지를 다 둘러봤습니다. 순열 ${result.length}개를 만들었습니다`
+      : `맨 위까지 올라왔지만 모든 수가 아직 "쓰는 중"이라 더 고를 수 없습니다. 순열 ${result.length}개에서 멈춥니다`,
   );
   if (!undo) steps.at(-1)!.short = true;
   return steps;
@@ -208,6 +210,12 @@ const stateName: Record<string, string> = { i: 'idle', s: 'stack', a: 'active', 
   steps={{ undo: undoSteps, keep: keepSteps }}
   title="상태 공간 트리 · nums = [1, 2, 3]"
   caption="LeetCode 46 예제 1. 빌드할 때 재귀를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '지금 위치' },
+    { state: 'stack', label: '지금까지 고른 길 (path)' },
+    { state: 'answer', label: '완성된 순열' },
+    { state: 'idle', label: '아직 안 가 본 곳' },
+  ]}
 >
   <Fragment slot="watch">
     <dl class="bw" data-bt-watch>
