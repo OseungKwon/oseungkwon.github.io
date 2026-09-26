@@ -1,0 +1,61 @@
+---
+/**
+ * 본문용 정적 그림: 어떤 순서로 보며 남기느냐에 따라 뺄 구간 수가 달라진다.
+ *
+ *   <IntervalGreedyRule intervals={[[1, 9], [2, 3], [4, 5], [6, 8]]} rule="start" />
+ *   <IntervalGreedyRule intervals={[[1, 9], [2, 3], [4, 5], [6, 8]]} rule="end" />
+ *
+ * rule 순서(시작 시각 순 / 끝나는 시각 순)로 정렬한 뒤, 앞에서부터 겹치지 않으면 남기고 겹치면 뺀다.
+ * 남긴 구간은 청록, 뺀 구간은 회색으로 그린다. 도형은 단계 진행(IntervalGreedyWalk)과 같은 IntervalGreedyDiagram이다.
+ *
+ * 빌드할 때 모든 부분집합을 직접 따진 최솟값과 비교한다. 끝나는 시각 순이 최솟값과 다르거나,
+ * 시작 시각 순이 (틀린 규칙을 보여주려는 그림인데) 우연히 최솟값을 내면 빌드를 멈춘다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import IntervalGreedyDiagram from './IntervalGreedyDiagram.astro';
+
+interface Props {
+  intervals: [number, number][];
+  rule: 'start' | 'end';
+  caption?: string;
+}
+
+const { intervals, rule, caption } = Astro.props;
+const key = rule === 'start' ? 0 : 1;
+const order = intervals.map((_, id) => id).sort((a, b) => intervals[a][key] - intervals[b][key]);
+
+const states = intervals.map(() => 'dropped');
+let end = -Infinity;
+let removed = 0;
+for (const id of order) {
+  const [start, finish] = intervals[id];
+  if (start >= end) {
+    states[id] = 'kept';
+    end = finish;
+  } else {
+    removed++;
+  }
+}
+
+let best = 0;
+for (let mask = 0; mask < 1 << intervals.length; mask++) {
+  const pick = intervals.filter((_, i) => (mask >> i) & 1).sort((a, b) => a[0] - b[0]);
+  if (pick.every((x, i) => i === 0 || pick[i - 1][1] <= x[0])) best = Math.max(best, pick.length);
+}
+const minimum = intervals.length - best;
+if ((rule === 'end') !== (removed === minimum)) {
+  throw new Error(`IntervalGreedyRule: ${rule} 순서의 결과 ${removed}가 기대와 다릅니다(최솟값 ${minimum}).`);
+}
+
+const rows = intervals.map((_, id) => order.indexOf(id));
+const ruleName = rule === 'start' ? '시작이 빠른 순' : '끝이 빠른 순';
+---
+
+<StaticFigure title={`${ruleName} · 뺀 구간 ${removed}개`} caption={caption}>
+  <IntervalGreedyDiagram
+    intervals={intervals}
+    rows={rows}
+    states={states}
+    label={`${ruleName}으로 보며 남기면 구간 ${removed}개를 뺍니다`}
+  />
+</StaticFigure>
