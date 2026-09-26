@@ -1,0 +1,249 @@
+---
+/**
+ * 슬라이딩 윈도우의 대표 도형 — 문자 칸 줄 + 칸을 감싸는 창 테두리 [left, right] + 두 포인터.
+ *
+ * 창 테두리 안의 칸이 지금 보고 있는 구간이다. right가 오른쪽으로 한 칸 들어오면 창이 늘고,
+ * 겹치는 문자가 생기면 left가 오른쪽으로 빠지며 창이 줄어든다. 칸 아래 괄호는 지금까지 가장
+ * 길었던 창(best)의 자리다.
+ *
+ * 그리기만 맡는다. 단계 진행(SlidingWindowWalk)과 본문 정적 그림(SlidingWindowFrame)이 같은
+ * 컴포넌트를 쓴다. 단계 진행 스크립트가 포인터·창·괄호를 옮길 수 있도록 칸 간격을 data-geo에 적어 둔다.
+ */
+interface Props {
+  chars: string[];
+  /** 칸 상태: idle / window / active / done / removed / answer */
+  cellStates?: string[];
+  left: number;
+  right: number;
+  /** 창 [from, to]. null이면 창이 비어 있어 테두리를 숨긴다 */
+  frame?: [number, number] | null;
+  /** 지금까지 가장 긴 창 [from, to]. null이면 숨긴다 */
+  best?: [number, number] | null;
+  /** 단계 진행처럼 best 괄호가 나타났다 움직이는 그림이면 true (괄호 자리를 늘 비워 둔다) */
+  reserveBest?: boolean;
+  label: string;
+}
+
+const { chars, cellStates = [], left, right, frame = null, best = null, reserveBest = false, label } = Astro.props;
+const n = chars.length;
+
+const CELL = 44;
+const GAP = 6;
+const PITCH = CELL + GAP;
+const LEFT = 16;
+const TIER = 16;
+// 포인터 이름은 두 층으로 쌓는다. 같은 칸을 가리켜도 글자가 겹치지 않는다
+const TIER_Y = { left: 14, right: 14 + TIER };
+const CELL_Y = TIER_Y.right + 18;
+const PAD = 4;
+const hasBest = reserveBest || best !== null;
+const BEST_Y = CELL_Y + CELL + PAD + 12;
+const width = LEFT * 2 + n * PITCH - GAP;
+const height = hasBest ? BEST_Y + 26 : CELL_Y + CELL + PAD + 8;
+
+const cx = (i: number) => LEFT + i * PITCH + CELL / 2;
+const frameRect = (range: [number, number] | null) => {
+  if (!range) return { x: 0, width: 0 };
+  const [from, to] = range;
+  return { x: LEFT + from * PITCH - PAD, width: (to - from) * PITCH + CELL + PAD * 2 };
+};
+const bestPath = (range: [number, number] | null) => {
+  if (!range) return '';
+  const x1 = LEFT + range[0] * PITCH + 3;
+  const x2 = LEFT + range[1] * PITCH + CELL - 3;
+  return `M ${x1} ${BEST_Y - 5} V ${BEST_Y} H ${x2} V ${BEST_Y - 5}`;
+};
+const bestMid = (range: [number, number] | null) =>
+  range ? (LEFT + range[0] * PITCH + LEFT + range[1] * PITCH + CELL) / 2 : 0;
+const pointers = [
+  { key: 'left', at: left },
+  { key: 'right', at: right },
+] as const;
+const rect = frameRect(frame);
+const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, pad: PAD, bestY: BEST_Y });
+---
+
+{/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
+<svg class="sw-fig" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-sw-figure data-geo={geo}>
+  {/* 포인터: 이름 + 아래를 가리키는 작은 삼각형. x는 transform으로 옮긴다 */}
+  {
+    pointers.map(({ key, at }) => (
+      <g class="sw-ptr" data-ptr={key} style={`transform: translateX(${cx(at)}px)`}>
+        <text x="0" y={TIER_Y[key]} text-anchor="middle">{key}</text>
+        <path d={`M -4 ${TIER_Y[key] + 3} L 4 ${TIER_Y[key] + 3} L 0 ${TIER_Y[key] + 7} Z`} />
+      </g>
+    ))
+  }
+
+  {/* 창 테두리: 칸보다 먼저 그려 칸 채움 뒤에 깔린다 */}
+  <rect
+    class="sw-frame"
+    data-sw-frame
+    x={rect.x}
+    y={CELL_Y - PAD}
+    width={rect.width}
+    height={CELL + PAD * 2}
+    rx="11"
+    hidden={frame ? undefined : true}
+  />
+
+  {/* 칸 */}
+  {
+    chars.map((ch, i) => (
+      <g class="sw-cell" data-cell={i} data-state={cellStates[i] ?? 'idle'}>
+        <rect x={LEFT + i * PITCH} y={CELL_Y} width={CELL} height={CELL} rx="8" />
+        <text class="sw-char" x={cx(i)} y={CELL_Y + CELL / 2} dy="0.36em" text-anchor="middle">{ch}</text>
+      </g>
+    ))
+  }
+
+  {/* 가장 길었던 창 */}
+  {
+    hasBest && (
+      <g class="sw-best" data-sw-best hidden={best ? undefined : true}>
+        <path d={bestPath(best)} />
+        <text x={bestMid(best)} y={BEST_Y + 15} text-anchor="middle">
+          best = {best ? best[1] - best[0] + 1 : 0}
+        </text>
+      </g>
+    )
+  }
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .sw-fig {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  .sw-fig [hidden] {
+    display: none;
+  }
+
+  /* ── 포인터 ─────────────────────────── */
+  .sw-ptr {
+    transition: transform 0.3s ease;
+  }
+
+  .sw-ptr text {
+    font-size: 12px;
+    fill: var(--fg-dim);
+  }
+
+  .sw-ptr path {
+    fill: var(--fg-faint);
+  }
+
+  .sw-ptr[data-ptr='right'] text {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  .sw-ptr[data-ptr='right'] path {
+    fill: var(--exec);
+  }
+
+  /* ── 창 테두리 ───────────────────────── */
+  .sw-frame {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2.5;
+    transition: x 0.3s ease, width 0.3s ease;
+  }
+
+  /* ── 칸 ─────────────────────────────── */
+  .sw-cell rect {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+
+  .sw-char {
+    font-size: 16px;
+    fill: var(--fg);
+  }
+
+  /* 아직 right가 닿지 않은 칸 */
+  .sw-cell[data-state='idle'] rect {
+    stroke-dasharray: 3 4;
+  }
+
+  .sw-cell[data-state='idle'] .sw-char {
+    fill: var(--fg-dim);
+  }
+
+  /* 창 안의 칸 */
+  .sw-cell[data-state='window'] rect {
+    stroke: var(--stack);
+  }
+
+  .sw-cell[data-state='window'] .sw-char {
+    fill: var(--stack-text);
+    font-weight: 700;
+  }
+
+  /* right가 방금 들어온 칸 */
+  .sw-cell[data-state='active'] rect {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .sw-cell[data-state='active'] .sw-char {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* left가 지나간 칸 */
+  .sw-cell[data-state='done'] rect {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+  }
+
+  .sw-cell[data-state='done'] .sw-char {
+    fill: var(--done-text);
+  }
+
+  /* 이번 단계에 창에서 빠진 칸 */
+  .sw-cell[data-state='removed'] rect {
+    fill: var(--removed-bg);
+    stroke: var(--removed);
+    stroke-dasharray: 5 3;
+  }
+
+  .sw-cell[data-state='removed'] .sw-char {
+    fill: var(--removed);
+    text-decoration: line-through;
+  }
+
+  /* 답이 된 창 */
+  .sw-cell[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2;
+  }
+
+  .sw-cell[data-state='answer'] .sw-char {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+
+  /* ── 가장 길었던 창 ───────────────────── */
+  .sw-best path {
+    fill: none;
+    stroke: var(--answer);
+    stroke-width: 1.5;
+    transition: d 0.3s ease;
+  }
+
+  .sw-best text {
+    font-size: 11.5px;
+    font-weight: 600;
+    fill: var(--answer);
+  }
+</style>

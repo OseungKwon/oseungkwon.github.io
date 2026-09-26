@@ -1,0 +1,41 @@
+---
+/**
+ * 본문용 정적 그림: 문자열 위의 창 하나.
+ *
+ *   <SlidingWindowFrame s="abcabcbb" left={0} right={3} />
+ *
+ * [left, right) 칸을 창으로 감싸고, right 칸은 이제 막 넣으려는 칸(노랑)으로 칠한다. left 앞은 지나간 칸이다.
+ * 도형은 단계 진행(SlidingWindowWalk)과 같은 SlidingWindowDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import SlidingWindowDiagram from './SlidingWindowDiagram.astro';
+
+interface Props {
+  s: string;
+  left: number;
+  right: number;
+  caption?: string;
+}
+
+const { s, left, right, caption } = Astro.props;
+const chars = [...s];
+
+if (!(0 <= left && left <= right && right < chars.length)) {
+  throw new Error('SlidingWindowFrame: left ≤ right < s.length 이어야 합니다.');
+}
+
+const cellStates = chars.map((_, i) => (i < left ? 'done' : i < right ? 'window' : i === right ? 'active' : 'idle'));
+const frame: [number, number] | null = right > left ? [left, right - 1] : null;
+const inside = chars.slice(left, right).join('');
+---
+
+<StaticFigure title={`창 · s = "${s}"`} caption={caption}>
+  <SlidingWindowDiagram
+    chars={chars}
+    cellStates={cellStates}
+    left={left}
+    right={right}
+    frame={frame}
+    label={`left = ${left}, right = ${right}일 때 창 안의 문자열 '${inside}'와 이제 넣으려는 '${chars[right]}'`}
+  />
+</StaticFigure>

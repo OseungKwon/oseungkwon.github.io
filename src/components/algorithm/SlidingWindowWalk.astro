@@ -1,0 +1,362 @@
+---
+/**
+ * 슬라이딩 윈도우 — 중복 없는 가장 긴 부분 문자열(LeetCode 3)을 창 하나로 훑는 과정.
+ *
+ * 대표 도형은 문자 칸 줄 위의 창 테두리다(그리기는 SlidingWindowDiagram).
+ *
+ *   오른쪽으로 늘리기 → right 칸의 문자가 창에 들어온다. 창이 가장 길면 best 괄호가 옮겨 간다
+ *   왼쪽에서 줄이기   → right 칸의 문자가 창 안에 이미 있으면, 그 문자가 빠질 때까지 left 칸을
+ *                       창에서 뺀다. 연달아 빠지는 칸은 한 단계로 묶는다
+ *
+ * 변수 패널의 moves는 left와 right가 움직인 횟수의 합이다. 반복문이 두 겹이어도 이 값이 2n을
+ * 넘지 않는다는 것이 O(n)의 근거라서 따로 보인다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import SlidingWindowDiagram from './SlidingWindowDiagram.astro';
+
+// LeetCode 3 예제 1
+const s = 'abcabcbb';
+const chars = [...s];
+const n = chars.length;
+
+// 칸: i 아직 / w 창 안 / a 방금 들어온 칸 / d 지나간 칸 / x 방금 빠진 칸 / b 답이 된 창
+interface Step {
+  note: string;
+  cells: string;
+  left: number;
+  right: number;
+  frame: [number, number] | null;
+  best: number;
+  bestRange: [number, number] | null;
+  seen: string[];
+  popped: string[];
+  moves: number;
+  changed: string[];
+}
+
+const q = (ch: string) => `'${ch}'`;
+// 숫자 뒤 조사는 읽는 소리(일·이·삼)의 받침으로 고른다
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const subject = (v: number) => (noBatchim(v) ? '가' : '이');
+const copula = (v: number) => (noBatchim(v) ? '라' : '이라');
+// ㄹ받침(1·7·8)도 '로'
+const toward = (v: number) => `${v}${'1245789'.includes(String(v).at(-1)!) ? '로' : '으로'}`;
+
+function trace(): Step[] {
+  const steps: Step[] = [];
+  const seen = new Set<string>();
+  let left = 0;
+  let best = 0;
+  let bestRange: [number, number] | null = null;
+  let moves = 0;
+  let last = { left: 0, right: 0, best: 0, moves: 0 };
+
+  const snap = (
+    note: string,
+    right: number,
+    opt: { added?: number; removed?: number[]; frame?: [number, number] | null; end?: boolean } = {},
+  ) => {
+    const frame = opt.frame !== undefined ? opt.frame : seen.size > 0 ? ([left, right] as [number, number]) : null;
+    const cells = chars
+      .map((_, i) => {
+        if (opt.end) return bestRange && i >= bestRange[0] && i <= bestRange[1] ? 'b' : 'd';
+        if (opt.removed?.includes(i)) return 'x';
+        if (i === opt.added) return 'a';
+        if (frame && i >= frame[0] && i <= frame[1]) return 'w';
+        if (i < left) return 'd';
+        if (i === right) return 'a';
+        return 'i';
+      })
+      .join('');
+    const now = { left, right, best, moves };
+    const changed = steps.length === 0 ? [] : (Object.keys(now) as (keyof typeof now)[]).filter((k) => now[k] !== last[k]);
+    steps.push({
+      note,
+      cells,
+      left,
+      right,
+      frame,
+      best,
+      bestRange,
+      seen: [...seen],
+      popped: (opt.removed ?? []).map((i) => chars[i]),
+      moves,
+      changed,
+    });
+    last = now;
+  };
+
+  snap(`left와 right 모두 0번 칸에서 시작합니다. 창은 아직 비어 있습니다. "다음"을 눌러 보세요`, 0, { frame: null });
+
+  for (let right = 0; right < n; right++) {
+    if (right > 0) moves++;
+    const ch = chars[right];
+
+    // ① 겹치는 문자가 빠질 때까지 왼쪽에서 줄이기
+    if (seen.has(ch)) {
+      const removed: number[] = [];
+      while (seen.has(ch)) {
+        seen.delete(chars[left]);
+        removed.push(left);
+        left++;
+        moves++;
+      }
+      const dropped = removed.map((i) => q(chars[i])).join(', ');
+      snap(
+        removed.length === 1
+          ? `right가 ${right}번 칸의 ${q(ch)}에 왔는데 창 안에 이미 ${q(ch)}가 있습니다. left 칸의 ${dropped}를 빼고 left를 ${toward(left)} 옮깁니다`
+          : `right가 ${right}번 칸의 ${q(ch)}에 왔는데 창 안에 이미 ${q(ch)}가 있습니다. ${q(ch)}가 빠질 때까지 ${dropped}를 차례로 빼고 left를 ${toward(left)} 옮깁니다`,
+        right,
+        { removed, frame: left <= right - 1 ? [left, right - 1] : null },
+      );
+    }
+
+    // ② 오른쪽으로 늘리기
+    seen.add(ch);
+    const len = right - left + 1;
+    const grew = len > best;
+    if (grew) {
+      best = len;
+      bestRange = [left, right];
+    }
+    const window = q(chars.slice(left, right + 1).join(''));
+    const note = grew
+      ? `${q(ch)}를 창에 넣습니다. 창 ${window}의 길이 ${len}${subject(len)} 지금까지 가장 길어 best를 ${toward(best)} 올립니다`
+      : `${q(ch)}를 창에 넣습니다. 창 ${window}의 길이는 ${len}${copula(len)} best ${best}보다 길지 않습니다`;
+    snap(note, right, { added: right });
+  }
+
+  // 끝 장면: 가장 길었던 창을 답으로 칠한다
+  const answer = q(chars.slice(bestRange![0], bestRange![1] + 1).join(''));
+  snap(`right가 문자열 끝에 닿아 반복이 끝났습니다. 가장 길었던 창 ${answer}의 길이 ${best}${subject(best)} 답입니다`, n - 1, {
+    frame: null,
+    end: true,
+  });
+  return steps;
+}
+
+const steps = trace();
+
+// 검증: 예제 1 출력은 3이다. 직접 모든 부분 문자열을 확인한 값과도 같아야 하고,
+// 두 포인터가 움직인 횟수의 합은 2n을 넘지 않는다.
+let brute = 0;
+for (let i = 0; i < n; i++) for (let j = i; j < n; j++) if (new Set(chars.slice(i, j + 1)).size === j - i + 1) brute = Math.max(brute, j - i + 1);
+const final = steps.at(-1)!;
+if (final.best !== 3 || final.best !== brute || final.moves > 2 * n) {
+  throw new Error('SlidingWindowWalk: 결과가 LeetCode 3 예제 1 출력(3)과 다르거나 포인터 이동 횟수가 2n을 넘습니다.');
+}
+
+const first = steps[0];
+const CELL: Record<string, string> = { i: 'idle', w: 'window', a: 'active', d: 'done', x: 'removed', b: 'answer' };
+---
+
+<Visualizer
+  modes={[{ id: 'main', label: '기본' }]}
+  steps={{ main: steps }}
+  title={`슬라이딩 윈도우 · s = "${s}"`}
+  caption="LeetCode 3 예제 1. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: 'right가 방금 넣은 칸' },
+    { state: 'stack', label: '창 안의 칸' },
+    { state: 'done', label: 'left가 지나간 칸' },
+    { state: 'answer', label: '가장 길었던 창 (best)' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="sww" data-sw-watch>
+      <div class="sww-row">
+        <dt>left</dt>
+        <dd><span class="sww-num" data-w="left">{first.left}</span></dd>
+      </div>
+      <div class="sww-row">
+        <dt>right</dt>
+        <dd><span class="sww-num" data-w="right">{first.right}</span></dd>
+      </div>
+      <div class="sww-row">
+        <dt>seen</dt>
+        {/* 원소 사이에 템플릿 줄바꿈이 끼면 공백이 생긴다. 한 줄로 둔다. 빠진 문자 + 창 안의 문자만큼 자리를 미리 만든다 */}
+        <dd>Set {'{'}{chars.map((_, i) => <span class="sww-item" data-slot={i} hidden><span class="sww-sep">, </span><span class="sww-str" data-v /></span>)}{'}'}</dd>
+      </div>
+      <div class="sww-row">
+        <dt>moves</dt>
+        <dd><span class="sww-num" data-w="moves">0</span><span class="sww-hint">left·right 이동 합, 최대 2n = {2 * n}</span></dd>
+      </div>
+      <div class="sww-row">
+        <dt>best</dt>
+        <dd><span class="sww-result" data-w="best">0</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <SlidingWindowDiagram
+      chars={chars}
+      cellStates={[...first.cells].map((c) => CELL[c])}
+      left={first.left}
+      right={first.right}
+      frame={first.frame}
+      best={first.bestRange}
+      reserveBest
+      label={`s = "${s}"에서 겹치는 문자가 없는 창을 늘리고 줄이는 과정`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .sww {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .sww-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .sww-row dt {
+    min-width: 3rem;
+    color: var(--t-var);
+  }
+
+  .sww-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .sww-row dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+    margin: 0;
+    color: var(--fg);
+  }
+
+  .sww-row dd:has(.sww-item) {
+    display: block;
+    white-space: normal;
+  }
+
+  .sww-item[hidden] {
+    display: none;
+  }
+
+  /* 맨 앞에 보이는 원소의 쉼표는 숨긴다 */
+  .sww-item[data-first] .sww-sep {
+    display: none;
+  }
+
+  .sww-num,
+  .sww-result {
+    color: var(--t-num);
+  }
+
+  .sww-str {
+    color: var(--t-num);
+  }
+
+  .sww-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  /* 방금 Set에서 빠진 문자 */
+  .sww-item[data-popped] .sww-str {
+    color: var(--removed);
+    text-decoration: line-through;
+  }
+
+  .sww [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    cells: string;
+    left: number;
+    right: number;
+    frame: [number, number] | null;
+    best: number;
+    bestRange: [number, number] | null;
+    seen: string[];
+    popped: string[];
+    moves: number;
+    changed: string[];
+  }
+
+  const CELL: Record<string, string> = { i: 'idle', w: 'window', a: 'active', d: 'done', x: 'removed', b: 'answer' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-sw-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const geo = JSON.parse(figure.dataset.geo!) as { left: number; pitch: number; cell: number; pad: number; bestY: number };
+    const watch = root.querySelector<HTMLElement>('[data-sw-watch]')!;
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const frame = figure.querySelector<SVGRectElement>('[data-sw-frame]')!;
+    const best = figure.querySelector<SVGGElement>('[data-sw-best]')!;
+    const slots = Array.from(watch.querySelectorAll<HTMLElement>('[data-slot]'));
+    const cx = (i: number) => geo.left + i * geo.pitch + geo.cell / 2;
+
+    const render = (step: Step) => {
+      cells.forEach((el, i) => el.setAttribute('data-state', CELL[step.cells[i]]));
+
+      for (const key of ['left', 'right'] as const) {
+        figure.querySelector<SVGGElement>(`[data-ptr="${key}"]`)!.style.transform = `translateX(${cx(step[key])}px)`;
+      }
+
+      if (step.frame) {
+        const [from, to] = step.frame;
+        frame.setAttribute('x', String(geo.left + from * geo.pitch - geo.pad));
+        frame.setAttribute('width', String((to - from) * geo.pitch + geo.cell + geo.pad * 2));
+        frame.removeAttribute('hidden');
+      } else {
+        frame.setAttribute('hidden', '');
+      }
+
+      if (step.bestRange) {
+        const [from, to] = step.bestRange;
+        const x1 = geo.left + from * geo.pitch + 3;
+        const x2 = geo.left + to * geo.pitch + geo.cell - 3;
+        best.querySelector('path')!.setAttribute('d', `M ${x1} ${geo.bestY - 5} V ${geo.bestY} H ${x2} V ${geo.bestY - 5}`);
+        const label = best.querySelector('text')!;
+        label.setAttribute('x', String((x1 + x2) / 2));
+        label.textContent = `best = ${step.best}`;
+        best.removeAttribute('hidden');
+      } else {
+        best.setAttribute('hidden', '');
+      }
+
+      // Set: 방금 빠진 문자를 한 단계 동안 취소선으로 앞에 남기고, 이어서 창 안의 문자
+      const items = [...step.popped.map((v) => ({ v, popped: true })), ...step.seen.map((v) => ({ v, popped: false }))];
+      slots.forEach((slot, i) => {
+        const item = items[i];
+        slot.hidden = !item;
+        slot.toggleAttribute('data-first', i === 0);
+        slot.toggleAttribute('data-popped', Boolean(item?.popped));
+        slot.querySelector('[data-v]')!.textContent = item ? `'${item.v}'` : '';
+      });
+
+      for (const key of ['left', 'right', 'moves', 'best'] as const) {
+        const el = watch.querySelector<HTMLElement>(`[data-w="${key}"]`)!;
+        el.textContent = String(step[key]);
+        el.toggleAttribute('data-changed', step.changed.includes(key));
+      }
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>
