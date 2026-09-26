@@ -12,7 +12,7 @@ const { family, slug, class: className } = Astro.props;
 
 // 같은 분류에 항목이 여럿이면 분류 아이콘만으로는 타일끼리 구분이 안 된다.
 // 이 목록에 있는 항목은 자기 시각화의 대표 도형을 줄인 전용 아이콘을 쓴다.
-const ENTRY_GLYPHS = ['merge-sort', 'quickselect', 'three-way-partition', 'custom-comparator-sort', 'bucket-sort'];
+const ENTRY_GLYPHS = ['dfs-flood-fill', 'bfs', 'merge-sort', 'quickselect', 'three-way-partition', 'custom-comparator-sort', 'bucket-sort'];
 const glyph = slug && ENTRY_GLYPHS.includes(slug) ? slug : family;
 ---
 
@@ -66,10 +66,12 @@ const glyph = slug && ENTRY_GLYPHS.includes(slug) ? slug : family;
   {
     glyph === '그리디' && (
       <>
-        <path d="M10 52h44" />
-        <rect x="12" y="14" width="10" height="38" rx="2" fill="currentColor" stroke="none" />
-        <rect x="27" y="26" width="10" height="26" rx="2" />
-        <rect x="42" y="38" width="10" height="14" rx="2" />
+        {/* 구간 스케줄링: 남긴 구간은 선으로·방금 남긴 구간은 채워서, 겹쳐 버린 구간은 흐린 점선. 세로 점선은 마지막으로 남긴 구간의 끝 */}
+        <path d="M6 54h52" />
+        <path d="M48 4v44" stroke-dasharray="2 3" opacity="0.5" />
+        <rect x="6" y="10" width="22" height="10" rx="5" />
+        <rect x="20" y="24" width="30" height="10" rx="5" stroke-dasharray="3 3" opacity="0.4" />
+        <rect x="30" y="38" width="18" height="10" rx="5" fill="currentColor" stroke="none" />
       </>
     )
   }
@@ -137,6 +139,28 @@ const glyph = slug && ENTRY_GLYPHS.includes(slug) ? slug : family;
     glyph === '수학' && (
       <>
         <path d="M46 14H18l14 18-14 18h28" />
+      </>
+    )
+  }
+  {
+    glyph === 'dfs-flood-fill' && (
+      <>
+        <rect x="8" y="8" width="48" height="48" rx="3" opacity="0.35" />
+        <path d="M24 8v48M40 8v48M8 24h48M8 40h48" opacity="0.35" />
+        <path d="M16 16h16v16h16v16H32" stroke-width="2" />
+        <circle cx="16" cy="16" r="3.5" fill="currentColor" stroke="none" />
+        <circle cx="32" cy="48" r="2.5" />
+      </>
+    )
+  }
+  {
+    glyph === 'bfs' && (
+      <>
+        <rect x="8" y="8" width="48" height="48" rx="3" opacity="0.35" />
+        <path d="M24 8v48M40 8v48M8 24h48M8 40h48" opacity="0.35" />
+        <path d="M8 26h18V8" stroke-width="2" />
+        <path d="M8 42h34V8" stroke-width="2" opacity="0.55" />
+        <rect x="10" y="10" width="12" height="12" rx="1.5" fill="currentColor" stroke="none" />
       </>
     )
   }
