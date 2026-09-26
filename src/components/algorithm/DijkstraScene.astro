@@ -1,0 +1,33 @@
+---
+/**
+ * 본문용 정적 그림: 마을 settled개를 확정하고 그 이웃까지 본 직후의 그래프.
+ *
+ *   <DijkstraScene settled={0} />   ← 시작 장면 (출발지만 0)
+ *   <DijkstraScene settled={2} />   ← 1번, 2번을 확정한 뒤
+ *
+ * 도형은 단계 진행(DijkstraWalk)과 같은 DijkstraDiagram이고, 장면은 같은 trace에서 가져온다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import DijkstraDiagram from './DijkstraDiagram.astro';
+import { K, N, sceneAfter, traceDijkstra } from './dijkstra-trace';
+
+interface Props {
+  settled: number;
+  caption?: string;
+}
+
+const { settled, caption } = Astro.props;
+const scene = settled === 0 ? traceDijkstra()[0] : sceneAfter(settled);
+const NODE: Record<string, string> = { i: 'idle', q: 'queued', a: 'active', d: 'done', w: 'answer', o: 'over' };
+const EDGE: Record<string, string> = { i: 'idle', t: 'tree', y: 'try-ok', f: 'try-fail' };
+const known = scene.dist.map((d, k) => `${k + 1}번 ${d ?? '∞'}`).join(', ');
+---
+
+<StaticFigure title={`가중치 그래프 · N = ${N}, K = ${K}`} caption={caption}>
+  <DijkstraDiagram
+    nodeStates={[...scene.nodes].map((c) => NODE[c])}
+    edgeStates={[...scene.edges].map((c) => EDGE[c])}
+    dist={scene.dist}
+    label={`마을 ${settled}개를 확정한 뒤의 거리 라벨: ${known}`}
+  />
+</StaticFigure>
