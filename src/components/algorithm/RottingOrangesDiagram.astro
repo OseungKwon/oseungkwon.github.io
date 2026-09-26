@@ -1,0 +1,262 @@
+---
+/**
+ * 격자 BFS의 대표 도형 — 귤 격자 + 칸마다 썩은 시각(분) + 썩게 한 방향의 화살표.
+ *
+ * 칸에는 격자 값(0 빈 칸, 1 싱싱한 귤, 2 썩은 귤)을 적고, 값이 2가 된 칸에는 오른쪽 위에 몇 분에 썩었는지
+ * 작은 배지를 붙인다. 배지를 한 번에 보면 처음 썩은 귤에서 퍼진 층(거리)이 그대로 읽힌다.
+ * 화살표는 "이 칸이 저 칸을 썩게 했다"는 뜻으로, BFS가 퍼진 길이다.
+ *
+ * 그리기만 맡는다. 단계 진행(RottingOrangesSpread)과 본문 정적 그림(RottingOrangesMinutes)이 같은 컴포넌트를 쓴다.
+ * 상태는 data-state, 격자 값은 data-value로 두므로 단계 진행 스크립트가 단계마다 바꿀 수 있다.
+ */
+interface Props {
+  grid: number[][];
+  /** 칸 상태 (행 우선): empty / fresh / queue / next / active / done / answer / wrong */
+  cellStates?: string[];
+  /** 칸마다 격자 값. 생략하면 grid 그대로 */
+  values?: number[];
+  /** 칸마다 배지 글자 (예: '2분'). 값이 2인 칸에만 보인다 */
+  badges?: (string | null)[];
+  /** 화살표 [썩게 한 칸, 썩은 칸] (칸 번호 = r * cols + c) */
+  edges?: [number, number][];
+  edgeStates?: string[];
+  label: string;
+}
+
+const { grid, cellStates = [], values = grid.flat(), badges = [], edges = [], edgeStates = [], label } = Astro.props;
+const rows = grid.length;
+const cols = grid[0].length;
+
+// 칸 사이를 넓게 두어, 이웃으로 번진 화살표가 칸 사이 틈에서 읽히게 한다
+const CELL = 60;
+const GAP = 18;
+const LEFT = 26;
+const TOP = 24;
+const x = (c: number) => LEFT + c * (CELL + GAP);
+const y = (r: number) => TOP + r * (CELL + GAP);
+const cx = (i: number) => x(i % cols) + CELL / 2;
+const cy = (i: number) => y(Math.floor(i / cols)) + CELL / 2;
+const width = LEFT + cols * (CELL + GAP) + 10;
+const height = TOP + rows * (CELL + GAP) + 6;
+
+// 칸 가운데를 잇되, 칸 안쪽 글자를 가리지 않게 가장자리 가까이에서 끊는다
+const arrow = ([a, b]: [number, number]) => {
+  const dx = cx(b) - cx(a);
+  const dy = cy(b) - cy(a);
+  const len = Math.hypot(dx, dy);
+  const k = (CELL / 2 + 1) / len;
+  return { x1: cx(a) + dx * k, y1: cy(a) + dy * k, x2: cx(b) - dx * k, y2: cy(b) - dy * k };
+};
+const cells = grid.flatMap((row, r) => row.map((v, c) => ({ v, r, c, i: r * cols + c })));
+const initialState = (v: number) => (v === 0 ? 'empty' : v === 1 ? 'fresh' : 'queue');
+---
+
+{/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
+<svg class="ro" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-ro-figure>
+  {/* 행·열 번호 */}
+  {Array.from({ length: cols }, (_, c) => <text class="ro-axis" x={x(c) + CELL / 2} y={TOP - 8} text-anchor="middle">{c}</text>)}
+  {Array.from({ length: rows }, (_, r) => <text class="ro-axis" x={LEFT - 10} y={y(r) + CELL / 2} dy="0.36em" text-anchor="middle">{r}</text>)}
+  {
+    cells.map(({ v, r, c, i }) => (
+      <g class="ro-cell" data-cell={i} data-state={cellStates[i] ?? initialState(v)} data-value={values[i]}>
+        <rect x={x(c)} y={y(r)} width={CELL} height={CELL} rx="9" />
+        {/* 값 0·1·2를 모두 그려 두고 data-value에 맞는 것만 보인다 */}
+        {[0, 1, 2].map((n) => (
+          <text class={`ro-value ro-v${n}`} x={x(c) + CELL / 2} y={y(r) + CELL / 2 + 3} dy="0.36em" text-anchor="middle">{n}</text>
+        ))}
+        {badges[i] != null && (
+          <text class="ro-badge" x={x(c) + CELL - 7} y={y(r) + 14} text-anchor="end">
+            {badges[i]}
+          </text>
+        )}
+      </g>
+    ))
+  }
+  {/* 퍼진 방향 화살표는 칸 위에 그린다 */}
+  {
+    edges.map((edge, idx) => {
+      const a = arrow(edge);
+      return (
+        <g class="ro-edge" data-edge={idx} data-state={edgeStates[idx] ?? 'hidden'}>
+          <line x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2} />
+          <circle r="3.5" cx={a.x2} cy={a.y2} />
+        </g>
+      );
+    })
+  }
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .ro {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  .ro-axis {
+    font-size: 10px;
+    fill: var(--node-idle-text);
+  }
+
+  /* ── 칸 ─────────────────────────────── */
+  .ro-cell rect {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+
+  .ro-value {
+    display: none;
+    font-size: 17px;
+    fill: var(--fg);
+  }
+
+  .ro-cell[data-value='0'] .ro-v0,
+  .ro-cell[data-value='1'] .ro-v1,
+  .ro-cell[data-value='2'] .ro-v2 {
+    display: inline;
+  }
+
+  .ro-badge {
+    display: none;
+    font-family: var(--font-sans);
+    font-size: 9.5px;
+    font-weight: 700;
+    fill: var(--done-text);
+  }
+
+  /* 썩은 칸(값 2)에만 썩은 시각을 보인다 */
+  .ro-cell[data-value='2'] .ro-badge {
+    display: inline;
+  }
+
+  /* 빈 칸: 흐리게, 점선 */
+  .ro-cell[data-state='empty'] rect {
+    fill: transparent;
+    stroke-dasharray: 3 4;
+  }
+
+  .ro-cell[data-state='empty'] .ro-value {
+    fill: var(--node-idle-text);
+  }
+
+  /* 싱싱한 귤 */
+  .ro-cell[data-state='fresh'] rect {
+    stroke: var(--fg-dim);
+  }
+
+  .ro-cell[data-state='fresh'] .ro-value {
+    font-weight: 700;
+  }
+
+  /* 이번 분의 큐: 이번 분에 이웃을 썩게 할 칸 */
+  .ro-cell[data-state='queue'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  /* 다음 큐(next): 방금 썩어 다음 분에 퍼뜨릴 칸 */
+  .ro-cell[data-state='next'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+    stroke-dasharray: 5 3;
+  }
+
+  .ro-cell[data-state='queue'] .ro-value,
+  .ro-cell[data-state='next'] .ro-value,
+  .ro-cell[data-state='queue'] .ro-badge,
+  .ro-cell[data-state='next'] .ro-badge {
+    fill: var(--stack-text);
+  }
+
+  /* 지금 이웃을 썩게 하는 칸 */
+  .ro-cell[data-state='active'] rect {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .ro-cell[data-state='active'] .ro-value,
+  .ro-cell[data-state='active'] .ro-badge {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* 퍼뜨리기를 마친 칸 */
+  .ro-cell[data-state='done'] rect {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+  }
+
+  .ro-cell[data-state='done'] .ro-value {
+    fill: var(--done-text);
+  }
+
+  /* 마지막으로 썩은 칸: 이 칸의 시각이 답이다 */
+  .ro-cell[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2.5;
+  }
+
+  .ro-cell[data-state='answer'] .ro-value,
+  .ro-cell[data-state='answer'] .ro-badge {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+
+  /* 잘못 들어간 칸, 끝까지 남은 칸 */
+  .ro-cell[data-state='wrong'] rect {
+    fill: var(--removed-bg);
+    stroke: var(--removed);
+    stroke-width: 2;
+    stroke-dasharray: 5 3;
+  }
+
+  .ro-cell[data-state='wrong'] .ro-value,
+  .ro-cell[data-state='wrong'] .ro-badge {
+    fill: var(--removed);
+    font-weight: 700;
+  }
+
+  /* ── 화살표 ─────────────────────────── */
+  .ro-edge line {
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+
+  .ro-edge[data-state='hidden'] {
+    opacity: 0;
+  }
+
+  .ro-edge[data-state='stack'] line {
+    stroke: var(--stack);
+  }
+
+  .ro-edge[data-state='stack'] circle {
+    fill: var(--stack);
+  }
+
+  .ro-edge[data-state='done'] line {
+    stroke: var(--done-line);
+  }
+
+  .ro-edge[data-state='done'] circle {
+    fill: var(--done-line);
+  }
+
+  .ro-edge[data-state='wrong'] line {
+    stroke: var(--removed);
+    stroke-dasharray: 5 4;
+  }
+
+  .ro-edge[data-state='wrong'] circle {
+    fill: var(--removed);
+  }
+</style>

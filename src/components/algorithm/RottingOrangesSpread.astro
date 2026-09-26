@@ -1,0 +1,297 @@
+---
+/**
+ * BFS — 썩은 귤(LeetCode 994)이 1분에 한 겹씩 퍼지는 과정.
+ *
+ * 대표 도형은 격자와 거리 층이다(그리기는 RottingOrangesDiagram). 큐에 든 썩은 귤이 상하좌우의 싱싱한
+ * 귤을 썩게 하고, 새로 썩은 귤은 next에 모였다가 다음 1분의 큐가 된다. 칸의 배지(몇 분에 썩었나)가
+ * 처음 썩은 귤에서의 거리다.
+ *
+ *   퍼뜨리기   → 큐의 칸(노랑)이 이웃 하나를 썩게 한다. 화살표가 뻗고 그 칸이 next(파란 점선)에 들어간다
+ *   이웃 없음  → 큐의 칸이 아무것도 넣지 않고 끝난다
+ *   1분 끝     → next가 새 큐(파란 실선)가 되고, 퍼뜨리기를 마친 칸은 회색이 된다
+ *
+ * '꺼낼 때 표시' 모드는 2로 표시하는 시점을 큐에서 꺼낼 때로 미룬 코드다. next에 들어간 (1, 1)이 아직
+ * 1로 남아 있어 (0, 1)이 한 번 더 넣고, fresh가 두 번 줄어 0을 지나친다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 BFS를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import RottingOrangesDiagram from './RottingOrangesDiagram.astro';
+import { bfsMinutes, orangesRotting, trace } from './rotting-oranges';
+
+// LeetCode 994 예제 1
+const grid = [
+  [2, 1, 1],
+  [1, 1, 0],
+  [0, 1, 1],
+];
+
+// 화살표 목록을 확정하려고 두 모드를 먼저 한 번씩 돌린다.
+const edges: [number, number][] = [];
+trace(grid, true, edges);
+trace(grid, false, edges);
+const pushSteps = trace(grid, true, edges);
+const popSteps = trace(grid, false, edges);
+
+// 검증: 참고 풀이가 세 예제의 출력(4, -1, 0)을 내고, 단계 진행의 끝 결과가 예제 1의 출력과 같아야 한다.
+// '꺼낼 때 표시' 모드는 같은 격자에서 -1로 틀리게 끝나야 한다.
+const examples: [number[][], number][] = [
+  [grid, 4],
+  [[[2, 1, 1], [0, 1, 1], [1, 0, 1]], -1],
+  [[[0, 2]], 0],
+];
+if (
+  examples.some(([g, want]) => orangesRotting(g) !== want) ||
+  pushSteps.at(-1)!.result !== 4 ||
+  popSteps.at(-1)!.result !== -1 ||
+  [pushSteps, popSteps].some((s) => s.length < 10 || s.length > 25)
+) {
+  throw new Error('RottingOrangesSpread: 결과가 LeetCode 994 예제 출력과 다르거나 단계 수가 10~25를 벗어났습니다.');
+}
+
+const MODES = [
+  { id: 'push', label: '넣을 때 표시' },
+  { id: 'pop', label: '꺼낼 때 표시' },
+];
+const first = pushSteps[0];
+const CELL: Record<string, string> = { e: 'empty', f: 'fresh', q: 'queue', n: 'next', a: 'active', d: 'done', w: 'answer', x: 'wrong' };
+// 배지는 칸마다 썩는 시각. 값이 2가 된 칸에만 CSS로 보인다.
+const badges = bfsMinutes(grid).minute.map((m) => (m === null ? null : `${m}분`));
+---
+
+<Visualizer
+  modes={MODES}
+  steps={{ push: pushSteps, pop: popSteps }}
+  title="격자 BFS · LeetCode 994 예제 1"
+  caption="LeetCode 994 예제 1. 이웃은 아래·위·오른쪽·왼쪽 순서로 봅니다. 빌드할 때 BFS를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '지금 퍼뜨리는 귤' },
+    { state: 'stack', label: '큐에 든 귤 (점선은 next)' },
+    { state: 'done', label: '퍼뜨리기를 마친 귤' },
+    { state: 'answer', label: '마지막으로 썩은 귤' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="rw" data-ro-watch>
+      <div class="rw-row">
+        <dt>minutes</dt>
+        <dd><span class="rw-num" data-w="minutes">0</span></dd>
+      </div>
+      <div class="rw-row">
+        <dt>fresh</dt>
+        <dd><span class="rw-num" data-w="fresh">0</span><span class="rw-hint">남은 싱싱한 귤</span></dd>
+      </div>
+      <div class="rw-row rw-row--list">
+        <dt>queue</dt>
+        <dd class="rw-list" data-w="queue"></dd>
+      </div>
+      <div class="rw-row rw-row--list">
+        <dt>next</dt>
+        <dd class="rw-list rw-list--next" data-w="next"></dd>
+      </div>
+      <div class="rw-row">
+        <dt>return</dt>
+        <dd><span class="rw-num" data-w="result">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <RottingOrangesDiagram
+      grid={grid}
+      cellStates={[...first.cells].map((c) => CELL[c])}
+      values={[...first.values].map(Number)}
+      badges={badges}
+      edges={edges}
+      label="LeetCode 994 예제 1 격자와 썩은 귤이 퍼진 방향"
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .rw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .rw-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .rw-row dt {
+    min-width: 3.75rem;
+    color: var(--t-var);
+  }
+
+  .rw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .rw-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0;
+    color: var(--fg);
+  }
+
+  .rw-num {
+    color: var(--t-num);
+  }
+
+  .rw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .rw-list {
+    flex-wrap: wrap;
+    gap: 0.25rem !important;
+    min-height: 1.5rem;
+    white-space: normal;
+  }
+
+  /* 큐의 칸은 스크립트가 만들므로 :global()로 스타일을 건다 */
+  .rw-list :global(span) {
+    padding: 0 0.375rem;
+    border: 1px solid var(--stack);
+    border-radius: 6px;
+    line-height: 1.375rem;
+    white-space: nowrap;
+    color: var(--stack-text);
+    background: var(--stack-soft);
+  }
+
+  .rw-list--next :global(span) {
+    border-style: dashed;
+  }
+
+  .rw-list :global(span[data-head]) {
+    border-color: var(--exec);
+    color: var(--exec-text);
+    background: var(--exec-bg);
+  }
+
+  .rw-list :global(span[data-added]) {
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+
+  .rw-list :global(span[data-dup]) {
+    border-color: var(--removed);
+    color: var(--removed);
+    background: var(--removed-bg);
+  }
+
+  .rw-list :global(.rw-empty) {
+    border: 0;
+    padding: 0;
+    color: var(--fg-dim);
+    background: none;
+  }
+
+  .rw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+
+  .rw [data-wrong] {
+    color: var(--removed);
+  }
+</style>
+
+<script>
+  interface Step {
+    cells: string;
+    values: string;
+    edges: string;
+    minutes: number;
+    fresh: number;
+    queue: string[];
+    next: string[];
+    head?: boolean;
+    minutesChanged?: boolean;
+    freshChanged?: boolean;
+    nextAdded?: boolean;
+    wrong?: boolean;
+    result?: number;
+  }
+
+  const CELL: Record<string, string> = { e: 'empty', f: 'fresh', q: 'queue', n: 'next', a: 'active', d: 'done', w: 'answer', x: 'wrong' };
+  const EDGE: Record<string, string> = { h: 'hidden', s: 'stack', d: 'done', x: 'wrong' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-ro-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림(RottingOrangesMinutes)에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const watch = root.querySelector<HTMLElement>('[data-ro-watch]')!;
+    const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const edges = Array.from(figure.querySelectorAll<SVGGElement>('[data-edge]'));
+
+    // 칸 목록을 칩으로 그린다. 같은 칸이 두 번 들어 있으면 두 번째부터 빨갛게 표시한다.
+    const chips = (list: string[], mark: (span: HTMLSpanElement, i: number) => void) => {
+      const seen = new Set<string>();
+      const items = list.map((p, i) => {
+        const span = document.createElement('span');
+        span.textContent = p;
+        if (seen.has(p)) span.setAttribute('data-dup', '');
+        seen.add(p);
+        mark(span, i);
+        return span;
+      });
+      if (items.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'rw-empty';
+        empty.textContent = '비어 있음';
+        items.push(empty);
+      }
+      return items;
+    };
+
+    const render = (step: Step) => {
+      cells.forEach((el, i) => {
+        el.setAttribute('data-state', CELL[step.cells[i]]);
+        el.setAttribute('data-value', step.values[i]);
+      });
+      edges.forEach((el, i) => el.setAttribute('data-state', EDGE[step.edges[i]]));
+
+      const minutes = w('minutes');
+      minutes.textContent = String(step.minutes);
+      minutes.toggleAttribute('data-changed', Boolean(step.minutesChanged));
+
+      const fresh = w('fresh');
+      fresh.textContent = String(step.fresh);
+      fresh.toggleAttribute('data-changed', Boolean(step.freshChanged) && step.fresh >= 0);
+      fresh.toggleAttribute('data-wrong', step.fresh < 0);
+
+      w('queue').replaceChildren(
+        ...chips(step.queue, (span, i) => {
+          if (step.head && i === 0) span.setAttribute('data-head', '');
+        }),
+      );
+      w('next').replaceChildren(
+        ...chips(step.next, (span, i) => {
+          if (step.nextAdded && i === step.next.length - 1) span.setAttribute('data-added', '');
+        }),
+      );
+
+      const result = w('result');
+      result.textContent = step.result === undefined ? '–' : String(step.result);
+      result.toggleAttribute('data-changed', step.result !== undefined && !step.wrong);
+      result.toggleAttribute('data-wrong', step.result !== undefined && Boolean(step.wrong));
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>

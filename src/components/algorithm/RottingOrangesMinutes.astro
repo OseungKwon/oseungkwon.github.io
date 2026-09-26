@@ -1,0 +1,66 @@
+---
+/**
+ * 본문용 정적 그림: 칸마다 몇 분에 썩는지.
+ *
+ *   <RottingOrangesMinutes grid={[[2, 1, 1], [1, 1, 0], [0, 1, 1]]} />
+ *   <RottingOrangesMinutes grid={...} order="dfs" />
+ *
+ * order="bfs"(기본)는 BFS로 칸마다 썩는 시각을 배지로 적는다. 가장 늦게 썩는 칸은 청록(답),
+ * 끝까지 닿지 못하는 싱싱한 귤은 빨강이다.
+ * order="dfs"는 첫 썩은 귤에서 DFS로 들어간 깊이를 적고, 깊이가 실제 시각(BFS)과 다른 칸을 빨갛게 표시한다.
+ * 도형은 단계 진행(RottingOrangesSpread)과 같은 RottingOrangesDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import RottingOrangesDiagram from './RottingOrangesDiagram.astro';
+import { bfsMinutes, dfsDepth } from './rotting-oranges';
+
+interface Props {
+  grid: number[][];
+  order?: 'bfs' | 'dfs';
+  title?: string;
+  caption?: string;
+}
+
+const { grid, order = 'bfs', title, caption } = Astro.props;
+const flat = grid.flat();
+const { minute, edges: bfsEdges } = bfsMinutes(grid);
+const last = Math.max(...minute.map((m) => m ?? 0));
+const stuck = flat.some((v, i) => v === 1 && minute[i] === null);
+
+let badges: (string | null)[];
+let cellStates: string[];
+let edges: [number, number][];
+let values = flat;
+if (order === 'dfs') {
+  const { depth, edges: dfsEdges } = dfsDepth(grid);
+  edges = dfsEdges;
+  badges = depth.map((d) => (d === null ? null : `깊이 ${d}`));
+  // DFS로 닿은 칸은 모두 썩은 것으로 그리고, 깊이가 실제 시각과 다른 칸만 빨갛게 한다
+  values = flat.map((v, i) => (depth[i] !== null ? 2 : v));
+  cellStates = flat.map((v, i) => (v === 0 ? 'empty' : depth[i] !== minute[i] ? 'wrong' : 'done'));
+} else {
+  edges = bfsEdges;
+  badges = minute.map((m) => (m === null ? null : `${m}분`));
+  values = flat.map((v, i) => (minute[i] !== null ? 2 : v));
+  cellStates = flat.map((v, i) => {
+    if (v === 0) return 'empty';
+    if (minute[i] === null) return 'wrong';
+    return !stuck && minute[i] === last ? 'answer' : 'done';
+  });
+}
+const rows = grid.length;
+const cols = grid[0].length;
+const defaultTitle = order === 'dfs' ? `DFS로 들어간 깊이 · ${rows}×${cols} 격자` : `칸마다 썩는 시각 · ${rows}×${cols} 격자`;
+---
+
+<StaticFigure title={title ?? defaultTitle} caption={caption}>
+  <RottingOrangesDiagram
+    grid={grid}
+    values={values}
+    cellStates={cellStates}
+    badges={badges}
+    edges={edges}
+    edgeStates={edges.map(() => 'done')}
+    label={order === 'dfs' ? '첫 썩은 귤에서 DFS로 들어간 깊이' : '칸마다 썩는 시각'}
+  />
+</StaticFigure>
