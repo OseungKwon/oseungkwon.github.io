@@ -1,0 +1,407 @@
+---
+/**
+ * 퀵셀렉트의 제출 풀이 — pivot과 같은 수를 가운데에 모으는 세 구역 분할과, 두 구역 분할의 비교.
+ *
+ * 대표 도형은 위 Quickselect와 같은 막대다(그리기는 QuickselectDiagram, threeWay 표시 사용).
+ *
+ *   세 구역  → i가 읽은 수가 pivot보다 작으면 lt 쪽으로 보내고, 크면 gt 칸과 바꿔 뒤로 보내고(i는 그대로),
+ *              같으면 가운데에 둔다. 다 읽으면 [lt, gt]가 모두 pivot과 같은 수이고, 찾는 자리가 그 안이면 끝
+ *   두 구역  → 위 시각화와 같은 분할. pivot과 같은 수가 큰 쪽에 섞여 남아 범위가 조금씩만 줄어든다
+ *
+ * 같은 수가 여러 번 나오는 경우를 보이려고 만든 입력을 쓴다. 대표 문제의 예제 입력은 답이 한 번만 나와
+ * 두 방식의 차이가 드러나지 않는다. pivot은 위 시각화처럼 늘 범위의 맨 끝 수로 고른다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import QuickselectDiagram from './QuickselectDiagram.astro';
+
+const nums = [3, 1, 3, 5, 2, 3];
+const k = 2;
+const n = nums.length;
+const target = n - k;
+
+// 막대: i 아직 / a 방금 읽은 수 / s 작은 쪽 / e pivot과 같은 수 / l 큰 쪽 / v pivot / d 제자리 확정 / o 버림 / w 답
+interface Step {
+  note: string;
+  order: string;
+  states: string;
+  marks: { j: number; i: number; r: number; lt: number; gt: number };
+  line: [number, number, number] | null;
+  lo: number;
+  hi: number;
+  pivot: number | null;
+  reads: number;
+  result?: number;
+}
+
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const topic = (v: number) => (noBatchim(v) ? '는' : '은');
+const subject = (v: number) => (noBatchim(v) ? '가' : '이');
+const object = (v: number) => (noBatchim(v) ? '를' : '을');
+const and = (v: number) => (noBatchim(v) ? '와' : '과');
+const range = (lo: number, hi: number) => `[${lo}, ${hi}]`;
+const NO_MARKS = { j: -1, i: -1, r: -1, lt: -1, gt: -1 };
+
+function trace(mode: 'three' | 'two'): Step[] {
+  const steps: Step[] = [];
+  const order = nums.map((_, id) => id);
+  const cls: string[] = nums.map(() => 'i');
+  const val = (pos: number) => nums[order[pos]];
+  const swap = (a: number, b: number) => {
+    [order[a], order[b]] = [order[b], order[a]];
+    [cls[a], cls[b]] = [cls[b], cls[a]];
+  };
+  let lo = 0;
+  let hi = n - 1;
+  let pivot: number | null = null;
+  let reads = 0;
+
+  const snap = (note: string, extra: Partial<Step> = {}) => {
+    steps.push({ note, order: order.join(''), states: cls.join(''), marks: NO_MARKS, line: null, lo, hi, pivot, reads, ...extra });
+  };
+  const startRange = () => {
+    for (let pos = 0; pos < n; pos++) if (cls[pos] !== 'd' && cls[pos] !== 'o') cls[pos] = 'i';
+  };
+  const drop = (from: number, to: number) => {
+    for (let pos = from; pos <= to; pos++) cls[pos] = 'o';
+  };
+
+  snap(`찾는 자리는 인덱스 ${target}(${n} − ${k})입니다. 3이 네 번 나오는 입력이라 pivot과 같은 수가 많습니다. "다음"을 눌러 보세요`);
+
+  if (mode === 'three') {
+    for (;;) {
+      startRange();
+      pivot = val(hi);
+      const p0 = pivot;
+      let lt = lo;
+      let i = lo;
+      let gt = hi;
+      const line: Step['line'] = [lo, hi, p0];
+      const marks = () => ({ ...NO_MARKS, r: i, lt, gt });
+      snap(`범위 ${range(lo, hi)}의 맨 끝 ${p0}${object(p0)} pivot으로 고릅니다. lt와 i는 맨 앞, gt는 맨 끝에서 시작합니다`, { line, marks: marks() });
+
+      while (i <= gt) {
+        const v = val(i);
+        reads++;
+        let note: string;
+        if (v < p0) {
+          const self = lt === i;
+          swap(lt, i);
+          cls[lt] = 'a';
+          note = self
+            ? `${v}${topic(v)} ${p0}보다 작아 작은 쪽에 둡니다. lt와 i를 한 칸씩 옮깁니다`
+            : `${v}${topic(v)} ${p0}보다 작아 lt 칸의 ${val(i)}${and(val(i))} 바꿔 앞으로 보냅니다. lt와 i를 한 칸씩 옮깁니다`;
+          const at = lt;
+          lt++;
+          i++;
+          snap(note, { line, marks: marks() });
+          cls[at] = 's';
+          // 바꿔서 i 앞으로 온 수는 pivot과 같은 수다
+          for (let pos = lt; pos < i; pos++) cls[pos] = 'e';
+        } else if (v > p0) {
+          const other = val(gt);
+          swap(i, gt);
+          cls[gt] = 'a';
+          cls[i] = 'i';
+          const at = gt;
+          gt--;
+          snap(`${v}${topic(v)} ${p0}보다 커서 gt 칸의 ${other}${and(other)} 바꿔 뒤로 보냅니다. 넘어온 ${other}${topic(other)} 아직 읽지 않았으니 i는 그대로 둡니다`, {
+            line,
+            marks: marks(),
+          });
+          cls[at] = 'l';
+        } else {
+          cls[i] = 'a';
+          const at = i;
+          i++;
+          snap(`${v}${topic(v)} pivot과 같아 가운데에 둡니다. i만 한 칸 옮깁니다`, { line, marks: marks() });
+          cls[at] = 'e';
+        }
+      }
+
+      if (target >= lt && target <= gt) {
+        for (let pos = lt; pos <= gt; pos++) cls[pos] = pos === target ? 'w' : 'e';
+        pivot = null;
+        snap(`다 읽었습니다. 인덱스 ${lt}부터 ${gt}까지가 모두 ${p0}이고 찾는 자리 ${target}${subject(target)} 그 안이라, ${p0}${object(p0)} 바로 돌려줍니다`, {
+          line,
+          marks: { ...NO_MARKS, lt, gt },
+          result: p0,
+        });
+        break;
+      }
+      // 이 입력에서는 한 번에 끝나지만, 풀이와 같은 로직으로 한쪽을 버리고 이어 간다
+      if (target < lt) {
+        drop(lt, hi);
+        hi = lt - 1;
+      } else {
+        drop(lo, gt);
+        lo = gt + 1;
+      }
+      pivot = null;
+      snap(`찾는 자리 ${target}${subject(target)} 가운데 구역 밖이라 ${range(lo, hi)}만 다시 나눕니다`);
+    }
+    return steps;
+  }
+
+  // 두 구역: 위 시각화와 같은 분할 (맨 끝 pivot, 작은 수를 왼쪽부터 모음)
+  for (;;) {
+    startRange();
+    pivot = val(hi);
+    const p0 = pivot;
+    const line: Step['line'] = [lo, hi, p0];
+    cls[hi] = 'v';
+    let i = lo;
+    snap(`범위 ${range(lo, hi)}의 맨 끝 ${p0}${object(p0)} pivot으로 고릅니다`, { line, marks: { ...NO_MARKS, i } });
+    for (let j = lo; j < hi; j++) {
+      const v = val(j);
+      reads++;
+      if (v < p0) {
+        swap(i, j);
+        cls[i] = 'a';
+        snap(`${v}${topic(v)} ${p0}보다 작아 작은 쪽으로 모읍니다`, { line, marks: { ...NO_MARKS, i: i + 1, j } });
+        cls[i] = 's';
+        i++;
+      } else {
+        cls[j] = 'a';
+        snap(
+          v === p0 ? `${v}${topic(v)} pivot과 같아 작지 않으니 큰 쪽에 남습니다` : `${v}${topic(v)} ${p0}보다 커서 그 자리에 둡니다`,
+          { line, marks: { ...NO_MARKS, i, j } },
+        );
+        cls[j] = 'l';
+      }
+    }
+    swap(i, hi);
+    cls[i] = 'd';
+    const p = i;
+    if (p === target) {
+      cls[p] = 'w';
+      pivot = null;
+      snap(`pivot ${p0}${subject(p0)} 인덱스 ${p}에 섰고 찾는 자리입니다. ${p0}${object(p0)} 돌려줍니다`, { line, result: p0 });
+      break;
+    }
+    if (p < target) {
+      drop(lo, p);
+      lo = p + 1;
+    } else {
+      drop(p, hi);
+      hi = p - 1;
+    }
+    pivot = null;
+    snap(`pivot ${p0}${subject(p0)} 인덱스 ${p}에 섰습니다. 찾는 자리 ${target}${topic(target)} ${p < target ? '오른쪽' : '왼쪽'}이라 범위가 ${range(lo, hi)}${direction(hi)} 줄어듭니다`, { line });
+  }
+  return steps;
+}
+
+function direction(v: number) {
+  return '1245789'.includes(String(v).at(-1)!) ? '로' : '으로';
+}
+
+const threeSteps = trace('three');
+const twoSteps = trace('two');
+
+// 검증: 두 방식 모두 정렬했을 때 인덱스 target의 수를 돌려줘야 한다.
+const expected = [...nums].sort((a, b) => a - b)[target];
+if (threeSteps.at(-1)!.result !== expected || twoSteps.at(-1)!.result !== expected) {
+  throw new Error(`QuickselectThreeWay: 결과가 정렬한 배열의 인덱스 ${target} 값(${expected})과 다릅니다.`);
+}
+
+const MODES = [
+  { id: 'three', label: '세 구역 (제출 풀이)' },
+  { id: 'two', label: '두 구역' },
+];
+const STATE: Record<string, string> = { i: 'idle', a: 'active', s: 'small', e: 'equal', l: 'large', v: 'pivot', d: 'done', o: 'off', w: 'answer' };
+const first = threeSteps[0];
+---
+
+<Visualizer
+  modes={MODES}
+  steps={{ three: threeSteps, two: twoSteps }}
+  title={`세 구역 분할 · nums = [${nums.join(', ')}], k = ${k}`}
+  caption="같은 수가 여러 번 나오는 경우를 보이려고 만든 입력입니다. pivot은 위 시각화처럼 늘 범위의 맨 끝으로 골랐고, 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '방금 읽은 수' },
+    { state: 'stack', label: 'pivot보다 작은 쪽' },
+    { state: 'done', label: 'pivot과 같은 수 (점선)' },
+    { state: 'answer', label: '찾는 답' },
+    { state: 'idle', label: '아직 읽지 않은 수' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="q3" data-q3-watch>
+      <div class="q3-row">
+        <dt>target</dt>
+        <dd><span class="q3-num">{target}</span><span class="q3-hint">찾는 자리</span></dd>
+      </div>
+      <div class="q3-row">
+        <dt>lo, hi</dt>
+        <dd><span class="q3-num" data-w="range">{range(first.lo, first.hi)}</span></dd>
+      </div>
+      <div class="q3-row">
+        <dt>pivot</dt>
+        <dd><span class="q3-num" data-w="pivot">–</span></dd>
+      </div>
+      <div class="q3-row">
+        <dt>읽은 횟수</dt>
+        <dd><span class="q3-num" data-w="reads">0</span></dd>
+      </div>
+      <div class="q3-row">
+        <dt>return</dt>
+        <dd><span class="q3-num" data-w="result">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <QuickselectDiagram
+      nums={nums}
+      order={[...first.order].map(Number)}
+      states={[...first.states].map((c) => STATE[c])}
+      target={target}
+      threeWay
+      label={`nums = [${nums.join(', ')}]을 pivot과 같은 수까지 세 구역으로 나누는 막대`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .q3 {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .q3-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .q3-row dt {
+    min-width: 4.5rem;
+    color: var(--t-var);
+  }
+
+  .q3-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .q3-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0;
+  }
+
+  .q3-num {
+    color: var(--t-num);
+  }
+
+  .q3-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .q3 [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    order: string;
+    states: string;
+    marks: { j: number; i: number; r: number; lt: number; gt: number };
+    line: [number, number, number] | null;
+    lo: number;
+    hi: number;
+    pivot: number | null;
+    reads: number;
+    result?: number;
+  }
+
+  const STATE: Record<string, string> = { i: 'idle', a: 'active', s: 'small', e: 'equal', l: 'large', v: 'pivot', d: 'done', o: 'off', w: 'answer' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-qs-figure][data-qs-three]').forEach((figure) => {
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const watch = root.querySelector<HTMLElement>('[data-q3-watch]')!;
+    const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
+    const col = Number(figure.dataset.col);
+    const left = Number(figure.dataset.left);
+    const base = Number(figure.dataset.base);
+    const unit = Number(figure.dataset.unit);
+    const labelX = Number(figure.dataset.labelX);
+    const bars = Array.from(figure.querySelectorAll<SVGGElement>('[data-bar]'));
+    const markers = Object.fromEntries(
+      (['j', 'i', 'r', 'lt', 'gt'] as const).map((key) => [key, figure.querySelector<SVGGElement>(`[data-marker="${key}"]`)!]),
+    ) as Record<'j' | 'i' | 'r' | 'lt' | 'gt', SVGGElement>;
+    const line = figure.querySelector<SVGGElement>('[data-pivot-line]')!;
+    const reach = line.querySelector<SVGLineElement>('[data-line="reach"]')!;
+    const span = line.querySelector<SVGLineElement>('[data-line="range"]')!;
+    const label = line.querySelector<SVGTextElement>('[data-line="label"]')!;
+    const x = (pos: number) => left + pos * col;
+    let last: Step | null = null;
+
+    const render = (step: Step) => {
+      [...step.order].forEach((id, pos) => {
+        const bar = bars[Number(id)];
+        bar.setAttribute('data-state', STATE[step.states[pos]]);
+        bar.style.transform = `translate(${x(pos)}px, 0px)`;
+      });
+      for (const [key, el] of Object.entries(markers)) {
+        const pos = step.marks[key as keyof Step['marks']];
+        if (pos < 0) {
+          el.setAttribute('hidden', '');
+        } else {
+          el.removeAttribute('hidden');
+          el.style.transform = `translate(${x(pos)}px, 0px)`;
+        }
+      }
+
+      if (step.line) {
+        const [lo, hi, value] = step.line;
+        const y = String(base - value * unit);
+        span.setAttribute('x1', String(x(lo) + 2));
+        span.setAttribute('x2', String(x(hi + 1) - 2));
+        reach.setAttribute('x1', String(x(hi + 1)));
+        reach.setAttribute('x2', String(labelX - 2));
+        for (const el of [span, reach]) {
+          el.setAttribute('y1', y);
+          el.setAttribute('y2', y);
+        }
+        label.setAttribute('y', y);
+        label.textContent = `pivot ${value}`;
+        line.removeAttribute('hidden');
+      } else {
+        line.setAttribute('hidden', '');
+      }
+
+      const set = (name: string, value: string, changed: boolean) => {
+        const el = w(name);
+        el.textContent = value;
+        el.toggleAttribute('data-changed', changed);
+      };
+      set('range', `[${step.lo}, ${step.hi}]`, last !== null && (last.lo !== step.lo || last.hi !== step.hi));
+      set('pivot', step.pivot === null ? '–' : String(step.pivot), last !== null && last.pivot !== step.pivot && step.pivot !== null);
+      set('reads', String(step.reads), last !== null && last.reads !== step.reads);
+      set('result', step.result === undefined ? '–' : String(step.result), step.result !== undefined);
+      last = step;
+    };
+
+    root.addEventListener('algo:step', (event) => {
+      const { index, step } = (event as CustomEvent).detail;
+      if (index === 0) last = null;
+      render(step);
+    });
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>

@@ -23,10 +23,12 @@ interface Props {
   markerJ?: number;
   /** 찾는 자리 (정렬했을 때 답이 놓일 인덱스). 생략하면 숨김 */
   target?: number | null;
+  /** 세 구역 분할용 표시(lt·i·gt)도 그린다. 단계 진행(QuickselectThreeWay)이 두 구역 모드와 번갈아 쓴다 */
+  threeWay?: boolean;
   label: string;
 }
 
-const { nums, order = nums.map((_, i) => i), states = [], pivotLine = null, markerI = -1, markerJ = -1, target = null, label } = Astro.props;
+const { nums, order = nums.map((_, i) => i), states = [], pivotLine = null, markerI = -1, markerJ = -1, target = null, threeWay = false, label } = Astro.props;
 const n = nums.length;
 
 const COL = 54;
@@ -38,7 +40,8 @@ const BASE = TOP + Math.max(...nums) * UNIT;
 const INDEX_Y = BASE + 17;
 const J_Y = BASE + 35;
 const I_Y = BASE + 51;
-const TARGET_Y = BASE + 69;
+const GT_Y = BASE + 67;
+const TARGET_Y = threeWay ? BASE + 87 : BASE + 69;
 const LABEL_X = LEFT + n * COL + 6;
 const width = LABEL_X + 58;
 const height = TARGET_Y + 8;
@@ -49,7 +52,7 @@ const posOf = (id: number) => order.indexOf(id);
 ---
 
 {/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
-<svg class="qs" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-qs-figure data-col={COL} data-left={LEFT} data-base={BASE} data-unit={UNIT} data-label-x={LABEL_X}>
+<svg class="qs" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-qs-figure data-qs-three={threeWay ? '' : undefined} data-col={COL} data-left={LEFT} data-base={BASE} data-unit={UNIT} data-label-x={LABEL_X}>
   <line class="qs-floor" x1={LEFT} y1={BASE} x2={colX(n)} y2={BASE} />
 
   {/* 막대: 값마다 하나, 자리는 transform */}
@@ -86,6 +89,23 @@ const posOf = (id: number) => order.indexOf(id);
   <g class="qs-marker" data-marker="i" style={move(markerI)} hidden={markerI < 0 ? true : undefined}>
     <text x={COL / 2} y={I_Y} text-anchor="middle">i</text>
   </g>
+
+  {/* 세 구역 분할: i = 지금 읽는 자리, lt = 같은 수 구역의 시작, gt = 큰 쪽 바로 앞 */}
+  {
+    threeWay && (
+      <>
+        <g class="qs-marker" data-marker="r" hidden>
+          <text x={COL / 2} y={J_Y} text-anchor="middle">i</text>
+        </g>
+        <g class="qs-marker" data-marker="lt" hidden>
+          <text x={COL / 2} y={I_Y} text-anchor="middle">lt</text>
+        </g>
+        <g class="qs-marker" data-marker="gt" hidden>
+          <text x={COL / 2} y={GT_Y} text-anchor="middle">gt</text>
+        </g>
+      </>
+    )
+  }
 
   {target !== null && (
     <text class="qs-target-label" x={colX(target) + COL / 2} y={TARGET_Y} text-anchor="middle">찾는 자리</text>
@@ -166,6 +186,18 @@ const posOf = (id: number) => order.indexOf(id);
   /* pivot보다 크거나 같은 쪽 */
   .qs-bar[data-state='large'] rect {
     stroke: var(--fg-dim);
+  }
+
+  /* pivot과 같은 수 (세 구역 분할의 가운데 구역) */
+  .qs-bar[data-state='equal'] rect {
+    fill: var(--bg-side);
+    stroke: var(--fg);
+    stroke-width: 2;
+    stroke-dasharray: 5 3;
+  }
+
+  .qs-bar[data-state='equal'] .qs-value {
+    font-weight: 700;
   }
 
   /* pivot 자신 */
@@ -283,8 +315,17 @@ const posOf = (id: number) => order.indexOf(id);
     fill: var(--exec-text);
   }
 
-  .qs-marker[data-marker='i'] text {
+  .qs-marker[data-marker='i'] text,
+  .qs-marker[data-marker='lt'] text {
     fill: var(--stack-text);
+  }
+
+  .qs-marker[data-marker='r'] text {
+    fill: var(--exec-text);
+  }
+
+  .qs-marker[data-marker='gt'] text {
+    fill: var(--fg-dim);
   }
 
   @media (prefers-reduced-motion: reduce) {

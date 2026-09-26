@@ -345,7 +345,8 @@ const first = selectSteps[0];
   document.querySelectorAll<SVGSVGElement>('[data-qs-figure]').forEach((figure) => {
     // 같은 도형이 본문의 정적 그림(QuickselectSplit)에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
     const root = figure.closest<HTMLElement>('[data-viz]');
-    if (!root) return;
+    // 세 구역 분할 단계 진행(QuickselectThreeWay)의 도형은 그쪽 스크립트가 움직인다.
+    if (!root || figure.hasAttribute('data-qs-three')) return;
     const watch = root.querySelector<HTMLElement>('[data-qs-watch]')!;
     const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
     const col = Number(figure.dataset.col);
