@@ -1,0 +1,78 @@
+---
+/**
+ * 본문용 정적 그림: 이분 탐색의 한 장면. 도형은 단계 진행(RotatedSearch)과 같은 RotatedSearchDiagram이다.
+ *
+ *   <RotatedSearchScene scene="plain" nums={[0, 1, 2, 4, 5, 6, 7]} target={5} />
+ *     정렬된 배열에서 첫 비교: mid 값이 target보다 작아 왼쪽 절반을 버리는 장면
+ *   <RotatedSearchScene scene="split" nums={[4, 5, 6, 7, 0, 1, 2]} />
+ *     회전된 배열을 mid에서 자르면 한쪽 절반은 정렬돼 있다
+ *   <RotatedSearchScene scene="wrong" nums={[4, 5, 6, 7, 0, 1, 2]} target={6} />
+ *     target을 보지 않고 nums[left]와 nums[mid]만 비교하는 규칙이 첫 반복에서 답을 버리는 장면
+ *
+ * 장면은 빌드 시점에 실제로 계산하고, 그림이 설명과 어긋나면 빌드를 멈춘다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import RotatedSearchDiagram from './RotatedSearchDiagram.astro';
+
+interface Props {
+  scene: 'plain' | 'split' | 'wrong';
+  nums: number[];
+  target?: number;
+  caption?: string;
+}
+
+const { scene, nums, target = 0, caption } = Astro.props;
+const n = nums.length;
+const left = 0;
+const right = n - 1;
+const mid = Math.floor((left + right) / 2);
+const list = `[${nums.join(', ')}]`;
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const subj = (v: number) => (noBatchim(v) ? '가' : '이');
+const obj = (v: number) => (noBatchim(v) ? '를' : '을');
+let markers = { left, mid, right };
+
+let title = '';
+let label = '';
+let cellStates: string[] = [];
+let bracket: [number, number] | null = null;
+let bracketLabel = '';
+
+if (scene === 'plain') {
+  // 정렬된 배열의 첫 비교
+  if (!(nums[mid] < target) || nums.some((v, i) => i > 0 && nums[i - 1] > v)) {
+    throw new Error('RotatedSearchScene(plain): 정렬된 배열이 아니거나 mid 값이 target보다 작지 않습니다.');
+  }
+  cellStates = nums.map((_, i) => (i === mid ? 'active' : i < mid ? 'out' : 'range'));
+  title = `정렬된 배열 · target ${target}`;
+  markers = { left: mid + 1, mid, right };
+  label = `${list}에서 mid 값 ${nums[mid]}${subj(nums[mid])} ${target}보다 작아 왼쪽 절반을 버리는 장면`;
+} else if (scene === 'split') {
+  // mid로 자르면 한쪽은 정렬돼 있다
+  const leftSorted = nums[left] <= nums[mid];
+  const [a, b] = leftSorted ? [left, mid] : [mid, right];
+  for (let i = a; i < b; i++) {
+    if (nums[i] > nums[i + 1]) throw new Error('RotatedSearchScene(split): 괄호를 친 절반이 정렬돼 있지 않습니다.');
+  }
+  cellStates = nums.map((_, i) => (i === mid ? 'active' : i >= a && i <= b ? 'sorted' : 'range'));
+  bracket = [a, b];
+  bracketLabel = '정렬된 절반';
+  title = `mid에서 자르기 · ${list}`;
+  label = `${list}${obj(nums[n - 1])} mid = ${mid}에서 자르면 ${leftSorted ? '왼쪽' : '오른쪽'} 절반이 정렬돼 있습니다`;
+} else {
+  // target 없이 nums[left]와 nums[mid]만 비교: mid 값이 더 크면 left = mid
+  const answer = nums.indexOf(target);
+  const newLeft = nums[mid] > nums[left] ? mid : left;
+  if (answer < 0 || answer >= newLeft) {
+    throw new Error('RotatedSearchScene(wrong): 이 입력에서는 첫 반복이 답을 버리지 않습니다.');
+  }
+  cellStates = nums.map((_, i) => (i === answer ? 'wrong' : i === mid ? 'active' : i < newLeft ? 'out' : 'range'));
+  title = `target을 보지 않는 비교 · target ${target}`;
+  markers = { left: newLeft, mid, right };
+  label = `left를 mid로 옮기면서 답 ${target}${subj(target)} 있는 칸 ${answer}${subj(answer)} 범위 밖으로 빠지는 장면`;
+}
+---
+
+<StaticFigure title={title} caption={caption}>
+  <RotatedSearchDiagram nums={nums} cellStates={cellStates} markers={markers} bracket={bracket} bracketLabel={bracketLabel} label={label} />
+</StaticFigure>

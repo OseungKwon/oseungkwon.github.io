@@ -1,0 +1,175 @@
+---
+title: '이분 탐색'
+summary: '정렬된 범위를 가운데에서 잘라, 답이 있을 수 없는 절반을 한 번에 버립니다. 비교 한 번마다 범위가 절반으로 줄어, 100만 칸에서도 비교 20번 안쪽으로 답을 찾습니다.'
+family: '이분 탐색'
+complexity:
+  time: 'O(log n)'
+  space: 'O(1)'
+problems:
+  - platform: 'leetcode'
+    id: '33'
+    title: 'Search in Rotated Sorted Array'
+    url: 'https://leetcode.com/problems/search-in-rotated-sorted-array/'
+    difficulty: 'Medium'
+pubDate: '2026-09-26'
+---
+
+import RotatedSearch from '@components/algorithm/RotatedSearch.astro';
+import RotatedSearchScene from '@components/algorithm/RotatedSearchScene.astro';
+
+## 언제 쓰나
+
+찾는 범위를 가운데에서 잘랐을 때 **답이 어느 쪽 절반에 있는지 비교 한 번으로 알 수 있으면** 씁니다.
+
+- 정렬된 배열에서 값 하나의 위치를 찾습니다.
+- 문제가 O(log n) 시간을 요구합니다. 대표 문제인 LeetCode 33도 O(log n)으로 풀라는 조건을 붙입니다.
+- 배열 전체가 정렬돼 있지 않아도, 어떤 지점을 기준으로 한쪽과 다른 쪽의 성질이 갈리면 그 지점을 찾을 수 있습니다. 아래 풀이에서 회전된 배열의 가장 작은 값을 찾는 부분이 이 경우입니다.
+
+## 어떻게 동작하나
+
+### 정렬된 배열에서 절반씩 버린다
+
+정렬된 `[0, 1, 2, 4, 5, 6, 7]`에서 5의 위치를 찾는다고 해 보겠습니다. 앞에서부터 하나씩 보면 다섯 번째 칸에서야 찾지만, 가운데부터 보면 세 번 만에 끝납니다.
+
+1. 가운데인 인덱스 3의 4를 5와 비교합니다. 4가 더 작고 배열은 정렬돼 있으니, 4와 그 왼쪽 칸은 모두 5보다 작습니다. 인덱스 0\~3을 한 번에 버립니다.
+2. 남은 인덱스 4\~6의 가운데인 인덱스 5의 6을 5와 비교합니다. 6이 더 크니 인덱스 5\~6을 버립니다.
+3. 남은 인덱스 4의 5가 찾는 값입니다.
+
+아래 그림은 1번 장면입니다. 노란 칸이 비교한 가운데 칸이고, 흐려진 칸이 버린 칸입니다.
+
+<RotatedSearchScene scene="plain" nums={[0, 1, 2, 4, 5, 6, 7]} target={5} />
+
+이렇게 가운데 값과 비교해 답이 없는 절반을 버리며 범위를 좁히는 방법을 **이분 탐색**(binary search)이라고 합니다. 코드에서는 범위를 세 변수로 나타냅니다.
+
+- `left`, `right`: 아직 버리지 않은 범위의 왼쪽 끝과 오른쪽 끝 인덱스입니다.
+- `mid`: 그 범위의 가운데 인덱스, `Math.floor((left + right) / 2)`입니다.
+
+비교할 때마다 범위가 절반으로 줄기 때문에, 7칸은 비교 3번, 100만 칸도 비교 20번이면 범위가 한 칸까지 줄어듭니다. 시간은 O(log n)입니다.
+
+### 회전된 배열에서는 한쪽 절반만 정렬돼 있다
+
+LeetCode 33은 정렬된 배열을 어떤 지점에서 잘라 뒷부분을 앞으로 옮긴 배열을 줍니다. `[0, 1, 2, 4, 5, 6, 7]`을 인덱스 3 앞에서 잘라 뒷부분 `[4, 5, 6, 7]`을 앞으로 옮기면 `[4, 5, 6, 7, 0, 1, 2]`가 되고, 이 배열에서 `target`의 인덱스를 찾아 돌려주는 문제입니다. 없으면 -1을 돌려줍니다.
+
+여기서는 가운데 값만 보고 버릴 절반을 정할 수 없습니다. `target`이 0일 때 가운데 값 7은 0보다 크지만, 0은 7의 오른쪽에 있습니다. 배열 전체가 정렬돼 있지 않아서 "가운데보다 작은 값은 왼쪽에 있다"가 성립하지 않기 때문입니다.
+
+대신 가운데에서 자르면 **두 절반 중 한쪽은 반드시 정렬돼 있습니다.** 값이 갑자기 작아지는 곳(7 다음의 0)은 배열 전체에 한 곳뿐이라, 그곳을 품은 절반만 정렬이 깨지기 때문입니다.
+
+<RotatedSearchScene scene="split" nums={[4, 5, 6, 7, 0, 1, 2]} />
+
+정렬된 절반은 양 끝 값만 보면 `target`이 그 안에 있는지 알 수 있습니다. 그래서 반복마다 이렇게 합니다.
+
+1. `nums[left] <= nums[mid]`이면 왼쪽 절반이, 아니면 오른쪽 절반이 정렬돼 있습니다.
+2. `target`이 정렬된 절반의 범위 안에 있으면 그 절반만 남깁니다.
+3. 없으면 그 절반을 버립니다. 답은 나머지 절반에 있습니다.
+
+### 직접 따라가 보기
+
+아래 시각화는 LeetCode 33 예제 1에서 0을 찾습니다. 칸 아래 작은 숫자가 실제 인덱스입니다.
+
+"정렬된 절반 고르기"는 위의 세 규칙을 따릅니다. 3번째 단계에서 왼쪽 절반 `[4, 5, 6, 7]`에 괄호가 쳐지고, 0이 그 범위에 없어 4번째 단계에서 통째로 흐려집니다. 6\~7번째 단계에서는 `[0, 1]` 안에 0이 있어 반대로 나머지를 버리고, 8번째 단계에서 인덱스 4를 찾습니다.
+
+위쪽에서 "회전 지점 먼저"를 고르면 아래 대표 문제 풀이의 제 풀이가 실행됩니다. 2\~8번째 단계에서 가장 작은 값의 자리 4를 먼저 찾고, 9번째 단계에서 칸들이 4번 칸부터 이어 읽는 순서로 자리를 옮깁니다. 값은 그대로이고 읽는 순서만 바뀐 것인데, 그 순서로 보면 정렬된 배열이라 10번째 단계부터는 첫 절의 평범한 이분 탐색이 그대로 통합니다.
+
+<RotatedSearch />
+
+## 대표 문제 풀이
+
+처음 풀 때는 가장 작은 값의 자리를 찾는 부분까지만 제가 작성했고, `target`을 찾는 부분은 코치가 작성했습니다. 아래는 복습에서 코치에게 반례 하나를 받은 뒤 두 단계를 모두 직접 작성해 LeetCode 채점을 통과한 제 풀이입니다.
+
+```js
+var search = function (nums, target) {
+  return findTargetIndex(nums, target, findStartIndex(nums, target));
+};
+
+// ② 가장 작은 값이 있는 자리부터 이어 읽은 순서에서 평범한 이분 탐색
+function findTargetIndex(nums, target, startIndex) {
+  let left = startIndex;
+  let right = nums.length - 1 + startIndex;
+
+  const getIndex = (index) => {
+    return index % nums.length;
+  };
+
+  while (left <= right) {
+    let mid = Math.floor((left + right) / 2);
+
+    if (nums[getIndex(mid)] === target) {
+      return getIndex(mid);
+    }
+
+    if (nums[getIndex(mid)] < target) {
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+
+  return -1;
+}
+
+// ① 가장 작은 값의 자리(회전 지점)를 찾는다
+function findStartIndex(nums, target) {
+  let left = 0;
+  let right = nums.length - 1;
+
+  while (left < right) {
+    let mid = Math.floor((left + right) / 2);
+
+    if (nums[mid] > nums[right]) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  return left;
+}
+```
+
+①의 `findStartIndex`는 `nums[mid]`를 오른쪽 끝 `nums[right]`와 비교합니다. `nums[mid]`가 더 크면 그 사이 어딘가에서 값이 작아졌다는 뜻이라 가장 작은 값은 mid 오른쪽에 있고, 아니면 mid 자신이 가장 작은 값일 수 있어서 `right = mid`로 mid를 범위에 남깁니다.
+
+②의 `findTargetIndex`는 범위를 `startIndex`부터 `startIndex + n - 1`까지로 잡습니다. 예제에서는 4\~10입니다. 이 범위를 순서대로 읽되 값을 읽을 때만 `index % nums.length`로 실제 칸을 구하면, 4, 5, 6번 칸 다음에 0, 1, 2, 3번 칸을 읽게 되어 정렬된 순서가 됩니다. 배열을 새로 만들지 않고 읽는 순서만 바꾸는 것이라 추가 공간이 들지 않습니다.
+
+아래는 시각화의 "정렬된 절반 고르기"와 같은 로직의 참고 풀이입니다. 반복 한 번으로 끝나고, 주석 번호는 위 세 규칙과 같습니다.
+
+```js
+var search = function (nums, target) {
+  let left = 0;
+  let right = nums.length - 1;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    if (nums[mid] === target) return mid;
+
+    if (nums[left] <= nums[mid]) {
+      // ① 왼쪽 절반이 정렬돼 있다
+      if (nums[left] <= target && target < nums[mid]) {
+        right = mid - 1; // ② target이 그 안에 있으면 왼쪽만 남긴다
+      } else {
+        left = mid + 1; // ③ 없으면 왼쪽을 버린다
+      }
+    } else {
+      // ① 오른쪽 절반이 정렬돼 있다
+      if (nums[mid] < target && target <= nums[right]) {
+        left = mid + 1; // ② 오른쪽만 남긴다
+      } else {
+        right = mid - 1; // ③ 오른쪽을 버린다
+      }
+    }
+  }
+  return -1;
+};
+```
+
+두 풀이 모두 시간은 O(log n)입니다. 제 풀이는 이분 탐색을 두 번 하지만 2 × log n도 O(log n)입니다. 변수 몇 개만 쓰므로 공간은 O(1)입니다.
+
+## 자주 하는 실수
+
+**목적이 다른 두 탐색에 같은 비교를 씁니다.** 가장 작은 값을 찾는 탐색과 `target`을 찾는 탐색은 무엇을 기준으로 절반을 버리는지가 다릅니다. 저는 복습에서 `target`을 찾는 규칙을 "left = 0, right = 6, mid = 3 -> mid가 더 큼 -> left를 mid 값으로"처럼 `nums[left]`와 `nums[mid]`만 비교해 세웠습니다. 이 규칙은 `target`이 0일 때 인덱스 4에 도달하지만, 0이 마침 가장 작은 값이라 가장 작은 값의 자리와 답이 겹쳤을 뿐입니다. 같은 규칙으로 6을 찾으면 첫 반복에서 `left`가 3으로 옮겨 가 답이 있는 인덱스 2를 버립니다.
+
+<RotatedSearchScene scene="wrong" nums={[4, 5, 6, 7, 0, 1, 2]} target={6} caption="target을 한 번도 보지 않는 규칙이라, 6이 있는 칸 2가 첫 반복에서 범위 밖으로 빠집니다." />
+
+**배열을 잘라서 범위를 좁힙니다.** 처음 풀 때 저는 가장 작은 값을 찾은 뒤 배열을 정렬된 모양으로 복구해 다시 이분 탐색하려 했고, 복구 비용을 "index 기반 자르고 붙이면 비용이 크지 않을듯"이라고 봤습니다. `slice`와 `concat`은 원소를 새 배열에 하나씩 복사하므로 O(n)이 들어, 전체가 O(log n)이 아니게 됩니다. 탐색 중에 `slice`로 범위를 좁힌 코드에서는 "인덱스 바꿔서 계산하는 부분을 모르겠어"에서 막혔는데, 잘라 낸 배열은 원래 배열의 몇 번 칸이었는지 기억하지 않기 때문입니다. 범위는 배열이 아니라 `left`, `right` 인덱스로 나타내야 복사도 없고 원래 인덱스도 남습니다.
+
+**범위가 줄지 않거나 답을 버립니다.** 가장 작은 값을 찾을 때 저는 처음에 `left = mid`로 옮기게 써서 `[3, 1]`에서 `left`가 계속 0에 머물러 반복이 끝나지 않았습니다. 이를 고친 뒤에는 반대편을 `right = mid - 1`로 써서, 가장 작은 값이 mid에 있을 때 그 칸을 버리는 바람에 `[3, 1, 2]` 같은 입력에서 틀렸습니다. 매 반복 범위가 반드시 한 칸 이상 줄어야 하고, 답일 수 있는 칸은 남겨야 합니다. 그래서 한쪽은 `left = mid + 1`, 다른 쪽은 `right = mid`입니다.
+
+**나머지 연산의 기준을 `n - 1`로 씁니다.** 이어 읽기에서 저는 처음에 `index % (nums.length - 1)`로 썼는데, 길이 6이면 인덱스 6이 0이 아니라 1로 바뀌어 한 칸씩 밀립니다. 마지막 인덱스는 `n - 1`이지만 한 바퀴의 길이는 `n`이므로 `index % nums.length`가 맞습니다.

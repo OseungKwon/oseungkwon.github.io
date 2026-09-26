@@ -1,0 +1,220 @@
+---
+/**
+ * 이분 탐색의 대표 도형 — 칸 줄 + 위쪽의 left·mid·right 표시 + 아래쪽 괄호.
+ *
+ * 탐색 범위 밖으로 버린 칸은 흐려지고, 지금 mid 칸은 노랑, "정렬된 절반"이나 비교하는 칸은 파랑이다.
+ * 칸마다 아래에 실제 인덱스를 적는다. 회전 지점부터 이어 읽는 풀이에서는 칸이 읽는 순서대로
+ * 자리를 옮기는데(slot), 인덱스 글자는 칸과 함께 움직이므로 "값은 제자리, 읽는 순서만 바뀐다"가 보인다.
+ *
+ * 그리기만 맡는다. 단계 진행(RotatedSearch)과 본문 정적 그림(RotatedSearchScene)이 같은 컴포넌트를 쓴다.
+ * 단계 진행 스크립트가 칸·표시·괄호를 옮길 수 있게 칸 간격을 data-geo에 적어 둔다.
+ */
+interface Props {
+  nums: number[];
+  /** 칸 상태 (실제 인덱스 순서): range / out / active / sorted / answer / wrong */
+  cellStates?: string[];
+  /** 칸이 놓일 자리. 없으면 인덱스 순서 그대로 */
+  slots?: number[];
+  /** 표시가 가리키는 자리. mid가 null이면 mid 표시를 숨긴다 */
+  markers: { left: number; mid: number | null; right: number };
+  /** 아래 괄호 [시작 자리, 끝 자리]. 없으면 숨긴다 */
+  bracket?: [number, number] | null;
+  bracketLabel?: string;
+  /** 단계 진행처럼 괄호가 나타났다 사라지는 그림이면 true (괄호 자리를 늘 비워 둔다) */
+  reserveBracket?: boolean;
+  label: string;
+}
+
+const { nums, cellStates = [], slots, markers, bracket = null, bracketLabel = '', reserveBracket = false, label } = Astro.props;
+const n = nums.length;
+
+const CELL = 48;
+const GAP = 6;
+const PITCH = CELL + GAP;
+const LEFT = 18;
+const TIER = 16;
+// 표시 이름은 세 층으로 쌓는다. left와 right가 같은 칸을 가리켜도 글자가 겹치지 않는다
+const TIER_Y = { left: 14, mid: 14 + TIER, right: 14 + TIER * 2 };
+const CELL_Y = TIER_Y.right + 14;
+const INDEX_Y = CELL_Y + CELL + 15;
+const BRACKET_Y = INDEX_Y + 14;
+const width = LEFT * 2 + n * PITCH - GAP;
+const height = reserveBracket || bracket ? BRACKET_Y + 24 : INDEX_Y + 8;
+
+const slotOf = (i: number) => slots?.[i] ?? i;
+const cx = (slot: number) => LEFT + slot * PITCH + CELL / 2;
+const bracketPath = ([from, to]: [number, number]) => {
+  const x1 = LEFT + from * PITCH + 3;
+  const x2 = LEFT + to * PITCH + CELL - 3;
+  return `M ${x1} ${BRACKET_Y - 5} V ${BRACKET_Y} H ${x2} V ${BRACKET_Y - 5}`;
+};
+const pointers = (['left', 'mid', 'right'] as const).map((key) => ({ key, at: markers[key] }));
+const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, bracketY: BRACKET_Y });
+---
+
+{/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
+<svg class="rs" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-rs-figure data-geo={geo}>
+  {/* 표시: 이름 + 아래를 가리키는 작은 삼각형. x는 transform으로 옮긴다 */}
+  {
+    pointers.map(({ key, at }) => (
+      <g class="rs-ptr" data-ptr={key} style={`transform: translateX(${cx(at ?? 0)}px)`} hidden={at === null ? true : undefined}>
+        <text x="0" y={TIER_Y[key]} text-anchor="middle">{key}</text>
+        <path d={`M -4 ${TIER_Y[key] + 3} L 4 ${TIER_Y[key] + 3} L 0 ${TIER_Y[key] + 7} Z`} />
+      </g>
+    ))
+  }
+
+  {/* 칸: 값 + 아래 인덱스. 칸 전체가 자리를 옮긴다 */}
+  {
+    nums.map((value, i) => (
+      <g class="rs-cell" data-cell={i} data-state={cellStates[i] ?? 'range'} style={`transform: translateX(${slotOf(i) * PITCH}px)`}>
+        <rect x={LEFT} y={CELL_Y} width={CELL} height={CELL} rx="8" />
+        <text class="rs-value" x={LEFT + CELL / 2} y={CELL_Y + CELL / 2} dy="0.36em" text-anchor="middle">{value}</text>
+        <text class="rs-index" x={LEFT + CELL / 2} y={INDEX_Y} text-anchor="middle">{i}</text>
+      </g>
+    ))
+  }
+
+  {/* 괄호: 정렬된 절반, 이어 읽은 순서 */}
+  <g class="rs-bracket" data-rs-bracket hidden={bracket ? undefined : true}>
+    <path d={bracket ? bracketPath(bracket) : ''} />
+    <text x={bracket ? (cx(bracket[0]) + cx(bracket[1])) / 2 : 0} y={BRACKET_Y + 15} text-anchor="middle">{bracketLabel}</text>
+  </g>
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .rs {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  [hidden] {
+    display: none;
+  }
+
+  /* ── 표시 ─────────────────────────── */
+  .rs-ptr {
+    transition: transform 0.3s ease;
+  }
+
+  .rs-ptr text {
+    font-size: 12px;
+    fill: var(--fg-dim);
+  }
+
+  .rs-ptr path {
+    fill: var(--fg-faint);
+  }
+
+  .rs-ptr[data-ptr='mid'] text {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  .rs-ptr[data-ptr='mid'] path {
+    fill: var(--exec);
+  }
+
+  /* ── 칸 ─────────────────────────────── */
+  .rs-cell {
+    transition: transform 0.45s ease;
+  }
+
+  .rs-cell rect {
+    fill: var(--node-bg);
+    stroke: var(--fg-faint);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s, opacity 0.25s;
+  }
+
+  .rs-value {
+    font-size: 16px;
+    fill: var(--fg);
+    transition: fill 0.25s, opacity 0.25s;
+  }
+
+  .rs-index {
+    font-size: 10px;
+    fill: var(--node-idle-text);
+  }
+
+  /* 탐색 범위 밖으로 버린 칸 */
+  .rs-cell[data-state='out'] rect {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+    stroke-dasharray: 3 4;
+    opacity: 0.7;
+  }
+
+  .rs-cell[data-state='out'] .rs-value {
+    fill: var(--done-text);
+    opacity: 0.6;
+  }
+
+  /* 지금 mid 칸 */
+  .rs-cell[data-state='active'] rect {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .rs-cell[data-state='active'] .rs-value {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* 정렬된 절반, 비교하는 칸 */
+  .rs-cell[data-state='sorted'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  .rs-cell[data-state='sorted'] .rs-value {
+    fill: var(--stack-text);
+    font-weight: 700;
+  }
+
+  /* 찾은 칸 */
+  .rs-cell[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2.5;
+  }
+
+  .rs-cell[data-state='answer'] .rs-value {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+
+  /* 답이 있는데 버린 칸 */
+  .rs-cell[data-state='wrong'] rect {
+    fill: var(--removed-bg);
+    stroke: var(--removed);
+    stroke-width: 2;
+    stroke-dasharray: 5 3;
+  }
+
+  .rs-cell[data-state='wrong'] .rs-value {
+    fill: var(--removed);
+    font-weight: 700;
+  }
+
+  /* ── 괄호 ─────────────────────────── */
+  .rs-bracket path {
+    fill: none;
+    stroke: var(--stack);
+    stroke-width: 1.5;
+  }
+
+  .rs-bracket text {
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 600;
+    fill: var(--stack-text);
+  }
+</style>

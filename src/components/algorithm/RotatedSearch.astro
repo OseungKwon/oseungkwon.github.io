@@ -1,0 +1,543 @@
+---
+/**
+ * 이분 탐색 — 회전된 정렬 배열에서 target 찾기(LeetCode 33)를 두 방식으로.
+ *
+ * 대표 도형은 칸 줄 + left·mid·right다(그리기는 RotatedSearchDiagram). 한 번 비교할 때마다
+ * 절반이 통째로 흐려진다.
+ *
+ *   정렬된 절반 고르기 → mid를 찍고, 두 절반 중 정렬된 쪽을 괄호로 표시한 뒤,
+ *                        target이 그 범위에 있는지로 버릴 절반을 정한다
+ *   회전 지점 먼저     → 1단계에서 가장 작은 값의 자리(startIndex)를 찾고, 2단계에서 칸을
+ *                        startIndex부터 이어 읽는 순서로 옮겨 놓은 뒤 평범한 이분 탐색을 한다
+ *
+ * 두 번째 방식은 사용자가 코치 세션에서 직접 작성해 LeetCode를 통과한 풀이(findStartIndex +
+ * findTargetIndex)와 같은 로직이다. 칸이 자리를 옮기는 것은 "읽는 순서"를 보여 주는 것이고,
+ * 코드는 값을 옮기지 않고 인덱스를 % n으로 바꿔 읽는다.
+ *
+ * 단계는 빌드 시점에 trace가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import RotatedSearchDiagram from './RotatedSearchDiagram.astro';
+
+// LeetCode 33 예제 1
+const nums = [4, 5, 6, 7, 0, 1, 2];
+const target = 0;
+const n = nums.length;
+
+// 칸: r 범위 안 / o 버림 / a mid / s 정렬된 절반·비교하는 칸 / w 찾은 칸
+interface Step {
+  note: string;
+  cells: string;
+  /** 칸이 놓일 자리를 정하는 이동 폭. 0이면 인덱스 순서, k면 k번 칸이 맨 앞 */
+  shift: number;
+  /** 표시가 가리키는 자리 */
+  mk: { left: number; mid: number | null; right: number };
+  br: [number, number] | null;
+  brLabel: string;
+  w: { left: number; mid: number | null; right: number; midHint: string; startIndex?: number | null; result?: number };
+  changed: string[];
+}
+
+// 숫자 뒤 조사는 읽는 소리(영·일·이·삼…)의 받침으로 고른다
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const and = (v: number) => (noBatchim(v) ? '와' : '과');
+const subj = (v: number) => (noBatchim(v) ? '가' : '이');
+const obj = (v: number) => (noBatchim(v) ? '를' : '을');
+const topic = (v: number) => (noBatchim(v) ? '는' : '은');
+const to = (v: number) => ('1245789'.includes(String(v).at(-1)!) ? '로' : '으로');
+const list = (a: number[]) => `[${a.join(', ')}]`;
+
+function makeSnap(steps: Step[]) {
+  let last: Step['w'] | null = null;
+  return (note: string, s: Omit<Step, 'note' | 'changed'>) => {
+    const changed = last
+      ? (['left', 'mid', 'right', 'startIndex'] as const).filter((k) => s.w[k] !== undefined && last![k] !== s.w[k])
+      : [];
+    steps.push({ note, ...s, changed });
+    last = s.w;
+  };
+}
+
+// ── 방식 1: 정렬된 절반 고르기 (참고 풀이와 같은 로직)
+function traceSortedHalf(): Step[] {
+  const steps: Step[] = [];
+  const snap = makeSnap(steps);
+  const out = new Set<number>();
+  const cells = (mark: Record<number, string> = {}) => nums.map((_, i) => mark[i] ?? (out.has(i) ? 'o' : 'r')).join('');
+  const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
+  const blue = (a: number, b: number, mid: number) => Object.fromEntries(range(a, b).map((i) => [i, i === mid ? 'a' : 's']));
+  let left = 0;
+  let right = n - 1;
+  const w = (mid: number | null, extra: Partial<Step['w']> = {}) => ({
+    left,
+    mid,
+    right,
+    midHint: mid === null ? '' : `값 ${nums[mid]}`,
+    ...extra,
+  });
+
+  snap(`탐색 범위는 배열 전체, 찾는 값은 ${target}입니다. "다음"을 눌러 가운데 칸부터 봅니다`, {
+    cells: cells(),
+    shift: 0,
+    mk: { left, mid: null, right },
+    br: null,
+    brLabel: '',
+    w: w(null),
+  });
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const v = nums[mid];
+    if (v === target) {
+      snap(`가운데 mid = ${mid}의 ${v}${subj(v)} 찾는 값입니다. ${mid}${obj(mid)} 돌려줍니다`, {
+        cells: cells({ [mid]: 'w' }),
+        shift: 0,
+        mk: { left, mid, right },
+        br: null,
+        brLabel: '',
+        w: w(mid, { result: mid }),
+      });
+      return steps;
+    }
+    snap(`가운데 mid = ${mid}의 ${v}${topic(v)} 찾는 값 ${target}${subj(target)} 아닙니다. 어느 절반이 정렬돼 있는지 봅니다`, {
+      cells: cells({ [mid]: 'a' }),
+      shift: 0,
+      mk: { left, mid, right },
+      br: null,
+      brLabel: '',
+      w: w(mid),
+    });
+    const leftSorted = nums[left] <= v;
+    const [a, b] = leftSorted ? [left, mid] : [mid, right];
+    const lo = nums[a];
+    const hi = nums[b];
+    snap(
+      leftSorted
+        ? `왼쪽 끝 ${nums[left]}${subj(nums[left])} mid의 ${v}보다 크지 않으니, 왼쪽 절반 ${list(nums.slice(a, b + 1))}${subj(nums[b])} 정렬돼 있습니다`
+        : `왼쪽 끝 ${nums[left]}${subj(nums[left])} mid의 ${v}보다 커서, 오른쪽 절반 ${list(nums.slice(a, b + 1))}${subj(nums[b])} 정렬돼 있습니다`,
+      {
+        cells: cells(blue(a, b, mid)),
+        shift: 0,
+        mk: { left, mid, right },
+        br: [a, b],
+        brLabel: '정렬된 절반',
+        w: w(mid),
+      },
+    );
+    const inside = leftSorted ? lo <= target && target < v : v < target && target <= hi;
+    // 정렬된 절반 안에 있으면 그 절반만 남기고, 없으면 그 절반을 버린다
+    const keepLeft = inside === leftSorted;
+    (keepLeft ? range(mid, right) : range(left, mid)).forEach((i) => out.add(i));
+    if (keepLeft) right = mid - 1;
+    else left = mid + 1;
+    const where = leftSorted ? `${lo} 이상 ${v} 미만` : `${v} 초과 ${hi} 이하`;
+    const moved = keepLeft ? `right를 ${right}${to(right)}` : `left를 ${left}${to(left)}`;
+    snap(
+      inside
+        ? `${target}${topic(target)} ${where}${leftSorted ? '이라' : '라'} 정렬된 절반 안에 있습니다. 나머지를 버리고 ${moved} 옮깁니다`
+        : `${target}${topic(target)} ${where}${leftSorted ? '이' : '가'} 아니라 정렬된 절반에 없습니다. 그 절반을 버리고 ${moved} 옮깁니다`,
+      {
+        cells: cells(),
+        shift: 0,
+        mk: { left, mid, right },
+        br: null,
+        brLabel: '',
+        w: w(mid),
+      },
+    );
+  }
+  snap(`left가 right를 지나쳐 범위가 비었습니다. ${target}${subj(target)} 없으니 -1을 돌려줍니다`, {
+    cells: cells(),
+    shift: 0,
+    mk: { left: Math.min(left, n - 1), mid: null, right: Math.max(right, 0) },
+    br: null,
+    brLabel: '',
+    w: w(null, { result: -1 }),
+  });
+  return steps;
+}
+
+// ── 방식 2: 회전 지점 먼저 (사용자 풀이 findStartIndex + findTargetIndex와 같은 로직)
+function traceStartFirst(): Step[] {
+  const steps: Step[] = [];
+  const snap = makeSnap(steps);
+  const out = new Set<number>();
+  const cells = (mark: Record<number, string> = {}) => nums.map((_, i) => mark[i] ?? (out.has(i) ? 'o' : 'r')).join('');
+
+  // 1단계: 가장 작은 값의 자리
+  let left = 0;
+  let right = n - 1;
+  const w1 = (mid: number | null, startIndex: number | null = null) => ({
+    left,
+    mid,
+    right,
+    midHint: mid === null ? '' : `값 ${nums[mid]}`,
+    startIndex,
+  });
+  snap('1단계: 가장 작은 값이 있는 자리(회전 지점)부터 찾습니다. "다음"을 눌러 보세요', {
+    cells: cells(),
+    shift: 0,
+    mk: { left, mid: null, right },
+    br: null,
+    brLabel: '',
+    w: w1(null),
+  });
+  while (left < right) {
+    const mid = Math.floor((left + right) / 2);
+    const v = nums[mid];
+    const r = nums[right];
+    snap(`mid = ${mid}의 ${v}${and(v)} 오른쪽 끝 right 칸의 ${r}${obj(r)} 비교합니다`, {
+      cells: cells({ [mid]: 'a', [right]: 's' }),
+      shift: 0,
+      mk: { left, mid, right },
+      br: null,
+      brLabel: '',
+      w: w1(mid),
+    });
+    if (v > r) {
+      for (let i = left; i <= mid; i++) out.add(i);
+      left = mid + 1;
+      snap(`${v}${subj(v)} ${r}보다 커서 가장 작은 값은 mid 오른쪽에 있습니다. mid까지 버리고 left를 ${left}${to(left)} 옮깁니다`, {
+        cells: cells(),
+        shift: 0,
+        mk: { left, mid, right },
+        br: null,
+        brLabel: '',
+        w: w1(mid),
+      });
+    } else {
+      for (let i = mid + 1; i <= right; i++) out.add(i);
+      right = mid;
+      snap(`${v}${subj(v)} ${r}보다 작아 가장 작은 값은 mid이거나 그 왼쪽입니다. mid는 남기고 right를 ${right}${to(right)} 옮깁니다`, {
+        cells: cells(),
+        shift: 0,
+        mk: { left, mid, right },
+        br: null,
+        brLabel: '',
+        w: w1(mid),
+      });
+    }
+  }
+  const k = left;
+  snap(`left와 right가 ${k}에서 만났습니다. 가장 작은 값 ${nums[k]}의 자리, startIndex는 ${k}입니다`, {
+    cells: cells({ [k]: 'w' }),
+    shift: 0,
+    mk: { left, mid: null, right },
+    br: null,
+    brLabel: '',
+    w: w1(null, k),
+  });
+
+  // 2단계: startIndex부터 이어 읽은 순서에서 평범한 이분 탐색. left·right는 k..k+n-1
+  out.clear();
+  left = k;
+  right = n - 1 + k;
+  const real = (v: number) => v % n;
+  const w2 = (mid: number | null, extra: Partial<Step['w']> = {}) => ({
+    left,
+    mid,
+    right,
+    midHint: mid === null ? '' : `실제 칸 ${real(mid)} · 값 ${nums[real(mid)]}`,
+    startIndex: k,
+    ...extra,
+  });
+  const mk = (mid: number | null) => ({ left: left - k, mid: mid === null ? null : mid - k, right: right - k });
+  snap(`2단계: ${k}번 칸부터 끝까지 읽고 0번 칸으로 이어 읽으면 ${list([...nums.slice(k), ...nums.slice(0, k)])}, 정렬된 순서입니다`, {
+    cells: cells(),
+    shift: k,
+    mk: mk(null),
+    br: [0, n - 1],
+    brLabel: '이어 읽은 순서',
+    w: w2(null),
+  });
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const v = nums[real(mid)];
+    if (v === target) {
+      snap(`mid = ${mid}${topic(mid)} 실제 칸 ${real(mid)}, 값 ${v}${subj(v)} 찾는 값입니다. 실제 칸 ${real(mid)}${obj(real(mid))} 돌려줍니다`, {
+        cells: cells({ [real(mid)]: 'w' }),
+        shift: k,
+        mk: mk(mid),
+        br: null,
+        brLabel: '',
+        w: w2(mid, { result: real(mid) }),
+      });
+      return steps;
+    }
+    snap(`mid = ${mid}${topic(mid)} 실제 칸 ${mid} % ${n} = ${real(mid)}의 ${v}입니다. 찾는 ${target}보다 ${v > target ? '큽니다' : '작습니다'}`, {
+      cells: cells({ [real(mid)]: 'a' }),
+      shift: k,
+      mk: mk(mid),
+      br: null,
+      brLabel: '',
+      w: w2(mid),
+    });
+    if (v < target) {
+      for (let x = left; x <= mid; x++) out.add(real(x));
+      left = mid + 1;
+    } else {
+      for (let x = mid; x <= right; x++) out.add(real(x));
+      right = mid - 1;
+    }
+    snap(
+      v < target
+        ? `${target}${subj(target)} 더 크니 왼쪽 절반을 버리고 left를 ${left}${to(left)} 옮깁니다`
+        : `${target}${subj(target)} 더 작으니 오른쪽 절반을 버리고 right를 ${right}${to(right)} 옮깁니다`,
+      {
+        cells: cells(),
+        shift: k,
+        mk: mk(mid),
+        br: null,
+        brLabel: '',
+        w: w2(mid),
+      },
+    );
+  }
+  snap(`범위가 비었습니다. -1을 돌려줍니다`, {
+    cells: cells(),
+    shift: k,
+    mk: { left: n - 1, mid: null, right: 0 },
+    br: null,
+    brLabel: '',
+    w: w2(null, { result: -1 }),
+  });
+  return steps;
+}
+
+const halfSteps = traceSortedHalf();
+const startSteps = traceStartFirst();
+
+// ── 검증: 두 trace의 끝이 예제 1 출력(4)과 같아야 하고, 같은 두 로직이 작은 회전 배열 전부에서
+// indexOf와 같은 답을 내야 한다. 본문의 풀이 코드와 trace가 같은 로직이라는 것을 여기서 보증한다.
+function searchSortedHalf(a: number[], t: number) {
+  let left = 0;
+  let right = a.length - 1;
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    if (a[mid] === t) return mid;
+    if (a[left] <= a[mid]) {
+      if (a[left] <= t && t < a[mid]) right = mid - 1;
+      else left = mid + 1;
+    } else if (a[mid] < t && t <= a[right]) left = mid + 1;
+    else right = mid - 1;
+  }
+  return -1;
+}
+function searchStartFirst(a: number[], t: number) {
+  let left = 0;
+  let right = a.length - 1;
+  while (left < right) {
+    const mid = Math.floor((left + right) / 2);
+    if (a[mid] > a[right]) left = mid + 1;
+    else right = mid;
+  }
+  const k = left;
+  left = k;
+  right = a.length - 1 + k;
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const v = a[mid % a.length];
+    if (v === t) return mid % a.length;
+    if (v < t) left = mid + 1;
+    else right = mid - 1;
+  }
+  return -1;
+}
+let brute = true;
+for (let len = 1; len <= 8; len++) {
+  const sorted = Array.from({ length: len }, (_, i) => i * 2);
+  for (let r = 0; r < len; r++) {
+    const a = [...sorted.slice(r), ...sorted.slice(0, r)];
+    for (let t = -1; t <= len * 2; t++) {
+      if (searchSortedHalf(a, t) !== a.indexOf(t) || searchStartFirst(a, t) !== a.indexOf(t)) brute = false;
+    }
+  }
+}
+if (halfSteps.at(-1)!.w.result !== 4 || startSteps.at(-1)!.w.result !== 4 || !brute) {
+  throw new Error('RotatedSearch: 결과가 LeetCode 33 예제 1 출력(4)과 다르거나, 풀이가 작은 회전 배열 전수 검사에서 틀렸습니다.');
+}
+
+const first = halfSteps[0];
+const CELL: Record<string, string> = { r: 'range', o: 'out', a: 'active', s: 'sorted', w: 'answer' };
+---
+
+<Visualizer
+  modes={[
+    { id: 'half', label: '정렬된 절반 고르기' },
+    { id: 'start', label: '회전 지점 먼저' },
+  ]}
+  steps={{ half: halfSteps, start: startSteps }}
+  title={`이분 탐색 · ${list(nums)}, target ${target}`}
+  caption="LeetCode 33 예제 1. 빌드할 때 두 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '지금 보는 칸 (mid)' },
+    { state: 'stack', label: '정렬된 절반 · 비교하는 칸' },
+    { state: 'answer', label: '찾은 칸' },
+    { state: 'done', label: '버린 칸' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="rw" data-rs-watch>
+      <div class="rw-row">
+        <dt>left</dt>
+        <dd><span class="rw-num" data-w="left">{first.w.left}</span></dd>
+      </div>
+      <div class="rw-row">
+        <dt>mid</dt>
+        <dd><span class="rw-num" data-w="mid">–</span><span class="rw-hint" data-w="midHint"></span></dd>
+      </div>
+      <div class="rw-row">
+        <dt>right</dt>
+        <dd><span class="rw-num" data-w="right">{first.w.right}</span></dd>
+      </div>
+      <div class="rw-row" data-rw-start hidden>
+        <dt>startIndex</dt>
+        <dd><span class="rw-num" data-w="startIndex">–</span></dd>
+      </div>
+      <div class="rw-row">
+        <dt>return</dt>
+        <dd><span class="rw-num" data-w="result">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <RotatedSearchDiagram
+      nums={nums}
+      cellStates={[...first.cells].map((c) => CELL[c])}
+      markers={first.mk}
+      reserveBracket
+      label={`nums = ${list(nums)}에서 ${target}을 이분 탐색으로 찾는 과정`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .rw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .rw-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .rw-row[hidden] {
+    display: none;
+  }
+
+  .rw-row dt {
+    min-width: 2.75rem;
+    color: var(--t-var);
+  }
+
+  .rw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .rw-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0;
+  }
+
+  .rw-num {
+    color: var(--t-num);
+  }
+
+  .rw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .rw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    cells: string;
+    shift: number;
+    mk: { left: number; mid: number | null; right: number };
+    br: [number, number] | null;
+    brLabel: string;
+    w: { left: number; mid: number | null; right: number; midHint: string; startIndex?: number | null; result?: number };
+    changed: string[];
+  }
+
+  const CELL: Record<string, string> = { r: 'range', o: 'out', a: 'active', s: 'sorted', w: 'answer' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-rs-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const geo = JSON.parse(figure.dataset.geo!) as { left: number; pitch: number; cell: number; bracketY: number };
+    const watch = root.querySelector<HTMLElement>('[data-rs-watch]')!;
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const bracket = figure.querySelector<SVGGElement>('[data-rs-bracket]')!;
+    const startRow = watch.querySelector<HTMLElement>('[data-rw-start]')!;
+    const n = cells.length;
+    const cx = (slot: number) => geo.left + slot * geo.pitch + geo.cell / 2;
+    const w = (name: string) => watch.querySelector<HTMLElement>(`[data-w="${name}"]`)!;
+
+    const render = (step: Step) => {
+      cells.forEach((el, i) => {
+        el.setAttribute('data-state', CELL[step.cells[i]]);
+        el.style.transform = `translateX(${((i - step.shift + n) % n) * geo.pitch}px)`;
+      });
+
+      for (const key of ['left', 'mid', 'right'] as const) {
+        const ptr = figure.querySelector<SVGGElement>(`[data-ptr="${key}"]`)!;
+        const at = step.mk[key];
+        if (at === null) {
+          ptr.setAttribute('hidden', '');
+        } else {
+          ptr.removeAttribute('hidden');
+          ptr.style.transform = `translateX(${cx(at)}px)`;
+        }
+      }
+
+      if (step.br) {
+        const [from, to] = step.br;
+        const x1 = geo.left + from * geo.pitch + 3;
+        const x2 = geo.left + to * geo.pitch + geo.cell - 3;
+        bracket.querySelector('path')!.setAttribute('d', `M ${x1} ${geo.bracketY - 5} V ${geo.bracketY} H ${x2} V ${geo.bracketY - 5}`);
+        const label = bracket.querySelector('text')!;
+        label.setAttribute('x', String((x1 + x2) / 2));
+        label.textContent = step.brLabel;
+        bracket.removeAttribute('hidden');
+      } else {
+        bracket.setAttribute('hidden', '');
+      }
+
+      // 변수 패널. 회전 지점 방식에서만 startIndex 줄을 보인다
+      startRow.hidden = step.w.startIndex === undefined;
+      for (const key of ['left', 'mid', 'right', 'startIndex'] as const) {
+        const value = step.w[key];
+        const el = w(key);
+        el.textContent = value === null || value === undefined ? '–' : String(value);
+        el.toggleAttribute('data-changed', step.changed.includes(key));
+      }
+      w('midHint').textContent = step.w.midHint;
+      const result = w('result');
+      result.textContent = step.w.result === undefined ? '–' : String(step.w.result);
+      result.toggleAttribute('data-changed', step.w.result !== undefined);
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>
