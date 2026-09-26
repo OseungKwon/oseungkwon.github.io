@@ -1,0 +1,287 @@
+---
+/**
+ * 힙의 대표 도형 — 완전 이진 트리 + 아래에 같은 내용을 담은 배열.
+ *
+ * 배열의 0번 칸은 비워 두고 1번 칸부터 쓴다(본문 풀이 코드와 같은 1-indexed). 트리의 i번 노드와
+ * 배열의 i번 칸은 같은 값이고, i번 노드의 자식은 2i, 2i + 1번, 부모는 i / 2를 내림한 번호다.
+ * 트리 노드와 배열 칸은 같은 상태 색으로 짝지어진다.
+ *
+ * props의 values·states는 1번 칸부터의 값을 0부터 담는다(values[0] = 1번 칸). 화면에 적는 번호만 1을 더한다.
+ *
+ *   노드·칸 상태: empty(비어 있음) / idle / trail(방금 자리를 바꾸며 지나온 길) / active(방금 옮긴 값)
+ *                 / child(설명용: 자식) / answer
+ *   간선 상태:    hidden / idle / trail
+ *
+ * 그리기만 맡는다. 단계 진행(HeapWalk)과 본문 정적 그림(HeapIndex)이 같은 컴포넌트를 쓴다.
+ * 루트 옆에는 방금 꺼낸 값을 한 단계 동안 남겨 두는 자리가 있다.
+ */
+interface Props {
+  /** 칸 수(트리 노드 자리 수). 값이 없는 자리는 empty로 그린다 */
+  slots: number;
+  values: (number | null)[];
+  states?: string[];
+  /** 간선 상태. 자식 번호 1..slots-1 순서 */
+  edgeStates?: string[];
+  /** 방금 꺼낸 값. 자리를 늘 만들어 두고 없으면 숨긴다 */
+  popped?: number | null;
+  reservePopped?: boolean;
+  label: string;
+}
+
+const { slots, values, states = [], edgeStates = [], popped = null, reservePopped = false, label } = Astro.props;
+
+const depth = Math.floor(Math.log2(slots)) + 1;
+const WIDTH = 64 * 2 ** (depth - 1) + 40;
+const R = 18;
+const TOP = 30;
+const ROW = 62;
+const level = (i: number) => Math.floor(Math.log2(i + 1));
+const nodeX = (i: number) => {
+  const d = level(i);
+  const p = i + 1 - 2 ** d;
+  const span = (WIDTH - 40) / 2 ** d;
+  return 20 + span * (p + 0.5);
+};
+const nodeY = (i: number) => TOP + level(i) * ROW;
+
+const CELL = 36;
+const GAP = 4;
+// 비워 두는 0번 칸까지 그린다
+const ARRAY_W = (slots + 1) * (CELL + GAP) - GAP;
+const ARRAY_X = (WIDTH - ARRAY_W) / 2;
+const ARRAY_Y = TOP + (depth - 1) * ROW + R + 48;
+const cellX = (i: number) => ARRAY_X + (i + 1) * (CELL + GAP);
+const width = WIDTH;
+const height = ARRAY_Y + CELL + 22;
+
+const edgeLine = (child: number) => {
+  const parent = Math.floor((child - 1) / 2);
+  const px = nodeX(parent);
+  const py = nodeY(parent);
+  const cx = nodeX(child);
+  const cy = nodeY(child);
+  const dx = cx - px;
+  const dy = cy - py;
+  const k = R / Math.hypot(dx, dy);
+  return { x1: px + dx * k, y1: py + dy * k, x2: cx - dx * k, y2: cy - dy * k };
+};
+const indices = Array.from({ length: slots }, (_, i) => i);
+const stateOf = (i: number) => states[i] ?? (values[i] === null || values[i] === undefined ? 'empty' : 'idle');
+const POP_X = nodeX(0) + 58;
+---
+
+<svg class="hp" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-heap-figure>
+  {/* 간선: 노드보다 먼저, 원 테두리에서 끊는다 */}
+  {
+    indices.slice(1).map((child) => (
+      <line
+        class="hp-edge"
+        data-edge={child}
+        data-state={edgeStates[child - 1] ?? (values[child] === null || values[child] === undefined ? 'hidden' : 'idle')}
+        {...edgeLine(child)}
+      />
+    ))
+  }
+
+  {/* 트리 노드 */}
+  {
+    indices.map((i) => (
+      <g class="hp-node" data-node={i} data-state={stateOf(i)}>
+        <circle cx={nodeX(i)} cy={nodeY(i)} r={R} />
+        <text class="hp-val" x={nodeX(i)} y={nodeY(i)} dy="0.36em" text-anchor="middle">{values[i] ?? ''}</text>
+        <text class="hp-idx" x={nodeX(i)} y={nodeY(i) + R + 12} text-anchor="middle">{i + 1}</text>
+      </g>
+    ))
+  }
+
+  {/* 방금 꺼낸 값 */}
+  {
+    (reservePopped || popped !== null) && (
+      <g class="hp-popped" data-heap-popped hidden={popped === null ? true : undefined}>
+        <path d={`M ${nodeX(0) + R + 6} ${nodeY(0)} H ${POP_X - R + 2}`} />
+        <circle cx={POP_X} cy={nodeY(0)} r={R} />
+        <text x={POP_X} y={nodeY(0)} dy="0.36em" text-anchor="middle" data-v>{popped ?? ''}</text>
+        <text class="hp-popped-label" x={POP_X} y={nodeY(0) - R - 7} text-anchor="middle">꺼냄</text>
+      </g>
+    )
+  }
+
+  {/* 같은 내용의 배열 */}
+  <text class="hp-array-label" x={ARRAY_X} y={ARRAY_Y - 8}>heap 배열</text>
+  <g class="hp-cell hp-cell--unused">
+    <rect x={ARRAY_X} y={ARRAY_Y} width={CELL} height={CELL} rx="6" />
+    <text class="hp-null" x={ARRAY_X + CELL / 2} y={ARRAY_Y + CELL / 2} dy="0.36em" text-anchor="middle">null</text>
+    <text class="hp-idx" x={ARRAY_X + CELL / 2} y={ARRAY_Y + CELL + 13} text-anchor="middle">0</text>
+  </g>
+  {
+    indices.map((i) => (
+      <g class="hp-cell" data-cell={i} data-state={stateOf(i)}>
+        <rect x={cellX(i)} y={ARRAY_Y} width={CELL} height={CELL} rx="6" />
+        <text class="hp-val" x={cellX(i) + CELL / 2} y={ARRAY_Y + CELL / 2} dy="0.36em" text-anchor="middle">{values[i] ?? ''}</text>
+        <text class="hp-idx" x={cellX(i) + CELL / 2} y={ARRAY_Y + CELL + 13} text-anchor="middle">{i + 1}</text>
+      </g>
+    ))
+  }
+</svg>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .hp {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-mono);
+  }
+
+  .hp [hidden] {
+    display: none;
+  }
+
+  /* ── 간선 ─────────────────────────────── */
+  .hp-edge {
+    stroke: var(--node-line);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: stroke 0.25s, opacity 0.25s;
+  }
+
+  .hp-edge[data-state='hidden'] {
+    opacity: 0;
+  }
+
+  .hp-edge[data-state='trail'] {
+    stroke: var(--stack);
+    stroke-width: 2.5;
+  }
+
+  /* ── 노드와 칸 ─────────────────────────── */
+  .hp-node circle,
+  .hp-cell rect {
+    fill: var(--done-fill);
+    stroke: var(--done-line);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke 0.25s, opacity 0.25s;
+  }
+
+  .hp-val {
+    font-size: 14px;
+    fill: var(--fg);
+  }
+
+  .hp-idx {
+    font-size: 9px;
+    fill: var(--node-idle-text);
+  }
+
+  .hp-node[data-state='empty'] circle,
+  .hp-cell[data-state='empty'] rect {
+    fill: var(--node-bg);
+    stroke: var(--node-line);
+    stroke-dasharray: 2 4;
+  }
+
+  .hp-node[data-state='empty'] circle {
+    opacity: 0.6;
+  }
+
+  .hp-node[data-state='empty'] .hp-idx {
+    opacity: 0;
+  }
+
+  .hp-node[data-state='trail'] circle,
+  .hp-cell[data-state='trail'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+  }
+
+  .hp-node[data-state='trail'] .hp-val,
+  .hp-cell[data-state='trail'] .hp-val {
+    fill: var(--stack-text);
+    font-weight: 700;
+  }
+
+  .hp-node[data-state='active'] circle,
+  .hp-cell[data-state='active'] rect {
+    fill: var(--exec-bg);
+    stroke: var(--exec);
+    stroke-width: 2.5;
+  }
+
+  .hp-node[data-state='active'] .hp-val,
+  .hp-cell[data-state='active'] .hp-val {
+    fill: var(--exec-text);
+    font-weight: 700;
+  }
+
+  /* 본문 설명용: 짚어 본 노드의 자식 */
+  .hp-node[data-state='child'] circle,
+  .hp-cell[data-state='child'] rect {
+    fill: var(--stack-soft);
+    stroke: var(--stack);
+    stroke-width: 2;
+    stroke-dasharray: 4 3;
+  }
+
+  .hp-node[data-state='child'] .hp-val,
+  .hp-cell[data-state='child'] .hp-val {
+    fill: var(--stack-text);
+  }
+
+  .hp-node[data-state='answer'] circle,
+  .hp-cell[data-state='answer'] rect {
+    fill: var(--answer-soft);
+    stroke: var(--answer);
+    stroke-width: 2;
+  }
+
+  .hp-node[data-state='answer'] .hp-val,
+  .hp-cell[data-state='answer'] .hp-val {
+    fill: var(--answer);
+    font-weight: 700;
+  }
+
+  /* ── 방금 꺼낸 값 ─────────────────────── */
+  .hp-popped path {
+    stroke: var(--removed);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 3;
+  }
+
+  .hp-popped circle {
+    fill: var(--removed-bg);
+    stroke: var(--removed);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+  }
+
+  .hp-popped text {
+    font-size: 14px;
+    font-weight: 700;
+    fill: var(--removed);
+  }
+
+  .hp-popped .hp-popped-label {
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+
+  /* 비워 두는 0번 칸 */
+  .hp-cell--unused rect {
+    fill: none;
+    stroke: var(--node-line);
+    stroke-dasharray: 2 3;
+  }
+
+  .hp-null {
+    font-size: 10px;
+    fill: var(--fg-faint);
+  }
+
+  .hp-array-label {
+    font-size: 11px;
+    fill: var(--t-var);
+  }
+</style>

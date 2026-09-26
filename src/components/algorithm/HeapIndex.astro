@@ -1,0 +1,38 @@
+---
+/**
+ * 본문용 정적 그림: 최대 힙 하나와, 한 노드의 자식이 배열의 어디에 있는지.
+ *
+ *   <HeapIndex values={[8, 7, 4, 1, 2, 1]} focus={2} />
+ *
+ * values는 1번 칸부터 담긴 값이다(0번 칸은 비워 둔다). focus번 노드를 노랑, 그 자식(2i, 2i + 1번)을
+ * 파란 점선으로 칠한다. focus가 없으면 힙만 그린다. 도형은 단계 진행(HeapWalk)과 같은 HeapDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import HeapDiagram from './HeapDiagram.astro';
+
+interface Props {
+  values: number[];
+  /** 1부터 세는 칸 번호 */
+  focus?: number;
+  caption?: string;
+}
+
+const { values, focus, caption } = Astro.props;
+// k번 칸의 값 (1부터)
+const at = (k: number) => values[k - 1];
+
+if (!values.every((v, d) => d === 0 || v <= at(Math.floor((d + 1) / 2)))) {
+  throw new Error('HeapIndex: 넘긴 배열이 최대 힙 순서(부모 ≥ 자식)를 지키지 않습니다.');
+}
+
+const children = focus === undefined ? [] : [2 * focus, 2 * focus + 1].filter((k) => k <= values.length);
+const states = values.map((_, d) => (d + 1 === focus ? 'active' : children.includes(d + 1) ? 'child' : 'idle'));
+const label =
+  focus === undefined
+    ? `최대 힙 [${values.join(', ')}]`
+    : `최대 힙 [${values.join(', ')}]에서 ${focus}번 노드 ${at(focus)}의 자식은 ${children.map((k) => `${k}번 칸의 ${at(k)}`).join(', ')}`;
+---
+
+<StaticFigure title={`최대 힙 · heap = [null, ${values.join(', ')}]`} caption={caption}>
+  <HeapDiagram slots={values.length} values={values} states={states} label={label} />
+</StaticFigure>

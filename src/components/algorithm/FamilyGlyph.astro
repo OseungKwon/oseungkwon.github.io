@@ -12,7 +12,7 @@ const { family, slug, class: className } = Astro.props;
 
 // 같은 분류에 항목이 여럿이면 분류 아이콘만으로는 타일끼리 구분이 안 된다.
 // 이 목록에 있는 항목은 자기 시각화의 대표 도형을 줄인 전용 아이콘을 쓴다.
-const ENTRY_GLYPHS = ['dfs-flood-fill', 'bfs', 'merge-sort', 'quickselect', 'three-way-partition', 'custom-comparator-sort', 'bucket-sort'];
+const ENTRY_GLYPHS = ['dfs-flood-fill', 'bfs', 'heap', 'merge-sort', 'quickselect', 'three-way-partition', 'custom-comparator-sort', 'bucket-sort'];
 const glyph = slug && ENTRY_GLYPHS.includes(slug) ? slug : family;
 ---
 
@@ -161,6 +161,21 @@ const glyph = slug && ENTRY_GLYPHS.includes(slug) ? slug : family;
         <path d="M8 26h18V8" stroke-width="2" />
         <path d="M8 42h34V8" stroke-width="2" opacity="0.55" />
         <rect x="10" y="10" width="12" height="12" rx="1.5" fill="currentColor" stroke="none" />
+      </>
+    )
+  }
+  {
+    glyph === 'heap' && (
+      <>
+        <path d="M29 13.5 22.5 20.5M35 13.5l6.5 7M20 27.5l-4 6M24 27.5l3 6M44 27.5l-4 6" />
+        <circle cx="32" cy="10" r="4.5" fill="currentColor" />
+        <circle cx="21" cy="24" r="3.5" />
+        <circle cx="43" cy="24" r="3.5" />
+        <circle cx="14" cy="37" r="3" />
+        <circle cx="28" cy="37" r="3" />
+        <circle cx="38" cy="37" r="3" />
+        <rect x="8" y="47" width="8" height="9" rx="1.5" fill="currentColor" stroke="none" />
+        <path d="M16 47h40v9H16zM24 47v9M32 47v9M40 47v9M48 47v9" opacity="0.6" />
       </>
     )
   }

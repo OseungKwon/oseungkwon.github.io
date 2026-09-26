@@ -1,0 +1,352 @@
+---
+/**
+ * 힙(최대 힙) — 가장 무거운 돌 두 개를 계속 부딪히는 문제(LeetCode 1046)를 힙으로 푸는 과정.
+ *
+ * 대표 도형은 완전 이진 트리와 같은 내용의 배열이다(그리기는 HeapDiagram).
+ *
+ *   넣기     → 맨 끝 칸에 붙인 뒤, 부모보다 크면 자리를 바꾸며 위로 올라간다
+ *   꺼내기   → 루트(가장 큰 값)를 꺼내고, 맨 끝 값을 루트로 옮긴 뒤 더 큰 자식과 자리를 바꾸며 내려간다
+ *
+ * 자리를 한 번 바꿀 때마다 단계를 나누면 26단계가 되어, 넣기·꺼내기 한 번을 한 단계로 묶는다.
+ * 대신 그 단계에서 값이 지나온 길(노드와 간선)을 파랑으로 남겨 어디서 어디로 옮겼는지 보인다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import HeapDiagram from './HeapDiagram.astro';
+
+// LeetCode 1046 예제 1
+const stones = [2, 7, 4, 1, 8, 1];
+const SLOTS = stones.length;
+
+// 노드·칸: e 비어 있음 / n 보통 / s 지나온 길 / a 방금 옮긴 값 / w 답
+// 간선(자식 2..SLOTS): h 숨김 / n 보통 / s 지나온 길
+interface Step {
+  note: string;
+  vals: (number | null)[];
+  nodes: string;
+  edges: string;
+  popped: number | null;
+  y: number | null;
+  x: number | null;
+  size: number;
+  result: number | null;
+  changed: string[];
+}
+
+// 숫자 뒤 조사는 읽는 소리의 받침으로 고른다
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const particle = (v: number) => (noBatchim(v) ? '를' : '을');
+const and = (v: number) => (noBatchim(v) ? '와' : '과');
+const subject = (v: number) => (noBatchim(v) ? '가' : '이');
+const times = ['', '한 번', '두 번', '세 번'];
+const slotName = (k: number) => (k === 1 ? '루트' : `${k}번 칸`);
+
+// 본문 풀이와 같이 0번 칸은 비워 두고 1번 칸부터 쓴다. 부모는 Math.floor(k / 2), 자식은 2k, 2k + 1
+function trace(): Step[] {
+  const heap: (number | null)[] = [null];
+  const size = () => heap.length - 1;
+  const steps: Step[] = [];
+  let y: number | null = null;
+  let x: number | null = null;
+  let result: number | null = null;
+  let last = { y, x, size: 0, result };
+
+  const snap = (note: string, opt: { path?: number[]; popped?: number | null; end?: boolean } = {}) => {
+    const path = opt.path ?? [];
+    const final = path.at(-1);
+    // 도형의 자리 번호는 1..SLOTS, 상태 문자열은 0부터 담는다
+    const nodes = Array.from({ length: SLOTS }, (_, d) => {
+      const k = d + 1;
+      if (k > size()) return 'e';
+      if (opt.end) return 'w';
+      if (k === final) return 'a';
+      if (path.includes(k)) return 's';
+      return 'n';
+    }).join('');
+    // 간선은 자식 2..SLOTS 순서. 지나온 길의 이웃한 두 칸 사이면 칠한다
+    const edges = Array.from({ length: SLOTS - 1 }, (_, d) => {
+      const child = d + 2;
+      if (child > size()) return 'h';
+      const parent = Math.floor(child / 2);
+      const onPath = path.some((p, idx) => idx > 0 && ((p === child && path[idx - 1] === parent) || (p === parent && path[idx - 1] === child)));
+      return onPath ? 's' : 'n';
+    }).join('');
+    const now = { y, x, size: size(), result };
+    const changed = steps.length === 0 ? [] : (Object.keys(now) as (keyof typeof now)[]).filter((k) => now[k] !== last[k] && now[k] !== null);
+    steps.push({
+      note,
+      vals: Array.from({ length: SLOTS }, (_, d) => (d + 1 <= size() ? heap[d + 1] : null)),
+      nodes,
+      edges,
+      popped: opt.popped ?? null,
+      y,
+      x,
+      size: size(),
+      result,
+      changed,
+    });
+    last = now;
+  };
+
+  // 맨 끝에 붙이고 부모보다 크면 올라간다. 지나온 칸 번호와 비교한 부모 값을 돌려준다
+  const push = (v: number) => {
+    heap.push(v);
+    let i = heap.length - 1;
+    const path = [i];
+    const passed: number[] = [];
+    while (i > 1) {
+      const parent = Math.floor(i / 2);
+      if (heap[parent]! >= heap[i]!) break;
+      passed.push(heap[parent]!);
+      [heap[parent], heap[i]] = [heap[i], heap[parent]];
+      i = parent;
+      path.push(i);
+    }
+    return { path, passed, start: path[0] };
+  };
+
+  // 루트(1번 칸)를 꺼내고, 맨 끝 값을 루트로 옮겨 더 큰 자식과 바꾸며 내려간다
+  const pop = () => {
+    const top = heap[1]!;
+    const moved = heap.pop()!;
+    const path: number[] = [];
+    const passed: number[] = [];
+    if (heap.length > 1) {
+      heap[1] = moved;
+      let i = 1;
+      path.push(1);
+      while (i * 2 < heap.length) {
+        const left = i * 2;
+        const right = i * 2 + 1;
+        let bigger = left;
+        if (right < heap.length && heap[right]! > heap[left]!) bigger = right;
+        if (heap[i]! >= heap[bigger]!) break;
+        passed.push(heap[bigger]!);
+        [heap[i], heap[bigger]] = [heap[bigger], heap[i]];
+        i = bigger;
+        path.push(i);
+      }
+    }
+    return { top, moved, path, passed };
+  };
+
+  const describePush = (v: number, r: ReturnType<typeof push>) => {
+    const head = `${v}${particle(v)} 맨 끝 ${slotName(r.start)}에 넣습니다.`;
+    if (r.start === 1) return `빈 힙의 1번 칸에 ${v}${particle(v)} 넣어 루트가 됩니다`;
+    if (r.passed.length === 0) return `${head} 부모 ${heap[Math.floor(r.start / 2)]}보다 크지 않아 그 자리에 둡니다`;
+    const where = r.path.at(-1)! === 1 ? '루트까지' : `${r.path.at(-1)}번 칸까지`;
+    return `${head} 부모 ${r.passed.join(', ')}보다 커서 자리를 ${times[r.passed.length]} 바꾸며 ${where} 올라갑니다`;
+  };
+
+  const describeSink = (r: ReturnType<typeof pop>) => {
+    if (size() === 0) return '힙이 비었습니다';
+    if (size() === 1) return `맨 끝의 ${r.moved}${particle(r.moved)} 루트로 옮깁니다`;
+    if (r.passed.length === 0) return `맨 끝의 ${r.moved}${particle(r.moved)} 루트로 옮기면 자식보다 작지 않아 그대로 둡니다`;
+    const where = `${r.path.at(-1)}번 칸까지`;
+    return `맨 끝의 ${r.moved}${particle(r.moved)} 루트로 옮기고, 더 큰 자식 ${r.passed.join(', ')}${and(r.passed.at(-1)!)} 자리를 바꾸며 ${where} 내려갑니다`;
+  };
+
+  snap(`빈 힙에서 시작합니다. 배열의 0번 칸은 비워 두고 1번 칸부터 씁니다. "다음"을 눌러 보세요`);
+
+  // ① 모두 넣기
+  for (const v of stones) {
+    const r = push(v);
+    snap(describePush(v, r), { path: r.path });
+  }
+
+  // ② 가장 무거운 두 돌을 꺼내 부딪히고, ③ 차이가 있으면 다시 넣는다
+  while (size() > 1) {
+    x = null;
+    const a = pop();
+    y = a.top;
+    snap(`가장 무거운 ${y}${particle(y)} 루트에서 꺼내 y에 담습니다. ${describeSink(a)}`, { path: a.path, popped: y });
+
+    const b = pop();
+    x = b.top;
+    const tail = y === x ? `${describeSink(b)}. 두 돌의 무게가 같아 둘 다 없어집니다` : describeSink(b);
+    snap(`다음으로 무거운 ${x}${particle(x)} 꺼내 x에 담습니다. ${tail}`, { path: b.path, popped: x });
+
+    if (y !== x) {
+      const d = y - x;
+      const r = push(d);
+      snap(`${y}${and(y)} ${x}${subject(x)} 부딪혀 ${d}${subject(d)} 남습니다. ${describePush(d, r)}`, { path: r.path });
+    }
+  }
+
+  result = size() === 1 ? heap[1]! : 0;
+  y = null;
+  x = null;
+  snap(
+    size() === 1 ? `돌이 하나만 남아 반복이 끝났습니다. 남은 돌의 무게 ${result}${particle(result)} 반환합니다` : '돌이 하나도 남지 않아 0을 반환합니다',
+    { end: true },
+  );
+  return steps;
+}
+
+const steps = trace();
+
+// 검증: 예제 1 출력은 1이다. 모든 단계에서 부모가 자식보다 작지 않아야 한다(최대 힙).
+const final = steps.at(-1)!;
+// vals[d]는 k = d + 1번 칸이고, 그 부모는 Math.floor(k / 2)번 칸이다.
+const heapOk = steps.every((s) => s.vals.every((v, d) => d === 0 || v === null || v <= s.vals[Math.floor((d + 1) / 2) - 1]!));
+if (final.result !== 1 || !heapOk) {
+  throw new Error('HeapWalk: 결과가 LeetCode 1046 예제 1 출력(1)과 다르거나 힙 순서가 깨진 단계가 있습니다.');
+}
+
+const first = steps[0];
+const NODE: Record<string, string> = { e: 'empty', n: 'idle', s: 'trail', a: 'active', w: 'answer' };
+const EDGE: Record<string, string> = { h: 'hidden', n: 'idle', s: 'trail' };
+---
+
+<Visualizer
+  modes={[{ id: 'main', label: '기본' }]}
+  steps={{ main: steps }}
+  title={`최대 힙 · stones = [${stones.join(', ')}]`}
+  caption="LeetCode 1046 예제 1. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '방금 넣거나 옮긴 값이 멈춘 자리' },
+    { state: 'stack', label: '자리를 바꾸며 지나온 길' },
+    { state: 'done', label: '힙에 있는 값' },
+    { state: 'answer', label: '남은 돌' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="hw" data-heap-watch>
+      <div class="hw-row">
+        <dt>y</dt>
+        <dd><span class="hw-num" data-w="y">–</span><span class="hw-hint">가장 무거운 돌</span></dd>
+      </div>
+      <div class="hw-row">
+        <dt>x</dt>
+        <dd><span class="hw-num" data-w="x">–</span><span class="hw-hint">두 번째로 무거운 돌</span></dd>
+      </div>
+      <div class="hw-row">
+        <dt>heap.size</dt>
+        <dd><span class="hw-num" data-w="size">0</span></dd>
+      </div>
+      <div class="hw-row">
+        <dt>result</dt>
+        <dd><span class="hw-result" data-w="result">–</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <HeapDiagram
+      slots={SLOTS}
+      values={first.vals}
+      states={[...first.nodes].map((c) => NODE[c])}
+      edgeStates={[...first.edges].map((c) => EDGE[c])}
+      popped={first.popped}
+      reservePopped
+      label={`stones = [${stones.join(', ')}]을 최대 힙에 넣고, 가장 무거운 두 돌을 꺼내 부딪히는 과정`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .hw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .hw-row {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .hw-row dt {
+    min-width: 4.5rem;
+    color: var(--t-var);
+  }
+
+  .hw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .hw-row dd {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0;
+  }
+
+  .hw-num,
+  .hw-result {
+    color: var(--t-num);
+  }
+
+  .hw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  .hw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    vals: (number | null)[];
+    nodes: string;
+    edges: string;
+    popped: number | null;
+    y: number | null;
+    x: number | null;
+    size: number;
+    result: number | null;
+    changed: string[];
+  }
+
+  const NODE: Record<string, string> = { e: 'empty', n: 'idle', s: 'trail', a: 'active', w: 'answer' };
+  const EDGE: Record<string, string> = { h: 'hidden', n: 'idle', s: 'trail' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-heap-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const watch = root.querySelector<HTMLElement>('[data-heap-watch]')!;
+    const nodes = Array.from(figure.querySelectorAll<SVGGElement>('[data-node]'));
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const edges = Array.from(figure.querySelectorAll<SVGLineElement>('[data-edge]'));
+    const popped = figure.querySelector<SVGGElement>('[data-heap-popped]')!;
+
+    const render = (step: Step) => {
+      [nodes, cells].forEach((els) =>
+        els.forEach((el, i) => {
+          el.setAttribute('data-state', NODE[step.nodes[i]]);
+          el.querySelector('.hp-val')!.textContent = step.vals[i] === null ? '' : String(step.vals[i]);
+        }),
+      );
+      edges.forEach((el, k) => el.setAttribute('data-state', EDGE[step.edges[k]]));
+
+      if (step.popped === null) {
+        popped.setAttribute('hidden', '');
+      } else {
+        popped.removeAttribute('hidden');
+        popped.querySelector('[data-v]')!.textContent = String(step.popped);
+      }
+
+      for (const key of ['y', 'x', 'size', 'result'] as const) {
+        const el = watch.querySelector<HTMLElement>(`[data-w="${key}"]`)!;
+        el.textContent = step[key] === null ? '–' : String(step[key]);
+        el.toggleAttribute('data-changed', step.changed.includes(key));
+      }
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>
