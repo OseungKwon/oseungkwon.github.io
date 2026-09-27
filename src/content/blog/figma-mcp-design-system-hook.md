@@ -1,6 +1,6 @@
 ---
 title: 'Figma MCP가 준 코드, 정말 디자인 시스템을 쓰고 있나요?'
-description: 'Figma MCP가 공통 컴포넌트를 div로 떨어뜨려 토큰이 낭비되던 문제를, API로 속성을 되찾아 정리하는 훅으로 해결한 과정.'
+description: 'Figma MCP가 놓친 컴포넌트 이름과 속성을 API로 복원한 뒤, 디자인 시스템과 연결할 정보를 압축해 전달하는 훅을 만들었습니다.'
 pubDate: '2026.07.08'
 heroImage: '@assets/post/figma-mcp-design-system-hook.png'
 category: 'tech'

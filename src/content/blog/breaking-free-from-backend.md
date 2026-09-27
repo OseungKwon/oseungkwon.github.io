@@ -1,6 +1,6 @@
 ---
 title: '백엔드 의존성에서 탈출하기. with MSW & 어댑터 패턴'
-description: 'Domain Model 분리와 어댑터 패턴, MSW 도입으로 백엔드 의존성에서 벗어나 프론트엔드 주도 개발 환경을 구축하는 방법'
+description: 'API가 완성되기 전에도 화면을 개발할 수 있도록 도메인 모델과 어댑터를 만들고, MSW로 서버 응답을 재현한 과정을 담았습니다.'
 pubDate: '2026.01.15'
 heroImage: '@assets/post/breaking-free-from-backend/1.png'
 category: 'tech'

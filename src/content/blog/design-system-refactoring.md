@@ -1,6 +1,6 @@
 ---
 title: '유연하고 확장 가능하게 디자인 시스템 개선하기'
-description: 'props 지옥에서 벗어나기 위해, HTML 표준 속성 상속, 합성 컴포넌트 패턴, Co-location까지 적용해 디자인 시스템을 재설계한 기록'
+description: '요구사항마다 props가 늘어나던 공통 컴포넌트를 HTML 속성 상속과 합성 패턴으로 고치고, 폴더 구조와 Storybook까지 정리한 과정입니다.'
 pubDate: '2025.12.07'
 heroImage: '@assets/post/figma-and-storybook.png'
 category: 'tech'

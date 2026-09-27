@@ -1,6 +1,6 @@
 ---
 title: '웹뷰 브릿지 설계 및 개선기'
-description: 'iOS/Android WebView 브릿지 차이부터 이벤트 기반 통신, 실행 시점 문제까지. 네이티브–웹 브릿지를 견고하게 만드는 방법'
+description: 'iOS와 Android의 브릿지 호출 방식을 통합하고, 웹뷰가 준비되기 전에 도착한 이벤트를 놓치지 않도록 큐를 둔 과정을 다룹니다.'
 pubDate: '2025.12.06'
 heroImage: '@assets/post/bridge.png'
 category: 'tech'

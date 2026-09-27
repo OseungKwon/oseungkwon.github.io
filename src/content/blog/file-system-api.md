@@ -1,6 +1,6 @@
 ---
 title: 'FileSystemWritableFileStream: 파일 스트리밍 다운로드'
-description: 'File System API 소개 및 FileSystemWritableFileStream 자세히 알아보기'
+description: 'File System API의 파일·디렉터리 인터페이스를 살펴보고, FileSystemWritableFileStream으로 대용량 파일을 저장한 과정을 소개합니다.'
 pubDate: '2026.01.21'
 heroImage: '@assets/post/file-system-api/1.png'
 category: 'tech'

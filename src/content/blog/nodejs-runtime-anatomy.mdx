@@ -1,7 +1,7 @@
 ---
 title: 'Next.js 서버가 느려질 때 Node.js 안에서 일어나는 일'
 subtitle: '콜 스택, 이벤트 루프, 스레드풀, 메모리 한도까지'
-description: 'Next.js 서버에서 한 페이지의 계산이 다른 페이지를 느리게 만드는 이유를 Node.js 런타임에서 찾습니다. 콜 스택, 이벤트 루프, 스레드풀, 메모리 한도가 각각 무엇을 맡는지 실측값과 함께 살펴보고, 같은 구조를 Next.js 서버 렌더링에 겹쳐 봅니다.'
+description: 'Next.js의 무거운 페이지를 요청했을 때 가벼운 페이지까지 늦어진 실험에서 출발해, Node.js의 메인 스레드와 이벤트 루프가 요청을 처리하는 방식을 짚습니다.'
 pubDate: '2026-09-21'
 category: 'tech'
 tags: ['Node.js', 'Next.js', '이벤트 루프', 'libuv']

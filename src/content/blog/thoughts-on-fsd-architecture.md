@@ -1,6 +1,6 @@
 ---
 title: 'FSD를 고민 없이 도입하면 안 되는 이유'
-description: 'FSD를 적용한 뒤 Feature와 Entity의 경계, DTO와 모델, UI의 위치를 다시 고민하게 된 과정을 정리합니다.'
+description: '실제 프로젝트에 FSD를 적용하며 Feature가 페이지별로 늘어나고 모델·API의 위치도 애매해졌습니다. 주문 코드에서 경계를 다시 정한 과정을 담았습니다.'
 pubDate: '2026.09.03'
 category: 'tech'
 tags: ['FSD', 'Frontend Architecture', 'React', 'TypeScript', '도메인 모델링']

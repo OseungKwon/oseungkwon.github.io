@@ -1,6 +1,6 @@
 ---
 title: '확장성 있는 테이블 컴포넌트 구축하기'
-description: '컴파운드 컴포넌트 패턴과 가상화를 사용해 성능과 확장성을 모두 잡은 테이블 컴포넌트 구축'
+description: '기능이 뒤섞인 기존 테이블을 정리하고, 가상화로 DOM 노드를 줄인 뒤 컴파운드 컴포넌트로 사용 방식을 다시 설계했습니다.'
 pubDate: '2025.12.19'
 heroImage: '@assets/post/table-component.png'
 category: 'tech'
