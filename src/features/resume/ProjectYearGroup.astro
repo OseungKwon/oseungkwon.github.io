@@ -9,9 +9,9 @@ interface Props {
 const { group } = Astro.props;
 ---
 
-<section class="project-year-group" aria-labelledby={`project-year-${group.year}`}>
+<section class="project-year-group" aria-labelledby={`project-year-${group.id}`}>
   <header class="project-year-heading">
-    <h3 id={`project-year-${group.year}`}>{group.year}</h3>
+    <h3 id={`project-year-${group.id}`}>{group.heading}</h3>
     <span>{group.projects.length}개 프로젝트</span>
   </header>
 

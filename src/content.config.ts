@@ -88,4 +88,58 @@ const career = defineCollection({
   schema: careerSchema,
 });
 
-export const collections = { blog, algorithm, career };
+// 회사별 이력서. /resume/<회사>/로 배포하되 주소를 아는 사람만 열도록
+// 사이트 어디에도 링크하지 않고, robots.txt와 noindex로 검색 수집을 막는다.
+const RESUME_VARIANT_BASE = './src/content/resume-variants';
+
+/** 회사별 소개문·요약과 프로젝트 선택·순서. resume-variants/<회사>/index.mdx */
+const resumeVariant = defineCollection({
+  loader: glob({
+    base: RESUME_VARIANT_BASE,
+    pattern: '*/index.mdx',
+    generateId: ({ entry }) => entry.split('/')[0],
+  }),
+  schema: z.object({
+    company: z.string(),
+    position: z.string(),
+    posting: z.string().url().optional(),
+    /** 소개 제목 아래 한 줄 요약. 본문은 mdx 본문이 대신한다 */
+    lead: z.string(),
+    overview: z.object({
+      /** 비워 두면 경력 칸을 뺀다 */
+      career: z.string().optional(),
+      stack: z.string(),
+      focus: z.string(),
+    }),
+    /** 대표 프로젝트. 날짜와 무관하게 적은 순서대로 보여준다 */
+    featured: z.array(z.string()).min(1),
+    /** 그 외 프로젝트. featured·other 어디에도 없는 프로젝트는 이 버전에서 뺀다 */
+    other: z.array(z.string()).default([]),
+  }),
+});
+
+/**
+ * 회사별로 프로젝트 문구만 덮어쓴다. resume-variants/<회사>/projects/<career id>.mdx
+ * 적은 필드만 바뀌고, 본문을 쓰면 원본 본문을 대신한다. 사실은 career 원본에만 둔다.
+ */
+const resumeVariantProject = defineCollection({
+  loader: glob({
+    base: RESUME_VARIANT_BASE,
+    pattern: '*/projects/*.mdx',
+    generateId: ({ entry }) => entry.replace(/\.mdx$/, ''),
+  }),
+  schema: careerSchema
+    .pick({ title: true, summary: true, technologies: true })
+    .partial()
+    .extend({
+      change: careerSchema.shape.change.unwrap().partial().optional(),
+    }),
+});
+
+export const collections = {
+  blog,
+  algorithm,
+  career,
+  resumeVariant,
+  resumeVariantProject,
+};

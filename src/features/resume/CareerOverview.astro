@@ -1,19 +1,34 @@
-<dl class="career-overview" aria-label="경력 요약">
+---
+interface Props {
+  /** 없으면 경력 칸을 빼고 나머지 칸이 너비를 나눠 갖는다 */
+  career?: string;
+  stack: string;
+  focus: string;
+}
+
+const { career, stack, focus } = Astro.props;
+---
+
+<dl class:list={['career-overview', { 'no-career': !career }]} aria-label="경력 요약">
   <div>
     <dt>회사</dt>
     <dd>패스오더</dd>
   </div>
-  <div>
-    <dt>경력</dt>
-    <dd>Frontend Engineer · 4년</dd>
-  </div>
+  {
+    career && (
+      <div>
+        <dt>경력</dt>
+        <dd>{career}</dd>
+      </div>
+    )
+  }
   <div class="career-stack">
     <dt>주요 기술</dt>
-    <dd>React · Next.js · TypeScript</dd>
+    <dd>{stack}</dd>
   </div>
   <div class="career-focus">
     <dt>주요 영역</dt>
-    <dd>주문·결제 · 웹뷰·딥링크 · 디자인 시스템 · 공통 라이브러리 · AI 개발 환경</dd>
+    <dd>{focus}</dd>
   </div>
 </dl>
 
@@ -24,6 +39,10 @@
     margin: 1rem 0.5rem 0;
     padding: 1rem 0;
     border-bottom: 1px solid var(--resume-rule);
+  }
+
+  .career-overview.no-career {
+    grid-template-columns: 0.7fr 1.6fr 2fr;
   }
 
   .career-overview > div {
@@ -90,6 +109,10 @@
       grid-template-columns: 0.7fr 1.15fr 1.2fr 2fr;
       margin: 3mm 0 0;
       padding: 3.5mm 0;
+    }
+
+    .career-overview.no-career {
+      grid-template-columns: 0.7fr 1.6fr 2fr;
     }
 
     .career-overview > div {

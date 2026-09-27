@@ -4,19 +4,31 @@ import CareerOverview from './CareerOverview.astro';
 import ProjectTimeline from './ProjectTimeline.astro';
 import ResumeFooter from './ResumeFooter.astro';
 import ResumeHeader from './ResumeHeader.astro';
-import type { ResumeViewModel } from './resume';
+import type { ProjectContent, ResumeViewModel } from './resume';
 
 interface Props {
   resume: ResumeViewModel;
+  /** 회사별 버전의 소개 문구. 없으면 /about의 기본 문구를 쓴다 */
+  intro?: {
+    lead: string;
+    overview: { career?: string; stack: string; focus: string };
+    Intro: ProjectContent;
+  };
 }
 
-const { resume } = Astro.props;
+const { resume, intro } = Astro.props;
+
+const overview = intro?.overview ?? {
+  career: 'Frontend Engineer · 4년',
+  stack: 'React · Next.js · TypeScript',
+  focus: '주문·결제 · 웹뷰·딥링크 · 디자인 시스템 · 공통 라이브러리 · AI 개발 환경',
+};
 ---
 
 <article class="resume-page">
   <ResumeHeader />
-  <CareerIntroduction />
-  <CareerOverview />
+  <CareerIntroduction lead={intro?.lead} Intro={intro?.Intro} />
+  <CareerOverview {...overview} />
   <ProjectTimeline
     groups={resume.featuredGroups}
     otherProjects={resume.otherProjects}

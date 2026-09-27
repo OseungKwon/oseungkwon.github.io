@@ -1,11 +1,29 @@
+---
+import type { ProjectContent } from './resume';
+
+interface Props {
+  /** 회사별 버전의 한 줄 요약. 없으면 기본 문구를 쓴다 */
+  lead?: string;
+  /** 회사별 버전의 소개 본문. 없으면 기본 본문을 쓴다 */
+  Intro?: ProjectContent;
+}
+
+const {
+  lead = '주문·결제와 웹뷰 등 핵심 비즈니스 제품 개발부터 공통 라이브러리, 디자인 시스템, AI 개발 환경 구축까지 제품과 개발 기반을 함께 다져왔습니다.',
+  Intro,
+} = Astro.props;
+---
+
 <section class="career-introduction" aria-labelledby="career-introduction-title">
   <h2 id="career-introduction-title">
     PM처럼 제품의 목적을 끝까지 파고들고,<br />
     디자이너처럼 작은 차이를 놓치지 않는 프론트엔드 개발자 권오승입니다.
   </h2>
 
-  <p class="career-introduction-lead">주문·결제와 웹뷰 등 핵심 비즈니스 제품 개발부터 공통 라이브러리, 디자인 시스템, AI 개발 환경 구축까지 제품과 개발 기반을 함께 다져왔습니다.</p>
+  <p class="career-introduction-lead">{lead}</p>
   <div class="career-introduction-copy">
+    {Intro ? <Intro /> : (
+      <Fragment>
     <p>
       기획서를 받으면 구현할 기능부터 확인하기보다,
       <strong>사용자가 어떤 흐름을 거쳐 이 기능을 이용하게 될지</strong>
@@ -27,6 +45,8 @@
       현재는 Next.js 기반 서비스 개발을 중심으로,
       <strong>모니터링 시스템 구축부터 CI/CD 최적화, 웹 서버 운영</strong>에 이르는 서비스 전체 라이프사이클을 담당하고 있습니다.
     </p>
+      </Fragment>
+    )}
   </div>
 </section>
 
@@ -56,6 +76,7 @@
     word-break: keep-all;
   }
 
+  /* 회사별 소개 본문은 mdx에서 렌더돼 scoped 클래스가 붙지 않으므로 :global로 잡는다. */
   .career-introduction-copy {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -64,7 +85,7 @@
     margin-top: 1rem;
   }
 
-  .career-introduction-copy p {
+  .career-introduction-copy :global(p) {
     font-size: 1.0625rem;
     font-weight: 450;
     line-height: 1.8;
@@ -72,7 +93,7 @@
     word-break: keep-all;
   }
 
-  .career-introduction-copy strong {
+  .career-introduction-copy :global(strong) {
     font-weight: 650;
   }
 
@@ -122,7 +143,7 @@
       margin-top: 3mm;
     }
 
-    .career-introduction-copy p {
+    .career-introduction-copy :global(p) {
       font-size: 10pt;
       line-height: 1.6;
     }

@@ -1,0 +1,22 @@
+---
+import ResumePage from '../../features/resume/ResumePage.astro';
+import { getResume } from '../../features/resume/resume';
+import { getResumeVariant, getResumeVariantIds } from '../../features/resume/resume-variant';
+import ResumeLayout from '../../layouts/ResumeLayout.astro';
+
+// 회사별 이력서는 주소를 아는 사람만 연다. 사이트 어디에도 링크하지 않고,
+// robots.txt의 Disallow와 페이지의 noindex로 검색 수집을 막는다.
+export async function getStaticPaths() {
+  return (await getResumeVariantIds()).map((variant) => ({
+    params: { variant },
+  }));
+}
+
+const { variant } = Astro.params;
+const { selection, intro } = await getResumeVariant(variant);
+const resume = await getResume(selection);
+---
+
+<ResumeLayout noindex>
+  <ResumePage resume={resume} intro={intro} />
+</ResumeLayout>

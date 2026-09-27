@@ -2,6 +2,12 @@
 import CompactHeader from '../components/site/CompactHeader.astro';
 import SiteFooter from '../components/site/SiteFooter.astro';
 import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  noindex?: boolean;
+}
+
+const { noindex = false } = Astro.props;
 ---
 
 <BaseLayout
@@ -11,6 +17,7 @@ import BaseLayout from './BaseLayout.astro';
   imageWidth={1200}
   imageHeight={630}
   profile
+  noindex={noindex}
   bodyClass="no-backdrop"
 >
   <CompactHeader />
