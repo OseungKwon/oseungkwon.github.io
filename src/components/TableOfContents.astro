@@ -4,11 +4,20 @@
 
 <aside
   id="table-of-contents"
-  class="sticky top-24 hidden max-h-[calc(100vh-8rem)] w-52 shrink-0 self-start overflow-y-auto toc-scrollbar xl:block"
+  class="sticky top-24 hidden w-52 shrink-0 self-start xl:block"
 >
   <nav>
     <p class="toc-label">목차</p>
-    <ul id="toc-list" class="toc-rail"></ul>
+    <!-- 레일과 스크롤 막대는 스크롤 영역 밖에 두어 목차가 굴러가도 제자리에 있게 한다 -->
+    <div class="toc-rail">
+      <div id="toc-thumb" class="toc-thumb" aria-hidden="true"></div>
+      <div
+        id="toc-scroll"
+        class="toc-scroll max-h-[calc(100vh-10rem)] overflow-x-hidden overflow-y-auto overscroll-contain"
+      >
+        <ul id="toc-list"></ul>
+      </div>
+    </div>
   </nav>
 </aside>
 
@@ -16,10 +25,12 @@
   function initTableOfContents() {
     const toc = document.getElementById('table-of-contents');
     const tocList = document.getElementById('toc-list');
+    const scroller = document.getElementById('toc-scroll');
+    const thumb = document.getElementById('toc-thumb');
     // 페이지 제목(article 직속 h1)은 제외하고 본문(.prose) 헤딩만 대상으로 한다.
     const content = document.querySelector('article .prose');
 
-    if (!toc || !tocList || !content) return;
+    if (!toc || !tocList || !scroller || !thumb || !content) return;
 
     // not-prose 영역(인터랙티브 데모 등)의 헤딩은 본문 목차가 아니다.
     // 데모 안에서 상태 제목을 h3로 쓰면 목차에 '버튼에서 탐색을 시작합니다.'
@@ -62,6 +73,41 @@
       links.push(a);
     });
 
+    // 목차가 길어 세로 스크롤이 생기면, 본문을 읽어 내려가는 동안 활성 항목이
+    // 목차 밖으로 밀려나지 않도록 목차 자체를 따라 굴린다. 페이지 스크롤과
+    // 겹치지 않게 scrollIntoView 대신 목차 컨테이너의 scrollTop만 조정한다.
+    function keepActiveVisible(link: HTMLAnchorElement | undefined) {
+      if (!link || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+      const margin = 48;
+      const top = link.offsetTop;
+      const bottom = top + link.offsetHeight;
+      if (top - margin < scroller.scrollTop) {
+        scroller.scrollTop = top - margin;
+      } else if (bottom + margin > scroller.scrollTop + scroller.clientHeight) {
+        scroller.scrollTop = bottom + margin - scroller.clientHeight;
+      }
+    }
+
+    // 스크롤 상태를 화면에 반영한다. 기본 스크롤바 대신 왼쪽 레일 위에 막대를 그리고,
+    // 위·아래로 더 읽을 항목이 있을 때만 그쪽 가장자리를 흐리게 한다.
+    function updateScrollIndicator() {
+      if (!scroller || !thumb) return;
+      const { scrollTop, scrollHeight, clientHeight } = scroller;
+      const max = scrollHeight - clientHeight;
+      const scrollable = max > 0;
+
+      scroller.classList.toggle('fade-top', scrollable && scrollTop > 1);
+      scroller.classList.toggle('fade-bottom', scrollable && scrollTop < max - 1);
+
+      thumb.hidden = !scrollable;
+      if (!scrollable) return;
+      // 막대 길이는 보이는 비율만큼, 위치는 스크롤 진행률만큼 레일 위를 움직인다.
+      const height = Math.max((clientHeight / scrollHeight) * clientHeight, 24);
+      const offset = (scrollTop / max) * (clientHeight - height);
+      thumb.style.height = `${height}px`;
+      thumb.style.transform = `translateY(${offset}px)`;
+    }
+
     // 스크롤 시 활성 섹션 하이라이트
     let ticking = false;
 
@@ -76,6 +122,8 @@
         link.classList.toggle('active', i === activeIndex);
       });
 
+      keepActiveVisible(links[activeIndex]);
+      updateScrollIndicator();
       ticking = false;
     }
 
@@ -85,6 +133,9 @@
         ticking = true;
       }
     });
+
+    scroller.addEventListener('scroll', updateScrollIndicator, { passive: true });
+    window.addEventListener('resize', updateScrollIndicator);
 
     updateActiveSection();
   }
@@ -97,6 +148,34 @@
 </script>
 
 <style is:global>
+  /* 스크롤 영역 — 기본 스크롤바는 숨기고 왼쪽 레일 위의 막대로 대신한다.
+     keepActiveVisible의 offsetTop 기준이 되도록 position을 준다. */
+  #table-of-contents .toc-scroll {
+    position: relative;
+    z-index: 1; /* 활성 항목의 액센트 마커가 스크롤 막대 위에 오도록 */
+    scrollbar-width: none;
+  }
+  #table-of-contents .toc-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 잘린 방향 가장자리만 흐리게 — 레일은 스크롤 영역 밖이라 흐려지지 않는다 */
+  #table-of-contents .toc-scroll.fade-top {
+    mask-image: linear-gradient(to bottom, transparent, #000 2.5rem);
+  }
+  #table-of-contents .toc-scroll.fade-bottom {
+    mask-image: linear-gradient(to top, transparent, #000 2.5rem);
+  }
+  #table-of-contents .toc-scroll.fade-top.fade-bottom {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 2.5rem,
+      #000 calc(100% - 2.5rem),
+      transparent
+    );
+  }
+
   /* 목차 레이블 — 홈의 "최근 글" 라벨과 동일한 트래킹 스타일로 통일 */
   #table-of-contents .toc-label {
     margin: 0 0 0.875rem;
@@ -107,23 +186,52 @@
     color: var(--color-text-tertiary);
   }
 
-  /* 왼쪽 헤어라인 레일 */
+  /* 왼쪽 헤어라인 레일 — 스크롤 막대가 이 선을 트랙으로 삼는다 */
   #table-of-contents .toc-rail {
+    position: relative;
+  }
+  #table-of-contents .toc-rail::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: var(--color-border-primary);
+  }
+
+  /* 스크롤 막대 — 레일과 같은 자리에서 조금 더 굵고 진하게 겹친다 */
+  #table-of-contents .toc-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--color-text-tertiary);
+    opacity: 0.6;
+    transition: opacity 150ms ease;
+  }
+  #table-of-contents .toc-rail:hover .toc-thumb {
+    opacity: 1;
+  }
+
+  #toc-list {
     list-style: none;
     margin: 0;
     padding: 0;
-    border-left: 1px solid var(--color-border-primary);
   }
 
   #table-of-contents .toc-link {
     display: block;
-    margin-left: -1px; /* active 보더가 레일 위에 겹치도록 */
     border-left: 2px solid transparent;
     padding: 0.375rem 0.5rem 0.375rem 1rem;
     font-size: 0.8125rem;
     line-height: 1.45;
     color: var(--color-text-secondary);
     text-decoration: none;
+    /* 띄어쓰기 없는 긴 영문·식별자도 폭 안에서 줄바꿈해 가로 스크롤을 만들지 않는다 */
+    overflow-wrap: anywhere;
+    word-break: keep-all;
   }
 
   /* 깊이별 들여쓰기 (레일 기준 상대 정규화) */
@@ -149,20 +257,5 @@
     color: var(--color-accent);
     border-left-color: var(--color-accent);
     font-weight: 600;
-  }
-
-  /* 스크롤바 (디자인 토큰) */
-  .toc-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-  .toc-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .toc-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--color-border-primary);
-    border-radius: 2px;
-  }
-  .toc-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-tertiary);
   }
 </style>
