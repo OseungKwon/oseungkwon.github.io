@@ -46,27 +46,28 @@ function adjacency() {
 }
 
 /** 본문에 싣는 참고 풀이와 같은 계산(우선순위 큐는 정렬 배열로 흉내 낸다). 빌드 시점에 예제 출력을 확인하는 데 쓴다. */
-export function solution(n: number, road: [number, number, number][], k: number): number {
-  const graph: [number, number][][] = Array.from({ length: n + 1 }, () => []);
-  for (const [a, b, c] of road) {
-    graph[a].push([b, c]);
-    graph[b].push([a, c]);
+export function solution(N: number, road: [number, number, number][], K: number): number {
+  const graph: [number, number][][] = Array.from({ length: N + 1 }, () => []);
+  for (const [villageA, villageB, roadTime] of road) {
+    graph[villageA].push([villageB, roadTime]);
+    graph[villageB].push([villageA, roadTime]);
   }
-  const dist = Array(n + 1).fill(Infinity);
+  const dist = Array(N + 1).fill(Infinity);
   dist[1] = 0;
   const pq: [number, number][] = [[0, 1]];
   while (pq.length > 0) {
     pq.sort((p, q) => p[0] - q[0]);
-    const [d, u] = pq.shift()!;
-    if (d > dist[u]) continue;
-    for (const [v, w] of graph[u]) {
-      if (d + w < dist[v]) {
-        dist[v] = d + w;
-        pq.push([dist[v], v]);
+    const [time, village] = pq.shift()!;
+    if (time > dist[village]) continue;
+    for (const [neighbor, roadTime] of graph[village]) {
+      const arrival = time + roadTime;
+      if (arrival < dist[neighbor]) {
+        dist[neighbor] = arrival;
+        pq.push([arrival, neighbor]);
       }
     }
   }
-  return dist.filter((d) => d <= k).length;
+  return dist.filter((shortest) => shortest <= K).length;
 }
 
 // 마을: i 아직 모름(∞) / q 거리 후보가 있음(pq에 있음) / a 지금 확정해 이웃을 보는 마을 / d 확정 / w 답(K 이하) / o K 초과

@@ -60,8 +60,8 @@ import DijkstraWalk from '@components/algorithm/DijkstraWalk.astro';
 
 한 번 반복할 때 하는 일은 두 가지입니다.
 
-1. **확정**: `pq`에서 거리가 가장 작은 `[d, u]`를 꺼냅니다. `d`가 `dist[u]`보다 크면 `u`가 이미 더 짧은 거리로 확정된 뒤 남아 있던 옛 후보라서 버리고, 아니면 `u`까지의 거리를 `d`로 확정합니다.
-2. **완화**: `u`에서 이어지는 도로 `[v, w]`마다 `d + w`가 `dist[v]`보다 작으면 `dist[v]`를 `d + w`로 줄이고 `pq`에 `[d + w, v]`를 넣습니다.
+1. **확정**: `pq`에서 거리가 가장 작은 `[time, village]`를 꺼냅니다. `time`이 `dist[village]`보다 크면 `village`가 이미 더 짧은 거리로 확정된 뒤 남아 있던 옛 후보라서 버리고, 아니면 `village`까지의 거리를 `time`으로 확정합니다.
+2. **완화**: `village`에서 이어지는 도로 `[neighbor, roadTime]`마다, `village`를 거쳐 `neighbor`에 닿는 시간 `arrival = time + roadTime`을 계산합니다. `arrival`이 `dist[neighbor]`보다 작으면 `dist[neighbor]`를 `arrival`로 줄이고 `pq`에 `[arrival, neighbor]`를 넣습니다.
 
 `pq`가 빌 때까지 반복하면 `dist`의 모든 값이 확정됩니다. 이 예제에서는 옛 후보를 버리는 경우가 생기지 않지만, 같은 마을의 라벨이 두 번 줄어드는 그래프에서는 먼저 넣은 큰 후보가 `pq`에 남아 있다가 나중에 꺼내집니다.
 
@@ -86,6 +86,9 @@ class MinHeap {
     return this.heap.length - 1;
   }
 
+  /**
+   * @param {[number, number]} item [거리 후보, 마을 번호]. 거리(item[0])가 작을수록 먼저 나온다
+   */
   push(item) {
     const heap = this.heap;
     heap.push(item);
@@ -98,6 +101,9 @@ class MinHeap {
     }
   }
 
+  /**
+   * @returns {[number, number]} 거리가 가장 작은 [거리 후보, 마을 번호]
+   */
   pop() {
     const heap = this.heap;
     const top = heap[1];
@@ -120,33 +126,38 @@ class MinHeap {
 }
 
 function solution(N, road, K) {
-  // 마을마다 이어진 [이웃, 걸리는 시간] 목록. 도로는 양방향이라 양쪽에 넣는다
+  // graph[마을]: 그 마을에서 바로 갈 수 있는 [이웃 마을, 도로를 지나는 시간] 목록.
+  // 도로는 양방향이라 양쪽 마을에 모두 넣는다
   const graph = Array.from({ length: N + 1 }, () => []);
-  for (const [a, b, c] of road) {
-    graph[a].push([b, c]);
-    graph[b].push([a, c]);
+  for (const [villageA, villageB, roadTime] of road) {
+    graph[villageA].push([villageB, roadTime]);
+    graph[villageB].push([villageA, roadTime]);
   }
 
+  // dist[마을]: 1번 마을에서 그 마을까지 지금 알고 있는 가장 짧은 시간
   const dist = Array(N + 1).fill(Infinity);
   dist[1] = 0;
+  // pq에는 [1번 마을에서 그 마을까지의 거리 후보, 마을 번호] 쌍이 들어간다.
+  // 거리([0])가 가장 작은 쌍이 먼저 나오고, 같은 마을이 더 큰 거리로 한 번 더 들어 있을 수 있다
   const pq = new MinHeap();
-  pq.push([0, 1]);
+  pq.push([0, 1]); // 출발지 1번 마을, 거리 0
 
   while (pq.size > 0) {
     // ① 거리가 가장 작은 마을을 꺼내 확정한다. 이미 더 짧게 확정된 옛 후보면 버린다
-    const [d, u] = pq.pop();
-    if (d > dist[u]) continue;
+    const [time, village] = pq.pop();
+    if (time > dist[village]) continue;
 
     // ② 이어진 마을로 가 보고, 더 짧으면 거리를 줄이고 pq에 넣는다
-    for (const [v, w] of graph[u]) {
-      if (d + w < dist[v]) {
-        dist[v] = d + w;
-        pq.push([dist[v], v]);
+    for (const [neighbor, roadTime] of graph[village]) {
+      const arrival = time + roadTime; // village를 거쳐 neighbor에 닿는 시간
+      if (arrival < dist[neighbor]) {
+        dist[neighbor] = arrival;
+        pq.push([arrival, neighbor]);
       }
     }
   }
 
-  return dist.filter((time) => time <= K).length;
+  return dist.filter((shortest) => shortest <= K).length;
 }
 ```
 
