@@ -29,11 +29,11 @@ const BASE = import.meta.env.BASE_URL;
   {
     groups.length > 1 && (
       <div class="mt-7 flex flex-wrap gap-2 sm:mt-9" role="group" aria-label="분류로 걸러 보기" data-family-filter>
-        <button type="button" class="filter-chip press" aria-pressed="true" data-family="">
+        <button type="button" class="filter-chip" aria-pressed="true" data-family="">
           전체 <span class="filter-count">{entries.length}</span>
         </button>
         {groups.map((group) => (
-          <button type="button" class="filter-chip press" aria-pressed="false" data-family={group.family}>
+          <button type="button" class="filter-chip" aria-pressed="false" data-family={group.family}>
             {group.family} <span class="filter-count">{group.entries.length}</span>
           </button>
         ))}
@@ -87,6 +87,8 @@ const BASE = import.meta.env.BASE_URL;
     font-weight: 600;
     color: var(--color-text-secondary);
     background: var(--surface-bg);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
     transition:
       color 0.15s ease,
       background 0.15s ease,
@@ -95,10 +97,21 @@ const BASE = import.meta.env.BASE_URL;
   .filter-chip:hover {
     color: var(--color-text-primary);
   }
+  /* 칩은 눌러도 크기를 바꾸지 않는다. 작은 알약이 줄었다 튀어 오르면 글자가 흔들려 보여,
+     누르는 동안에는 바탕색만 옅게 바꿔 눌림을 알린다. */
+  .filter-chip:active {
+    background: var(--color-accent-soft);
+  }
   .filter-chip[aria-pressed='true'] {
     color: var(--color-link);
     background: var(--color-accent-soft);
     border-color: transparent;
+  }
+  /* 눌림과 선택은 손가락이 닿는 즉시 보여야 한다. 들어갈 때만 전환을 끄고,
+     선택이 풀리는 칩은 기본 전환으로 옅게 빠진다. */
+  .filter-chip:active,
+  .filter-chip[aria-pressed='true'] {
+    transition: none;
   }
   .filter-count {
     font-family: var(--font-mono);
