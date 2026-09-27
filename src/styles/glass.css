@@ -2,32 +2,18 @@
  * Liquid Glass 프리미티브
  * - .glass  : 유리 질감. 시그니처인 featured 카드 등 '한 곳'에만 사용한다.
  * - .surface: 유리 아닌 차분한 플랫 카드(헤더·리스트·본문·Contact).
- * 뒤 콘텐츠가 거의 단색이라 유리는 강한 프로스트 + 스펙큘러로만 읽힌다.
+ * 유리 카드는 뒤에 깐 halo 빛과 윗면 하이라이트로 떠 보이게 하고, 안쪽은 단색으로 둔다.
  */
 
 .glass {
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  /* 배경은 불투명하다(--glass-bg). 반투명이면 뒤에 깐 .featured-halo 빛이 카드 안까지
+     비쳐 안쪽에도 그라데이션이 생긴다. 빛은 카드 바깥에서만 보이게 한다. */
   background: var(--glass-bg);
-  backdrop-filter: blur(26px) saturate(190%);
-  -webkit-backdrop-filter: blur(26px) saturate(190%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
-}
-.glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(150deg, var(--glass-sheen), transparent 44%);
-  opacity: 0.7;
-}
-.glass > * {
-  position: relative;
-  z-index: 1;
 }
 
 .surface {
