@@ -83,7 +83,6 @@ const POP_X = nodeX(0) + 58;
     ))
   }
 
-  {/* 트리 노드 */}
   {
     indices.map((i) => (
       <g class="hp-node" data-node={i} data-state={stateOf(i)}>
@@ -94,7 +93,6 @@ const POP_X = nodeX(0) + 58;
     ))
   }
 
-  {/* 방금 꺼낸 값 */}
   {
     (reservePopped || popped !== null) && (
       <g class="hp-popped" data-heap-popped hidden={popped === null ? true : undefined}>
@@ -106,7 +104,6 @@ const POP_X = nodeX(0) + 58;
     )
   }
 
-  {/* 같은 내용의 배열 */}
   <text class="hp-array-label" x={ARRAY_X} y={ARRAY_Y - 8}>heap 배열</text>
   <g class="hp-cell hp-cell--unused">
     <rect x={ARRAY_X} y={ARRAY_Y} width={CELL} height={CELL} rx="6" />
@@ -138,7 +135,6 @@ const POP_X = nodeX(0) + 58;
     display: none;
   }
 
-  /* ── 간선 ─────────────────────────────── */
   .hp-edge {
     stroke: var(--node-line);
     stroke-width: 1.5;
@@ -155,7 +151,6 @@ const POP_X = nodeX(0) + 58;
     stroke-width: 2.5;
   }
 
-  /* ── 노드와 칸 ─────────────────────────── */
   .hp-node circle,
   .hp-cell rect {
     fill: var(--done-fill);
@@ -242,7 +237,6 @@ const POP_X = nodeX(0) + 58;
     font-weight: 700;
   }
 
-  /* ── 방금 꺼낸 값 ─────────────────────── */
   .hp-popped path {
     stroke: var(--removed);
     stroke-width: 1.5;

@@ -1,10 +1,4 @@
-/**
- * Prose 스타일
- * 블로그 포스트 콘텐츠의 타이포그래피 스타일
- */
-
 @layer components {
-  /* 기본 prose 스타일 */
   .prose {
     @apply max-w-none;
     color: var(--color-text-primary) !important;
@@ -56,7 +50,6 @@
     color: var(--color-text-primary) !important;
   }
 
-  /* 본문 스타일 */
   .prose p:not(:where(.not-prose, .not-prose *)) {
     @apply leading-relaxed mb-6 text-[17px];
     white-space: pre-line;
@@ -143,12 +136,10 @@
     color: var(--color-text-primary) !important;
   }
 
-  /* 마지막 행의 아래 구분선 제거 */
   .prose .table-wrapper tr:last-child td {
     border-bottom: 0 !important;
   }
 
-  /* 이미지 스타일 */
   .prose img:not(:where(.not-prose, .not-prose *)) {
     @apply my-12 rounded-3xl shadow-sm;
   }
@@ -259,7 +250,6 @@
     color: var(--color-text-primary) !important;
   }
 
-  /* 구분선 스타일 */
   .prose hr:not(:where(.not-prose, .not-prose *)) {
     border-color: var(--color-border-primary) !important;
   }

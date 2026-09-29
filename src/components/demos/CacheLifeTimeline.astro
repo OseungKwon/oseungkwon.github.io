@@ -163,7 +163,6 @@ const NODES = [
 </Demo>
 
 <style>
-  /* ── 경우 목록 ── */
   .cl-cases {
     display: flex;
     flex-wrap: wrap;
@@ -217,7 +216,6 @@ const NODES = [
     background-color: var(--demo-a-soft);
   }
 
-  /* ── 요청 경로 ── */
   .cl-path {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 1.25rem minmax(0, 1fr) 1.25rem minmax(0, 1fr);
@@ -266,7 +264,6 @@ const NODES = [
     visibility: visible;
   }
 
-  /* 캐시로 응답한 칸 */
   .cl-node[data-state='hit'] {
     border-color: var(--demo-a);
     background-color: var(--demo-a-soft);
@@ -320,7 +317,6 @@ const NODES = [
     color: var(--color-text-primary);
   }
 
-  /* ── 시간 띠 ── */
   .cl-band {
     margin: 1.25rem 0 0;
   }
@@ -354,7 +350,6 @@ const NODES = [
       box-shadow 0.16s ease;
   }
 
-  /* 현재 구간만 색을 칠한다. */
   .cl-band__zones span[data-active][data-zone='fresh'],
   .cl-band__zones span[data-active][data-zone='served'] {
     background-color: var(--demo-b-soft);

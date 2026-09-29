@@ -31,7 +31,6 @@ const { stage } = Astro.props;
 
 const ORDER: Stage[] = ['legacy', 'wallet', 'apply', 'product'];
 const at = ORDER.indexOf(stage);
-/** 이 단계에서 보이는가 */
 const shown = (since: Stage) => at >= ORDER.indexOf(since);
 /** 이 단계에서 새로 생겼는가. 첫 구조도(wallet)는 전부 새것이라 배지를 달지 않는다 */
 const added = (since: Stage) => since === stage && stage !== 'wallet';
@@ -317,7 +316,6 @@ const LEGACY = [
     column-gap: 0.75rem;
   }
 
-  /* ── 층 ── */
   .cd-band {
     display: flex;
     flex-direction: column;

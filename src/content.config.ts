@@ -88,8 +88,6 @@ const career = defineCollection({
   schema: careerSchema,
 });
 
-// 회사별 이력서. /resume/<회사>/로 배포하되 주소를 아는 사람만 열도록
-// 사이트 어디에도 링크하지 않고, robots.txt와 noindex로 검색 수집을 막는다.
 const RESUME_VARIANT_BASE = './src/content/resume-variants';
 
 /** 회사별 소개문·요약과 프로젝트 선택·순서. resume-variants/<회사>/index.mdx */

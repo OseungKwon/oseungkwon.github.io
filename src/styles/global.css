@@ -1,8 +1,3 @@
-/**
- * 메인 스타일 파일
- * 모든 스타일 모듈을 import하여 통합 관리
- */
-
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
@@ -11,20 +6,16 @@
    기준으로 바꿔, 토글 시 dark: 유틸리티(예: 헤더 해/달 아이콘)도 함께 전환된다. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* 디자인 토큰 정의 */
 @import './tokens.css';
 
-/* 기본 스타일 */
 @import './base.css';
 
 /* Liquid Glass 프리미티브 (glass / surface) */
 @import './glass.css';
 
-/* Prose 스타일 */
 @import './prose.css';
 
 /* 본문 인터랙티브 데모 공용 어휘 */
 @import './demo.css';
 
-/* 유틸리티 클래스 */
 @import './utilities.css';

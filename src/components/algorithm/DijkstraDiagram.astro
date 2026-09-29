@@ -70,7 +70,6 @@ const show = (d: number | null | undefined) => (d === null || d === undefined ? 
     })
   }
 
-  {/* 마을과 거리 라벨 */}
   {
     villages.map((v) => (
       <g class="dj-node" data-node={v} data-state={nodeStates[v - 1] ?? 'idle'}>
@@ -101,7 +100,6 @@ const show = (d: number | null | undefined) => (d === null || d === undefined ? 
     display: none;
   }
 
-  /* ── 도로 ─────────────────────────────── */
   .dj-edge {
     stroke: var(--node-line);
     stroke-width: 1.75;
@@ -145,7 +143,6 @@ const show = (d: number | null | undefined) => (d === null || d === undefined ? 
     font-weight: 700;
   }
 
-  /* ── 마을 ─────────────────────────────── */
   .dj-node circle {
     fill: var(--node-bg);
     stroke: var(--node-line);

@@ -60,7 +60,6 @@ const edgeIndex = (a: number, b: number) => {
   return i;
 };
 
-// 한 번 두 모드를 모두 돌려 화살표 목록을 만든 뒤, 같은 목록으로 다시 상태를 기록한다.
 function trace(markOnEnter: boolean): Step[] {
   const land = grid.map((row) => row.map((v) => v === '1'));
   const island: (number | null)[] = Array(rows * cols).fill(null);

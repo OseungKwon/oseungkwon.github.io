@@ -71,7 +71,6 @@ const rows = [
 
 {/* 카드 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
 <svg class="ln" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-ln-figure data-row-left={rowLeft} data-pitch={CARD_W + GAP} data-lift-y={LIFT_Y} data-row-y={ROW_Y}>
-  {/* 수 카드 */}
   {
     strs.map((value, i) => (
       <g class="ln-card" data-card={i} data-state={cardStates[i] ?? 'idle'} style={place(slots[i], i === lift)}>
@@ -86,7 +85,7 @@ const rows = [
     ))
   }
 
-  {/* 저울: 두 가지 이어 붙이기. 더 큰 쪽의 앞 조각이 앞에 선다 */}
+  {/* 저울: 두 가지 이어 붙이기 */}
   <g class="ln-panel" data-panel hidden={!compare}>
     {
       rows.map((row, r) => (
@@ -120,7 +119,6 @@ const rows = [
     display: none;
   }
 
-  /* ── 카드 ─────────────────────────────── */
   .ln-card {
     transition: transform 0.35s ease;
   }

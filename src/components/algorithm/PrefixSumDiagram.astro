@@ -61,7 +61,6 @@ const arcPath = ([i, j]: [number, number]) => {
   }
   {/* 칸 사이 울타리 → 기둥 */}
   {prefix.map((_, i) => <line class="ps-fence" x1={postX(i)} y1={CELL_TOP - 2} x2={postX(i)} y2={POST_Y - R} />)}
-  {/* 호: 두 기둥을 잇는다 */}
   {pairs.map((pair, idx) => <path class="ps-arc" data-arc={idx} data-state={arcStates[idx] ?? 'hidden'} d={arcPath(pair)} />)}
   {
     pairs.map(([i, j], idx) =>
@@ -95,7 +94,6 @@ const arcPath = ([i, j]: [number, number]) => {
     font-family: var(--font-mono);
   }
 
-  /* ── nums 칸 ─────────────────────────── */
   .ps-cell rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -135,7 +133,6 @@ const arcPath = ([i, j]: [number, number]) => {
     stroke-dasharray: 4 3;
   }
 
-  /* ── 울타리와 기둥 ──────────────────── */
   .ps-fence {
     stroke: var(--node-line);
     stroke-width: 1;
@@ -205,7 +202,6 @@ const arcPath = ([i, j]: [number, number]) => {
     fill: var(--removed);
   }
 
-  /* ── 호 ──────────────────────────────── */
   .ps-arc {
     fill: none;
     stroke-width: 2;

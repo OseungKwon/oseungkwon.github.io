@@ -59,7 +59,6 @@ const arcPath = ({ from, to, depth }: { from: number; to: number; depth: number 
   <text class="dt-row" x={LEFT - 10} y={HOUSE_Y + CELL / 2} dy="0.36em" text-anchor="end">집</text>
   <text class="dt-row" x={LEFT - 10} y={DP_Y + CELL / 2} dy="0.36em" text-anchor="end">dp</text>
 
-  {/* 집 줄 */}
   {
     nums.map((value, i) => (
       <g class="dt-house" data-house={i} data-state={houseStates[i] ?? 'idle'}>
@@ -125,7 +124,6 @@ const arcPath = ({ from, to, depth }: { from: number; to: number; depth: number 
     transition: fill 0.25s, opacity 0.2s;
   }
 
-  /* ── 집 ─────────────────────────────── */
   .dt-house rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -161,7 +159,6 @@ const arcPath = ({ from, to, depth }: { from: number; to: number; depth: number 
     font-weight: 700;
   }
 
-  /* ── dp 칸 ───────────────────────────── */
   .dt-cell rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -237,7 +234,6 @@ const arcPath = ({ from, to, depth }: { from: number; to: number; depth: number 
     font-weight: 700;
   }
 
-  /* ── 참조 화살표 ─────────────────────── */
   .dt-arc path {
     fill: none;
     stroke-width: 2;

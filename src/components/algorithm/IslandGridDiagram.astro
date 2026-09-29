@@ -45,7 +45,6 @@ const edgePath = ([a, b]: [number, number]) => {
   const y1 = cy(a);
   const x2 = cx(b);
   const y2 = cy(b);
-  // 칸 가장자리에서 끊는다
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy);
@@ -110,7 +109,6 @@ const cells = grid.flatMap((row, r) => row.map((value, c) => ({ value, r, c, i: 
     fill: var(--node-idle-text);
   }
 
-  /* ── 칸 ─────────────────────────────── */
   .ig-cell rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -212,7 +210,6 @@ const cells = grid.flatMap((row, r) => row.map((value, c) => ({ value, r, c, i: 
     font-weight: 700;
   }
 
-  /* ── 호출 화살표 ───────────────────── */
   .ig-edge path {
     fill: none;
     stroke-width: 2.5;

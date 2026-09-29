@@ -63,7 +63,6 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
   <text class="tk-row" x={LEFT - 12} y={BUCKET_Y + BUCKET_H / 2} dy="0.36em" text-anchor="end">buckets</text>
   <text class="tk-row tk-row--sub" x={LEFT - 12} y={BUCKET_Y + BUCKET_H + 18} text-anchor="end">빈도</text>
 
-  {/* 입력 칸 */}
   {
     nums.map((value, i) => (
       <g class="tk-cell" data-cell={i} data-state={cellStates[i] ?? 'idle'}>
@@ -128,7 +127,6 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     transition: fill 0.25s;
   }
 
-  /* ── 입력 칸 ─────────────────────────── */
   .tk-cell rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -179,7 +177,6 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     font-weight: 700;
   }
 
-  /* ── 버킷 ─────────────────────────────── */
   .tk-bucket path {
     fill: var(--bg-side);
     stroke: var(--node-line);
@@ -210,7 +207,6 @@ const tileY = (slot: number) => BUCKET_Y + BUCKET_H - 5 - (slot + 1) * (TILE_H +
     fill: var(--done-text);
   }
 
-  /* ── 값 타일 ─────────────────────────── */
   .tk-tile rect {
     fill: var(--node-bg);
     stroke: var(--fg-dim);

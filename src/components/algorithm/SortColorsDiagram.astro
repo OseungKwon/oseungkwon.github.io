@@ -84,7 +84,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, arcY: ARC_Y, 
     ))
   }
 
-  {/* 칸 */}
   {
     nums.map((value, i) => (
       <g class="sc-cell" data-cell={i} data-state={cellStates[i] ?? 'idle'}>
@@ -94,7 +93,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, arcY: ARC_Y, 
     ))
   }
 
-  {/* 교환 호 */}
   {
     hasArc && (
       <g class="sc-arc" data-sc-arc data-state={swap ? swapState : 'hidden'}>
@@ -125,7 +123,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, arcY: ARC_Y, 
     font-family: var(--font-mono);
   }
 
-  /* ── 포인터 ─────────────────────────── */
   .sc-ptr {
     transition: transform 0.3s ease;
   }
@@ -148,7 +145,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, arcY: ARC_Y, 
     fill: var(--exec);
   }
 
-  /* ── 칸 ─────────────────────────────── */
   .sc-cell rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -223,7 +219,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, arcY: ARC_Y, 
     font-weight: 700;
   }
 
-  /* ── 교환 호 ─────────────────────────── */
   .sc-arc path {
     fill: none;
     stroke-width: 2;
@@ -257,7 +252,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, arcY: ARC_Y, 
     fill: var(--done-text);
   }
 
-  /* ── 구역 괄호 ───────────────────────── */
   .sc-region[hidden] {
     display: none;
   }

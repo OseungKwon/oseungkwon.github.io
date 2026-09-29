@@ -87,7 +87,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, pad: PAD, bes
     hidden={frame ? undefined : true}
   />
 
-  {/* 칸 */}
   {
     chars.map((ch, i) => (
       <g class="sw-cell" data-cell={i} data-state={cellStates[i] ?? 'idle'}>
@@ -124,7 +123,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, pad: PAD, bes
     display: none;
   }
 
-  /* ── 포인터 ─────────────────────────── */
   .sw-ptr {
     transition: transform 0.3s ease;
   }
@@ -147,7 +145,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, pad: PAD, bes
     fill: var(--exec);
   }
 
-  /* ── 창 테두리 ───────────────────────── */
   .sw-frame {
     fill: var(--stack-soft);
     stroke: var(--stack);
@@ -155,7 +152,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, pad: PAD, bes
     transition: x 0.3s ease, width 0.3s ease;
   }
 
-  /* ── 칸 ─────────────────────────────── */
   .sw-cell rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -233,7 +229,6 @@ const geo = JSON.stringify({ left: LEFT, pitch: PITCH, cell: CELL, pad: PAD, bes
     font-weight: 700;
   }
 
-  /* ── 가장 길었던 창 ───────────────────── */
   .sw-best path {
     fill: none;
     stroke: var(--answer);

@@ -53,7 +53,6 @@ const initialState = (v: number) => (v === 0 ? 'empty' : v === 1 ? 'fresh' : 'qu
 
 {/* 칸 수가 적으면 그림이 부풀지 않도록 원래 크기 이상으로 늘리지 않는다 */}
 <svg class="ro" viewBox={`0 0 ${width} ${height}`} style={`max-width: ${width}px`} role="img" aria-label={label} data-ro-figure>
-  {/* 행·열 번호 */}
   {Array.from({ length: cols }, (_, c) => <text class="ro-axis" x={x(c) + CELL / 2} y={TOP - 8} text-anchor="middle">{c}</text>)}
   {Array.from({ length: rows }, (_, r) => <text class="ro-axis" x={LEFT - 10} y={y(r) + CELL / 2} dy="0.36em" text-anchor="middle">{r}</text>)}
   {
@@ -101,7 +100,6 @@ const initialState = (v: number) => (v === 0 ? 'empty' : v === 1 ? 'fresh' : 'qu
     fill: var(--node-idle-text);
   }
 
-  /* ── 칸 ─────────────────────────────── */
   .ro-cell rect {
     fill: var(--node-bg);
     stroke: var(--node-line);
@@ -225,7 +223,6 @@ const initialState = (v: number) => (v === 0 ? 'empty' : v === 1 ? 'fresh' : 'qu
     font-weight: 700;
   }
 
-  /* ── 화살표 ─────────────────────────── */
   .ro-edge line {
     stroke-width: 2.5;
     stroke-linecap: round;
