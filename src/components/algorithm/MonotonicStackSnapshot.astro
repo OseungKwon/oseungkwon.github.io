@@ -1,0 +1,45 @@
+---
+/**
+ * 본문용 정적 그림: 앞의 며칠을 처리한 순간의 칸 줄과 스택.
+ *
+ *   <MonotonicStackSnapshot temperatures={[73, 74, 75, 71, 69, 72, 76, 73]} days={5} />
+ *
+ * days일을 처리한 뒤 days번 날(오늘)을 막 보려는 장면이다. days가 전체 길이면 반복이 끝난 장면이고,
+ * 스택에 남은 날의 답이 0으로 정해진다. 도형은 단계 진행(MonotonicStackWalk)과 같은 MonotonicStackDiagram이다.
+ */
+import StaticFigure from './StaticFigure.astro';
+import MonotonicStackDiagram from './MonotonicStackDiagram.astro';
+import { runDays } from './daily-temperatures';
+
+interface Props {
+  temperatures: number[];
+  days: number;
+  caption?: string;
+}
+
+const { temperatures, days, caption } = Astro.props;
+const n = temperatures.length;
+
+if (!(0 <= days && days <= n)) {
+  throw new Error('MonotonicStackSnapshot: 0 ≤ days ≤ temperatures.length 이어야 합니다.');
+}
+
+const { stack, answers } = runDays(temperatures, days);
+const cellStates = temperatures.map((_, d) => (d === days ? 'active' : stack.includes(d) ? 'stack' : answers[d] !== null ? 'done' : 'idle'));
+const temps = (list: number[]) => list.map((d) => temperatures[d]).join(', ');
+const label =
+  days < n
+    ? `${days}번 날 ${temperatures[days]}도를 보기 직전, 스택에 아래부터 ${temps(stack)}도가 쌓여 있는 장면`
+    : `반복이 끝난 뒤 스택에 아래부터 ${temps(stack)}도가 남은 장면`;
+---
+
+<StaticFigure title={`단조 스택 · 기온 ${n}일`} caption={caption}>
+  <MonotonicStackDiagram
+    temperatures={temperatures}
+    cellStates={cellStates}
+    answers={answers}
+    stack={stack.map((day) => ({ day, state: 'stack' as const }))}
+    slots={Math.max(stack.length, 1)}
+    label={label}
+  />
+</StaticFigure>

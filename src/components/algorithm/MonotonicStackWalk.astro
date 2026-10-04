@@ -1,0 +1,354 @@
+---
+/**
+ * 단조 스택 — 더 따뜻한 날까지 며칠을 기다려야 하는지(LeetCode 739)를 스택 하나로 구하는 과정.
+ *
+ * 대표 도형은 온도 칸 줄과 오른쪽의 세로 스택이다(그리기는 MonotonicStackDiagram).
+ *
+ *   꺼내기 → 맨 위의 날이 오늘보다 추우면 꺼내고 그날의 답(오늘 - 그날)을 적는다. 호가 생긴다
+ *   올리기 → 꺼낼 날이 없으면 오늘을 스택 맨 위에 올린다
+ *
+ * 연달아 꺼내는 날도 한 번에 하나씩 단계로 둔다. 꺼낼 때마다 다른 날의 답이 정해지기 때문이다.
+ *
+ * 단계는 빌드 시점에 trace()가 실제로 풀이를 돌려 만든다.
+ */
+import Visualizer from './Visualizer.astro';
+import MonotonicStackDiagram from './MonotonicStackDiagram.astro';
+import { TEMPERATURES, EXPECTED, dailyTemperatures, bruteForce } from './daily-temperatures';
+
+const temperatures = TEMPERATURES;
+const n = temperatures.length;
+
+// 칸: i 아직 안 봄 / a 오늘 / s 스택에서 기다림 / d 답이 정해짐
+interface Step {
+  note: string;
+  cells: string;
+  i: number;
+  stack: number[];
+  /** 방금 꺼낸 날. 스택 맨 위에 빨간 취소선으로 한 단계 남긴다 */
+  popped: number | null;
+  /** 이번 단계에 오늘을 스택에 올렸는지 */
+  pushed: boolean;
+  /** 정해진 답. 아직이면 null (풀이의 answer 배열은 0으로 시작한다) */
+  answers: (number | null)[];
+  /** 이번 단계에 답이 정해진 날 */
+  fresh: number[];
+  changed: string[];
+}
+
+// 숫자 뒤 조사는 읽는 소리(일·이·삼)의 받침으로 고른다
+const noBatchim = (v: number) => '2459'.includes(String(v).at(-1)!);
+const obj = (v: number) => `${v}${noBatchim(v) ? '를' : '을'}`;
+const day = (d: number) => `${d}번 날`;
+const deg = (d: number) => `${temperatures[d]}도`;
+
+function trace(): Step[] {
+  const steps: Step[] = [];
+  const answers: (number | null)[] = new Array(n).fill(null);
+  const stack: number[] = [];
+  let lastI = 0;
+
+  const snap = (note: string, i: number, opt: { popped?: number; pushed?: boolean; fresh?: number[]; end?: boolean } = {}) => {
+    const cells = temperatures
+      .map((_, d) => {
+        if (!opt.end && d === i) return 'a';
+        if (stack.includes(d)) return 's';
+        if (answers[d] !== null) return 'd';
+        return 'i';
+      })
+      .join('');
+    const changed: string[] = [];
+    if (steps.length > 0 && i !== lastI) changed.push('i');
+    if (opt.popped !== undefined || opt.pushed) changed.push('stack');
+    steps.push({
+      note,
+      cells,
+      i,
+      stack: [...stack],
+      popped: opt.popped ?? null,
+      pushed: Boolean(opt.pushed),
+      answers: [...answers],
+      fresh: opt.fresh ?? [],
+      changed,
+    });
+    lastI = i;
+  };
+
+  const top = () => stack[stack.length - 1];
+
+  snap(`i = 0, ${day(0)} ${deg(0)}부터 하루씩 봅니다. 스택은 비어 있고 answer는 모두 0으로 시작합니다. "다음"을 눌러 보세요`, 0);
+
+  for (let i = 0; i < n; i++) {
+    let poppedAny = false;
+
+    // ① 오늘보다 추운 날을 맨 위부터 꺼내며 답을 적는다
+    while (stack.length > 0 && temperatures[top()] < temperatures[i]) {
+      const waitingDay = stack.pop()!;
+      answers[waitingDay] = i - waitingDay;
+      poppedAny = true;
+      const gap = i - waitingDay;
+      const next =
+        stack.length === 0
+          ? '스택이 비었습니다'
+          : temperatures[top()] < temperatures[i]
+            ? `새 맨 위 ${day(top())} ${deg(top())}도 ${deg(i)}보다 춥습니다`
+            : `새 맨 위 ${deg(top())}는 ${deg(i)}보다 따뜻해 꺼내기를 멈춥니다`;
+      snap(
+        `${day(i)} ${deg(i)}가 맨 위 ${day(waitingDay)} ${deg(waitingDay)}보다 따뜻합니다. ${day(waitingDay)}을 꺼내고 answer[${waitingDay}]에 ${i} - ${waitingDay} = ${obj(gap)} 적습니다. ${next}`,
+        i,
+        { popped: waitingDay, fresh: [waitingDay] },
+      );
+    }
+
+    // ② 오늘도 더 따뜻한 날을 기다린다
+    const below = stack.length > 0 ? top() : null;
+    stack.push(i);
+    let note: string;
+    if (poppedAny) {
+      note =
+        below === null
+          ? `${day(i)} ${deg(i)}를 빈 스택에 올립니다. 이제 ${deg(i)}보다 따뜻한 날을 기다립니다`
+          : `${day(i)} ${deg(i)}를 ${deg(below)} 위에 올립니다. 스택은 아래부터 ${stack.map(deg).join(', ')}로 위로 갈수록 춥습니다`;
+    } else if (below === null) {
+      note = `스택이 비어 있어 꺼낼 날이 없습니다. ${day(i)} ${deg(i)}를 스택에 올립니다`;
+    } else {
+      note = `맨 위 ${day(below)} ${deg(below)}가 ${deg(i)}보다 따뜻해 꺼낼 날이 없습니다. ${day(i)} ${deg(i)}를 그 위에 올립니다`;
+    }
+    snap(note, i, { pushed: true });
+  }
+
+  // 끝 장면: 스택에 남은 날은 더 따뜻한 날을 만나지 못했으니 answer가 0 그대로다
+  const left = [...stack];
+  left.forEach((d) => (answers[d] = 0));
+  const leftText = left.map((d) => `${day(d)} ${deg(d)}`).join('와 ');
+  snap(`i가 ${n}이 되어 반복이 끝났습니다. 스택에 남은 ${leftText}는 더 따뜻한 날을 만나지 못해 answer가 0 그대로입니다`, n, {
+    fresh: left,
+    end: true,
+  });
+  return steps;
+}
+
+const steps = trace();
+
+// 검증: 끝 장면의 answer가 예제 1 출력, 대표 풀이, 날마다 끝까지 훑는 풀이와 모두 같아야 한다
+const final = JSON.stringify(steps.at(-1)!.answers);
+if (final !== JSON.stringify(EXPECTED) || final !== JSON.stringify(dailyTemperatures(temperatures)) || final !== JSON.stringify(bruteForce(temperatures))) {
+  throw new Error('MonotonicStackWalk: 마지막 단계의 answer가 LeetCode 739 예제 1 출력과 다릅니다.');
+}
+
+// 스택 칸 수 = 가장 높이 쌓인 순간(방금 꺼낸 칸 포함)
+const slots = Math.max(...steps.map((s) => s.stack.length + (s.popped === null ? 0 : 1)));
+
+const first = steps[0];
+const CELL: Record<string, string> = { i: 'idle', a: 'active', s: 'stack', d: 'done' };
+---
+
+<Visualizer
+  modes={[{ id: 'main', label: '기본' }]}
+  steps={{ main: steps }}
+  title={`단조 스택 · 기온 ${n}일`}
+  caption="LeetCode 739 예제 1. 아래 작은 칸 줄이 answer입니다. 빌드할 때 풀이를 실제로 돌려 기록한 단계입니다."
+  legend={[
+    { state: 'active', label: '오늘 (i)' },
+    { state: 'stack', label: '더 따뜻한 날을 기다리는 날 (stack)' },
+    { state: 'answer', label: '정해진 답' },
+    { state: 'done', label: '답이 정해진 날' },
+    { state: 'idle', label: '아직 안 본 날' },
+  ]}
+>
+  <Fragment slot="watch">
+    <dl class="msw" data-ms-watch>
+      <div class="msw-row">
+        <dt>i</dt>
+        <dd><span class="msw-num" data-w="i">{first.i}</span><span class="msw-hint" data-w="hint">temperatures[0] = {temperatures[0]}</span></dd>
+      </div>
+      <div class="msw-row">
+        <dt>stack</dt>
+        {/* 원소 사이에 템플릿 줄바꿈이 끼면 공백이 생긴다. 한 줄로 둔다. 방금 꺼낸 날까지 자리를 미리 만든다 */}
+        <dd><span>[</span>{temperatures.map((_, i) => <span class="msw-item" data-stack-slot={i} hidden><span class="msw-sep">, </span><span class="msw-num" data-v /></span>)}<span>]</span></dd>
+      </div>
+      <div class="msw-row">
+        <dt>answer</dt>
+        <dd><span>[</span>{temperatures.map((_, i) => <span class="msw-item" data-ans-slot={i}><span class="msw-sep">, </span><span class="msw-result" data-v>0</span></span>)}<span>]</span></dd>
+      </div>
+    </dl>
+  </Fragment>
+
+  <Fragment slot="figure">
+    <MonotonicStackDiagram
+      temperatures={temperatures}
+      cellStates={[...first.cells].map((c) => CELL[c])}
+      answers={first.answers}
+      stack={[]}
+      slots={slots}
+      label={`temperatures = [${temperatures.join(', ')}]에서 날마다 더 따뜻한 날까지 기다리는 날 수를 스택으로 구하는 과정`}
+    />
+  </Fragment>
+</Visualizer>
+
+<style>
+  /* 색 변수는 algo-theme.css의 .algo-theme가 라이트·다크별로 정의한다. */
+  .msw {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .msw-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .msw-row dt {
+    flex: none;
+    min-width: 3.5rem;
+    color: var(--t-var);
+  }
+
+  .msw-row dt::after {
+    content: ':';
+    color: var(--fg);
+  }
+
+  .msw-row dd {
+    margin: 0;
+    color: var(--fg);
+  }
+
+  .msw-row:first-child dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+  }
+
+  .msw-item[hidden] {
+    display: none;
+  }
+
+  /* 맨 앞에 보이는 원소의 쉼표는 숨긴다 */
+  .msw-item[data-first] .msw-sep {
+    display: none;
+  }
+
+  .msw-num,
+  .msw-result {
+    color: var(--t-num);
+  }
+
+  .msw-hint {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+  }
+
+  /* 방금 꺼낸 날 */
+  .msw-item[data-popped] .msw-num {
+    color: var(--removed);
+    text-decoration: line-through;
+  }
+
+  .msw [data-changed] {
+    border-radius: 2px;
+    background: var(--changed-bg);
+    box-shadow: 0 0 0 2px var(--changed-bg);
+  }
+</style>
+
+<script>
+  interface Step {
+    cells: string;
+    i: number;
+    stack: number[];
+    popped: number | null;
+    pushed: boolean;
+    answers: (number | null)[];
+    fresh: number[];
+    changed: string[];
+  }
+
+  const CELL: Record<string, string> = { i: 'idle', a: 'active', s: 'stack', d: 'done' };
+
+  document.querySelectorAll<SVGSVGElement>('[data-ms-figure]').forEach((figure) => {
+    // 같은 도형이 본문의 정적 그림에도 쓰이므로, Visualizer 안에 있는 것만 움직인다.
+    const root = figure.closest<HTMLElement>('[data-viz]');
+    if (!root) return;
+    const temperatures = JSON.parse(figure.dataset.temps!) as number[];
+    const n = temperatures.length;
+    const watch = root.querySelector<HTMLElement>('[data-ms-watch]')!;
+    const cells = Array.from(figure.querySelectorAll<SVGGElement>('[data-cell]'));
+    const answerCells = Array.from(figure.querySelectorAll<SVGGElement>('[data-ans]'));
+    const slots = Array.from(figure.querySelectorAll<SVGGElement>('[data-slot]'));
+    const arcs = Array.from(figure.querySelectorAll<SVGGElement>('[data-arc]'));
+    const stackItems = Array.from(watch.querySelectorAll<HTMLElement>('[data-stack-slot]'));
+    const answerItems = Array.from(watch.querySelectorAll<HTMLElement>('[data-ans-slot]'));
+
+    const render = (step: Step) => {
+      cells.forEach((el, d) => el.setAttribute('data-state', CELL[step.cells[d]]));
+
+      answerCells.forEach((el, d) => {
+        const value = step.answers[d];
+        el.setAttribute('data-state', value === null ? 'idle' : step.fresh.includes(d) ? 'fresh' : 'answer');
+        el.querySelector('text')!.textContent = value === null ? '' : String(value);
+      });
+
+      arcs.forEach((el) => {
+        const d = Number(el.dataset.arc);
+        const value = step.answers[d];
+        if (value === null || value === 0) {
+          el.setAttribute('hidden', '');
+        } else {
+          el.removeAttribute('hidden');
+          el.setAttribute('data-state', step.fresh.includes(d) ? 'fresh' : 'answer');
+        }
+      });
+
+      // 스택: 바닥부터. 방금 꺼낸 날은 맨 위에 한 단계 남긴다
+      const entries = step.stack.map((d, k) => ({
+        d,
+        state: step.pushed && k === step.stack.length - 1 ? 'active' : 'stack',
+      }));
+      if (step.popped !== null) entries.push({ d: step.popped, state: 'removed' });
+      slots.forEach((el, j) => {
+        const entry = entries[j];
+        if (!entry) {
+          el.setAttribute('hidden', '');
+          return;
+        }
+        el.removeAttribute('hidden');
+        el.setAttribute('data-state', entry.state);
+        el.querySelector('text')!.textContent = String(temperatures[entry.d]);
+      });
+
+      // 변수 패널
+      const iEl = watch.querySelector<HTMLElement>('[data-w="i"]')!;
+      iEl.textContent = String(step.i);
+      iEl.toggleAttribute('data-changed', step.changed.includes('i'));
+      watch.querySelector<HTMLElement>('[data-w="hint"]')!.textContent =
+        step.i < n ? `temperatures[${step.i}] = ${temperatures[step.i]}` : `i < ${n}이 거짓이라 반복 끝`;
+
+      stackItems.forEach((el, k) => {
+        const entry = entries[k];
+        el.hidden = !entry;
+        el.toggleAttribute('data-first', k === 0);
+        el.toggleAttribute('data-popped', entry?.state === 'removed');
+        const value = el.querySelector<HTMLElement>('[data-v]')!;
+        value.textContent = entry ? String(entry.d) : '';
+        value.toggleAttribute('data-changed', entry?.state === 'active');
+      });
+
+      answerItems.forEach((el, d) => {
+        el.toggleAttribute('data-first', d === 0);
+        const value = el.querySelector<HTMLElement>('[data-v]')!;
+        // 풀이의 answer는 0으로 채워 두고 시작한다
+        value.textContent = String(step.answers[d] ?? 0);
+        value.toggleAttribute('data-changed', step.fresh.includes(d) && step.answers[d] !== 0);
+      });
+    };
+
+    root.addEventListener('algo:step', (event) => render((event as CustomEvent).detail.step));
+    root.dispatchEvent(new CustomEvent('algo:ready'));
+  });
+</script>
