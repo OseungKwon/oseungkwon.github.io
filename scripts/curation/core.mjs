@@ -143,8 +143,23 @@ async function fetchPageMeta(url) {
 const pick = (candidates) =>
   candidates.find(([value]) => value) ?? [undefined, MISSING];
 
+/**
+ * 페이지 제목 끝에 붙은 사이트 이름(" | kciter.so", " — overreacted")을 뗀다.
+ * 꼬리가 사이트 이름이나 도메인과 같을 때만 떼므로, 제목 안의 일반 구분자는 건드리지 않는다.
+ */
+function stripSiteSuffix(title, siteNames) {
+  if (!title) return title;
+  const known = siteNames.filter(Boolean).map((name) => name.toLowerCase());
+  let result = title;
+  for (;;) {
+    const match = result.match(/^(.*\S)\s+[|·•–—-]\s+([^|·•–—]+)$/);
+    if (!match || !known.includes(match[2].trim().toLowerCase())) return result;
+    result = match[1];
+  }
+}
+
 /** 입력값 > 메타 > 최후 기본값 순서로 각 필드를 채우고, 값마다 어디서 왔는지 남긴다. */
-function resolveFields(input, meta, url) {
+function resolveFields(input, meta, url, kind) {
   const { hostname, pathname } = new URL(url);
   const host = hostname.replace(/^www\./, '');
   let readablePath = pathname.replace(/\/$/, '');
@@ -152,19 +167,42 @@ function resolveFields(input, meta, url) {
     readablePath = decodeURIComponent(readablePath);
   } catch {}
 
-  const [title, titleFrom] = pick([
-    [input.title, '직접 입력'],
-    [meta['og:title'], 'og:title'],
-    [meta['twitter:title'], 'twitter:title'],
-    [meta.title, '<title>'],
-    [host + readablePath, FALLBACK],
-  ]);
-  const [source, sourceFrom] = pick([
-    [input.source, '직접 입력'],
-    [meta['og:site_name'], 'og:site_name'],
-    [meta['application-name'], 'application-name'],
-    [host, FALLBACK],
-  ]);
+  const siteName = meta['og:site_name'] ?? meta['application-name'];
+  const pageTitle = (value) =>
+    stripSiteSuffix(value, [siteName, host, host.split('.')[0]]);
+
+  // 블로그를 추천할 때는 블로그 이름이 제목이다. 링크가 글 한 편을 가리켜도 그 글 제목 대신 사이트 이름을 먼저 쓰고,
+  // 출처 자리에는 도메인을 둔다.
+  const titleCandidates =
+    kind === 'blog'
+      ? [
+          [input.title, '직접 입력'],
+          [meta['og:site_name'], 'og:site_name'],
+          [meta['application-name'], 'application-name'],
+          [host, FALLBACK],
+        ]
+      : [
+          [input.title, '직접 입력'],
+          [pageTitle(meta['og:title']), 'og:title'],
+          [pageTitle(meta['twitter:title']), 'twitter:title'],
+          [pageTitle(meta.title), '<title>'],
+          [host + readablePath, FALLBACK],
+        ];
+  const sourceCandidates =
+    kind === 'blog'
+      ? [
+          [input.source, '직접 입력'],
+          [host, '도메인'],
+        ]
+      : [
+          [input.source, '직접 입력'],
+          [meta['og:site_name'], 'og:site_name'],
+          [meta['application-name'], 'application-name'],
+          [host, FALLBACK],
+        ];
+
+  const [title, titleFrom] = pick(titleCandidates);
+  const [source, sourceFrom] = pick(sourceCandidates);
   const [summary, summaryFrom] = pick([
     [input.summary, '직접 입력'],
     [meta['og:description'], 'og:description'],
@@ -241,7 +279,7 @@ export async function createEntry(
   // 세 칸을 모두 직접 채웠다면 페이지에 접속할 이유가 없다.
   const needsMeta = !given.title || !given.source || !given.summary;
   const { meta, error } = needsMeta ? await fetchPageMeta(url) : { meta: {} };
-  const { fields, origins } = resolveFields(given, meta, url);
+  const { fields, origins } = resolveFields(given, meta, url, kind);
 
   const tags = [
     ...new Set(
