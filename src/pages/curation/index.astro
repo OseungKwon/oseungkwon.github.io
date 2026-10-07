@@ -1,5 +1,5 @@
 ---
-import CurationGallery from '../../components/curation/CurationGallery.astro';
+import CurationCards from '../../components/curation/CurationCards.astro';
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import { CURATION_KINDS, getCuration } from '../../utils/curation';
 
@@ -33,25 +33,25 @@ const kinds = CURATION_KINDS.map(({ kind, label }) => ({ kind, label, count: ite
   {
     items.length > 0 && (
       <div class="mt-5 sm:mt-6">
-        <CurationGallery items={items} />
+        <CurationCards items={items} />
       </div>
     )
   }
 </SiteLayout>
 
 <script>
-  // 종류 칩을 누르면 그 종류의 라벨만 남긴다. 알고리즘 페이지의 분류 필터와 같은 방식이다.
+  // 종류 칩을 누르면 그 종류의 카드만 남긴다. 알고리즘 페이지의 분류 필터와 같은 방식이다.
   const filter = document.querySelector<HTMLElement>('[data-kind-filter]');
   if (filter) {
     const chips = [...filter.querySelectorAll<HTMLButtonElement>('button[data-kind]')];
-    const plaques = [...document.querySelectorAll<HTMLElement>('.plaque[data-kind]')];
+    const cards = [...document.querySelectorAll<HTMLElement>('.card[data-kind]')];
     filter.addEventListener('click', (event) => {
       const chip = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-kind]');
       if (!chip) return;
       const kind = chip.dataset.kind;
       chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
-      plaques.forEach((plaque) => {
-        plaque.hidden = Boolean(kind) && plaque.dataset.kind !== kind;
+      cards.forEach((card) => {
+        card.hidden = Boolean(kind) && card.dataset.kind !== kind;
       });
     });
   }
