@@ -47,6 +47,66 @@ const { items } = Astro.props;
   }
 </ul>
 
+<script>
+  /*
+   * 코멘트 펼치기. 위 구역과 코멘트를 함께 같은 양(--lift)만큼 위로 옮기고, 코멘트 영역은 그만큼 아래로 늘린다.
+   * 올리는 양은 카드 높이의 7.5%이고, 코멘트가 네 줄을 넘으면 숨은 줄이 다 보일 만큼 올린다.
+   * 레이아웃을 밀어내지 않고 옮기기만 하므로, 카드마다 남는 여백이 달라도 모두 같은 양을 같은 속도로 움직인다.
+   * 다 접히면 높이 고정을 푼다. 키보드는 :focus-visible일 때만 펼쳐, 마우스로 눌러 새 탭을 연 뒤 돌아왔을 때 펼친 채로 남지 않게 한다.
+   */
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const OPEN_LIFT = 0.075;
+
+  for (const card of document.querySelectorAll<HTMLElement>('.cards .card')) {
+    const note = card.querySelector<HTMLElement>('.card-comment');
+    if (!note) continue;
+    let collapsed = 0;
+
+    const finish = () => {
+      note.style.height = '';
+      note.classList.remove('is-sized');
+      card.style.height = '';
+    };
+
+    const open = () => {
+      if (!card.style.height) card.style.height = `${card.offsetHeight}px`;
+      const current = note.offsetHeight;
+      if (!note.classList.contains('is-sized')) collapsed = current;
+      note.classList.add('is-measuring');
+      const full = note.offsetHeight;
+      note.classList.remove('is-measuring');
+      const lift = Math.max(Math.round(card.clientHeight * OPEN_LIFT), full - collapsed);
+      card.style.setProperty('--lift', `${lift}px`);
+
+      // 지금 높이를 먼저 확정해야 전환이 그 자리에서 출발한다.
+      note.classList.add('is-sized');
+      note.style.height = `${current}px`;
+      void note.offsetHeight;
+      card.classList.add('is-open');
+      note.style.height = `${collapsed + lift}px`;
+    };
+    const close = () => {
+      card.classList.remove('is-open');
+      if (!note.classList.contains('is-sized')) return;
+      // 높이가 그대로면 transitionend가 오지 않고, 동작 줄이기에서는 전환 자체가 없다.
+      if (reduceMotion.matches || note.offsetHeight === collapsed) return finish();
+      note.style.height = `${collapsed}px`;
+    };
+
+    note.addEventListener('transitionend', (event) => {
+      if (event.propertyName === 'height' && !card.classList.contains('is-open')) finish();
+    });
+    card.addEventListener('pointerenter', (event) => {
+      if (event.pointerType !== 'touch') open();
+    });
+    card.addEventListener('pointerleave', close);
+    card.addEventListener('focusin', (event) => {
+      if ((event.target as HTMLElement).matches(':focus-visible')) open();
+    });
+    card.addEventListener('focusout', close);
+  }
+</script>
+
 <style>
   /*
    * 모든 카드를 같은 폭으로 두고, 격자 전체에서 높이를 맞춘다(grid-auto-rows: 1fr).
@@ -71,9 +131,13 @@ const { items } = Astro.props;
     }
   }
 
+  /*
+   * 코멘트를 펼치면 내용이 위로 옮겨 가므로, 카드 밖으로 나간 위쪽은 잘라 낸다.
+   */
   .card {
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     border-radius: 1rem;
     padding: 1.35rem 1.5rem 1.5rem;
   }
@@ -107,6 +171,7 @@ const { items } = Astro.props;
   /* 위 구역: 이 글이 무엇인지. 아래 여백은 코멘트 구역과의 최소 간격이다(남는 높이는 코멘트 위 auto 여백이 가져간다). */
   .card-info {
     padding-bottom: 1.25rem;
+    transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
   /* 제목이 가장 먼저 읽히도록 가장 크고 굵게 둔다. */
   .card-title {
@@ -156,20 +221,50 @@ const { items } = Astro.props;
     color: var(--color-text-secondary);
   }
 
-  /* 아래 구역: 왜 골랐는지. 카드 바닥에 붙이고 가로선으로 위 구역과 나눈다. */
+  /*
+   * 아래 구역: 왜 골랐는지. 카드 바닥에 붙이고 가로선으로 위 구역과 나눈다.
+   * 평소에는 네 줄 높이까지만 보여 준다. 줄 수 제한(line-clamp)은 높이를 부드럽게 바꿀 수 없어 max-height로 자른다.
+   * 글자는 구분선 바로 아래에 붙어 있어, 펼치면 구분선과 함께 위로 올라오고 늘어난 공간은 글자 아래에 생긴다.
+   */
   .card-comment {
     margin-top: auto;
+    overflow: hidden;
     border-top: 1px solid var(--color-border-secondary);
     padding-top: 1rem;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
-    overflow: hidden;
     font-size: 14.5px;
     font-weight: 500;
     line-height: 1.7;
     color: var(--color-text-primary);
     white-space: pre-line;
     word-break: keep-all;
+    transition-property: height, margin-bottom, transform;
+    transition-duration: 0.5s;
+    transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  /*
+   * 펼친 상태. 위 구역과 코멘트를 같은 양만큼 위로 옮긴다. 코멘트는 그만큼 높이를 늘리되 아래 여백을 같은 양만큼
+   * 줄여, 레이아웃이 차지하는 높이는 그대로 둔다. 그래서 남는 여백이 있는 카드든 없는 카드든 똑같이 움직인다.
+   */
+  .card.is-open .card-info,
+  .card.is-open .card-comment {
+    transform: translateY(calc(-1 * var(--lift)));
+  }
+  .card.is-open .card-comment {
+    margin-bottom: calc(-1 * var(--lift));
+  }
+  /* 스크립트가 높이를 직접 정하는 동안(.is-sized)에는 네 줄 제한을 풀어, 펼친 높이와 접히는 과정이 잘리지 않게 한다. */
+  .card-comment:not(.is-sized) {
+    max-height: calc(1rem + 1px + 4 * 1.7em);
+  }
+  .card-comment.is-measuring {
+    height: auto !important;
+    max-height: none;
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-info,
+    .card-comment {
+      transition: none;
+    }
   }
 </style>
