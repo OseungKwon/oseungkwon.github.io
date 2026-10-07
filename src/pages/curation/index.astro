@@ -1,0 +1,105 @@
+---
+import CurationGallery from '../../components/curation/CurationGallery.astro';
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import { CURATION_KINDS, getCuration } from '../../utils/curation';
+
+const items = await getCuration();
+// 블로그와 아티클을 한 격자에 섞어 두고, 위쪽 칩으로 종류를 걸러 본다. 항목이 없는 종류는 칩을 만들지 않는다.
+const kinds = CURATION_KINDS.map(({ kind, label }) => ({ kind, label, count: items.filter((item) => item.data.kind === kind).length })).filter((group) => group.count > 0);
+---
+
+<SiteLayout title="큐레이션" description="직접 읽고 골라 둔 외부 기술 블로그와 글 목록. 항목마다 출처, 요약, 짧은 코멘트를 적었습니다." breadcrumbs={[{ name: '큐레이션', href: '/curation/' }]}>
+  <section class="pt-7 pb-1 sm:pt-11">
+    <h1 class="max-w-4xl text-[17px] font-semibold leading-[1.6] tracking-tight text-token-primary break-keep sm:text-[19px]">큐레이션</h1>
+  </section>
+
+  {items.length === 0 && <p class="mt-10 text-sm text-token-secondary">아직 모은 글이 없습니다.</p>}
+
+  {
+    kinds.length > 1 && (
+      <div class="mt-7 flex flex-wrap gap-2 sm:mt-9" role="group" aria-label="종류로 걸러 보기" data-kind-filter>
+        <button type="button" class="filter-chip" aria-pressed="true" data-kind="">
+          전체 <span class="filter-count">{items.length}</span>
+        </button>
+        {kinds.map((group) => (
+          <button type="button" class="filter-chip" aria-pressed="false" data-kind={group.kind}>
+            {group.label} <span class="filter-count">{group.count}</span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  {
+    items.length > 0 && (
+      <div class="mt-5 sm:mt-6">
+        <CurationGallery items={items} />
+      </div>
+    )
+  }
+</SiteLayout>
+
+<script>
+  // 종류 칩을 누르면 그 종류의 라벨만 남긴다. 알고리즘 페이지의 분류 필터와 같은 방식이다.
+  const filter = document.querySelector<HTMLElement>('[data-kind-filter]');
+  if (filter) {
+    const chips = [...filter.querySelectorAll<HTMLButtonElement>('button[data-kind]')];
+    const plaques = [...document.querySelectorAll<HTMLElement>('.plaque[data-kind]')];
+    filter.addEventListener('click', (event) => {
+      const chip = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-kind]');
+      if (!chip) return;
+      const kind = chip.dataset.kind;
+      chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+      plaques.forEach((plaque) => {
+        plaque.hidden = Boolean(kind) && plaque.dataset.kind !== kind;
+      });
+    });
+  }
+</script>
+
+<style>
+  /* 알고리즘 페이지의 분류 칩과 같은 모양이다. */
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border-primary);
+    padding: 0.4rem 0.85rem;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: var(--surface-bg);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .filter-chip:hover {
+    color: var(--color-text-primary);
+  }
+  .filter-chip:active {
+    background: var(--color-accent-soft);
+  }
+  .filter-chip[aria-pressed='true'] {
+    color: var(--color-link);
+    background: var(--color-accent-soft);
+    border-color: transparent;
+  }
+  .filter-chip:active,
+  .filter-chip[aria-pressed='true'] {
+    transition: none;
+  }
+  .filter-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-link);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .filter-chip {
+      transition: none;
+    }
+  }
+</style>

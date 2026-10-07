@@ -51,6 +51,27 @@ const algorithm = defineCollection({
   }),
 });
 
+/**
+ * 읽고 좋았던 외부 글. 항목은 GitHub 이슈 폼이나 `pnpm curate`가 만든다(scripts/curation/).
+ * 제목·출처는 입력이 없으면 페이지 메타나 도메인으로 반드시 채워지고, 요약은 메타가 없으면 빠진다.
+ */
+const curation = defineCollection({
+  loader: glob({ base: './src/content/curation', pattern: '**/*.md' }),
+  schema: z.object({
+    /** blog: 블로그 자체를 추천, article: 글 한 편을 추천 */
+    kind: z.enum(['article', 'blog']).default('article'),
+    title: z.string(),
+    url: z.string().url(),
+    source: z.string(),
+    summary: z.string().optional(),
+    /** 왜 골랐는지. 요약은 원문에서 오지만 이 값은 내 관점이다 */
+    comment: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+    highlight: z.boolean().default(false),
+    savedAt: z.coerce.date(),
+  }),
+});
+
 const careerSchema = z.object({
   title: z.string(),
   category: z.string(),
@@ -137,6 +158,7 @@ const resumeVariantProject = defineCollection({
 export const collections = {
   blog,
   algorithm,
+  curation,
   career,
   resumeVariant,
   resumeVariantProject,

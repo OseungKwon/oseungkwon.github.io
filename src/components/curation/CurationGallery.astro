@@ -1,0 +1,175 @@
+---
+/**
+ * 미술관 전시 벽. 글마다 같은 크기의 작품 라벨을 하나씩 건다.
+ * 위 구역은 이 글이 무엇인지(번호·수집일·제목·출처·태그·원문 소개),
+ * 아래 구역은 왜 골랐는지(내 코멘트)다. 번호 옆에는 종류(블로그·아티클)를 적고,
+ * 블로그 자체를 추천한 라벨은 진한 테두리로 글 라벨과 구분한다.
+ * 라벨은 사이트 공통 카드(.surface)와 누름 동작(.press)을 그대로 쓴다.
+ */
+import { formatNo, formatSavedDate, kindLabel, type CurationItem } from '../../utils/curation';
+
+interface Props {
+  items: CurationItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<ul class="hang">
+  {
+    items.map(({ no, data }) => (
+      <li class:list={['plaque surface press', `plaque-${data.kind}`]} data-kind={data.kind}>
+        <div class="about">
+          <p class="plaque-head">
+            <span>
+              {formatNo(no)}
+              <span class="kind">{kindLabel(data.kind)}</span>
+            </span>
+            <span>{formatSavedDate(data.savedAt)} 수집</span>
+          </p>
+
+          <h3 class="work">
+            <a href={data.url} target="_blank" rel="noopener noreferrer">
+              {data.title}
+              <span class="sr-only">(새 탭에서 열림)</span>
+            </a>
+          </h3>
+          <p class="credit">
+            <span class="maker">{data.source}</span>
+            {data.tags.length > 0 && <span class="medium">{data.tags.join(', ')}</span>}
+          </p>
+          {data.summary && <p class="desc">{data.summary}</p>}
+        </div>
+
+        {data.comment && <p class="curator">{data.comment}</p>}
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  /*
+   * 모든 라벨을 같은 폭으로 걸고, 벽 전체에서 높이를 맞춘다(grid-auto-rows: 1fr).
+   * 높이가 같아서 코멘트 구역이 줄마다 같은 높이에 놓여, 옆 라벨과 나란히 읽힌다.
+   * 한 라벨이 모두를 늘리지 않도록 소개와 코멘트는 줄 수를 제한한다.
+   */
+  .hang {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+  @media (min-width: 640px) {
+    .hang {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: 1fr;
+      gap: 1.25rem;
+    }
+  }
+  @media (min-width: 960px) {
+    .hang {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .plaque {
+    display: flex;
+    flex-direction: column;
+    border-radius: 1rem;
+    padding: 1.35rem 1.5rem 1.5rem;
+  }
+  /* 블로그 라벨. 바탕과 글자는 글 라벨과 같고 테두리만 본문색으로 진하게 둘러, 섞여 있어도 종류가 먼저 보인다. */
+  .plaque-blog {
+    border: 1.5px solid var(--color-text-primary);
+  }
+  .plaque[hidden] {
+    display: none;
+  }
+  /* 키보드 포커스는 알고리즘 타일과 같은 방식으로 표시한다. */
+  .plaque:has(:focus-visible) {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  }
+
+  .plaque-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-date);
+  }
+  .kind {
+    margin-left: 0.6rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  /* 위 구역: 이 글이 무엇인지. 아래 여백은 코멘트 구역과의 최소 간격이다(남는 높이는 코멘트 위 auto 여백이 가져간다). */
+  .about {
+    padding-bottom: 1.25rem;
+  }
+  /* 제목이 가장 먼저 읽히도록 가장 크고 굵게 둔다. */
+  .work {
+    margin-top: 1.1rem;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.015em;
+    color: var(--color-text-primary);
+    word-break: keep-all;
+  }
+  .work a {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* 라벨 어디를 눌러도 원문이 열리도록 제목 링크를 라벨 전체로 넓힌다. */
+  .work a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  .credit {
+    margin-top: 0.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.7rem;
+    font-size: 13px;
+  }
+  .maker {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+  .medium {
+    color: var(--color-text-date);
+  }
+
+  .desc {
+    margin-top: 0.9rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+  }
+
+  /* 아래 구역: 왜 골랐는지. 라벨 바닥에 붙이고 가로선으로 위 구역과 나눈다. */
+  .curator {
+    margin-top: auto;
+    border-top: 1px solid var(--color-border-secondary);
+    padding-top: 1rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.7;
+    color: var(--color-text-primary);
+    white-space: pre-line;
+    word-break: keep-all;
+  }
+</style>

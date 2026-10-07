@@ -19,6 +19,7 @@ const STATIC_PAGES = [
   { path: '/', changefreq: 'weekly', priority: 1 },
   { path: '/about/', changefreq: 'monthly', priority: 0.8 },
   { path: '/algorithm/', changefreq: 'weekly', priority: 0.7 },
+  { path: '/curation/', changefreq: 'weekly', priority: 0.6 },
 ] satisfies Array<{
   path: string;
   changefreq: ChangeFrequency;

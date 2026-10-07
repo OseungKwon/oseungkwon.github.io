@@ -12,6 +12,7 @@ const base = BASE.replace(/\/$/, '');
 // 홈이 글 목록과 주제 색인을 함께 보여주므로, 태그별 글 목록도 Post 탭에 속한다.
 const isPost = path === base || path.startsWith(`${base}/tags/`);
 const isAlgorithm = path === `${base}/algorithm` || path.startsWith(`${base}/algorithm/`);
+const isCuration = path === `${base}/curation`;
 const isAbout = path === `${base}/about`;
 ---
 
@@ -59,6 +60,17 @@ const isAbout = path === `${base}/about`;
         >
           {isAlgorithm && <span class="nav-pill-bg" aria-hidden="true" />}
           Algorithm
+        </a>
+        <a
+          href={`${BASE}curation/`}
+          aria-current={isCuration ? 'page' : undefined}
+          class:list={[
+            'relative isolate whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-sm',
+            isCuration ? 'text-token-link' : 'text-token-nav hover:bg-token-hover hover:text-token-primary',
+          ]}
+        >
+          {isCuration && <span class="nav-pill-bg" aria-hidden="true" />}
+          Curation
         </a>
         <a
           href={`${BASE}about/`}
