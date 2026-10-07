@@ -41,7 +41,6 @@ const result = await createEntry(
     summary: form['요약'],
     comment: form['코멘트'],
     tags: form['태그'],
-    highlight: /^- \[x\]/im.test(form['강력 추천'] ?? ''),
   },
   { savedAt: ISSUE_CREATED_AT, id: ISSUE_NUMBER },
 );

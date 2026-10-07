@@ -67,7 +67,6 @@ const curation = defineCollection({
     /** 왜 골랐는지. 요약은 원문에서 오지만 이 값은 내 관점이다 */
     comment: z.string().optional(),
     tags: z.array(z.string()).default([]),
-    highlight: z.boolean().default(false),
     savedAt: z.coerce.date(),
   }),
 });

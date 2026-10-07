@@ -50,9 +50,3 @@ body:
       label: 태그
       description: 쉼표로 구분해요.
       placeholder: React, 성능
-  - type: checkboxes
-    id: highlight
-    attributes:
-      label: 강력 추천
-      options:
-        - label: 강력 추천으로 표시

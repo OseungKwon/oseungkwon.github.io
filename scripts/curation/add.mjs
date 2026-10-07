@@ -1,5 +1,5 @@
 // 로컬에서 큐레이션 항목을 만든다. 커밋은 하지 않는다.
-//   pnpm curate <URL> [--kind blog] [--title ..] [--source ..] [--summary ..] [--comment ..] [--tags "a, b"] [--highlight]
+//   pnpm curate <URL> [--kind blog] [--title ..] [--source ..] [--summary ..] [--comment ..] [--tags "a, b"]
 import { parseArgs } from 'node:util';
 import { createEntry, originTable } from './core.mjs';
 
@@ -12,7 +12,6 @@ const { values, positionals } = parseArgs({
     summary: { type: 'string' },
     comment: { type: 'string' },
     tags: { type: 'string' },
-    highlight: { type: 'boolean', default: false },
   },
 });
 

@@ -227,7 +227,6 @@ function toMarkdown(data) {
     data.summary && `summary: ${JSON.stringify(data.summary)}`,
     data.comment && `comment: ${JSON.stringify(data.comment)}`,
     data.tags.length > 0 && `tags: ${JSON.stringify(data.tags)}`,
-    data.highlight && 'highlight: true',
     `savedAt: ${JSON.stringify(data.savedAt)}`,
   ].filter(Boolean);
   return `---\n${lines.join('\n')}\n---\n`;
@@ -242,7 +241,7 @@ const clean = (value) => String(value ?? '').trim() || undefined;
 
 /**
  * 입력 하나로 항목 파일을 만든다.
- * @param input { url, kind?: 'article' | 'blog', title?, source?, summary?, comment?, tags?: string, highlight?: boolean }
+ * @param input { url, kind?: 'article' | 'blog', title?, source?, summary?, comment?, tags?: string }
  * @param options { savedAt?: ISO 문자열, id?: 파일 이름 뒤에 붙일 값(이슈 번호 등) }
  * @returns status가 'invalid' | 'duplicate' | 'created'인 결과
  */
@@ -295,7 +294,6 @@ export async function createEntry(
     url,
     comment: clean(input.comment),
     tags,
-    highlight: Boolean(input.highlight),
     savedAt,
   };
 
