@@ -1,0 +1,58 @@
+# 큐레이션 입력 폼. 제출하면 .github/workflows/curation.yml이 항목 파일을 만들고 배포한다.
+# 칸의 label은 scripts/curation/from-issue.mjs가 본문을 읽는 키라서, 바꾸면 스크립트도 함께 고친다.
+# id는 북마클릿이 쿼리 파라미터로 값을 미리 채울 때 쓴다. `title`은 이슈 제목 파라미터와 겹쳐 쓰지 않는다.
+name: 큐레이션
+description: 읽고 좋았던 글을 /curation/ 에 추가합니다. URL만 필수예요.
+title: '[큐레이션] '
+labels: [curation]
+body:
+  - type: input
+    id: article_url
+    attributes:
+      label: URL
+      placeholder: https://
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 종류
+      description: 글 한 편이면 아티클, 블로그 전체를 추천하면 블로그예요.
+      options:
+        - 아티클
+        - 블로그
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: article_title
+    attributes:
+      label: 제목
+      description: 비우면 og:title → <title> → 도메인 순으로 채워요.
+  - type: input
+    id: article_source
+    attributes:
+      label: 출처
+      description: 비우면 og:site_name → 도메인으로 채워요.
+  - type: textarea
+    id: summary
+    attributes:
+      label: 요약
+      description: 비우면 og:description → meta description으로 채우고, 둘 다 없으면 생략해요.
+  - type: textarea
+    id: comment
+    attributes:
+      label: 코멘트
+      description: 왜 골랐는지 한두 줄. 비우면 표시하지 않아요.
+  - type: input
+    id: tags
+    attributes:
+      label: 태그
+      description: 쉼표로 구분해요.
+      placeholder: React, 성능
+  - type: checkboxes
+    id: highlight
+    attributes:
+      label: 강력 추천
+      options:
+        - label: 강력 추천으로 표시

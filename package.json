@@ -8,7 +8,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "curate": "node scripts/curation/add.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.14",

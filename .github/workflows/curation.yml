@@ -1,0 +1,97 @@
+name: Add curation from issue
+
+# 큐레이션 이슈 폼(.github/ISSUE_TEMPLATE/curation.yml)으로 연 이슈를 항목 파일로 바꿔 커밋하고 배포한다.
+# URL이 잘못돼 이슈가 열린 채 남았다면, 본문을 고칠 때(edited) 다시 실행된다.
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+# 이슈를 연달아 열어도 push가 서로 부딪히지 않도록 한 번에 하나씩 처리한다.
+concurrency:
+  group: curation
+  cancel-in-progress: false
+
+jobs:
+  add:
+    # public 저장소라 누구나 이슈를 열 수 있다. 저장소 주인이 연 큐레이션 이슈만 처리한다.
+    if: >-
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'curation') &&
+      github.event.issue.user.login == github.repository_owner &&
+      github.event.sender.login == github.repository_owner
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      COMMENT_FILE: ${{ runner.temp }}/curation-comment.md
+    steps:
+      - name: Checkout your repository using git
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 이슈 본문은 셸에 끼워 넣지 않고 환경 변수로만 넘긴다.
+      - name: Create entry from issue
+        id: entry
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_CREATED_AT: ${{ github.event.issue.created_at }}
+        run: node scripts/curation/from-issue.mjs
+
+      - name: Report invalid input
+        if: steps.entry.outputs.status == 'invalid'
+        run: gh issue comment "$ISSUE_NUMBER" --body-file "$COMMENT_FILE"
+
+      - name: Close duplicate
+        if: steps.entry.outputs.status == 'duplicate'
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body-file "$COMMENT_FILE"
+          gh issue close "$ISSUE_NUMBER" --reason "not planned"
+
+      # 스키마에 맞지 않는 항목이 master에 들어가면 이후 배포가 모두 깨지므로, 커밋 전에 빌드해 본다.
+      - name: Build to validate
+        if: steps.entry.outputs.status == 'created'
+        run: pnpm build
+
+      - name: Commit entry
+        if: steps.entry.outputs.status == 'created'
+        env:
+          ENTRY_FILE: ${{ steps.entry.outputs.file }}
+          ENTRY_TITLE: ${{ steps.entry.outputs.title }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$ENTRY_FILE"
+          git commit -m "feat: 큐레이션 추가 - $ENTRY_TITLE" -m "#$ISSUE_NUMBER 이슈로 추가했다."
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # GITHUB_TOKEN으로 한 push는 다른 워크플로를 깨우지 않는다. workflow_dispatch는 예외라 직접 호출한다.
+      - name: Comment, close and deploy
+        if: steps.entry.outputs.status == 'created'
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body-file "$COMMENT_FILE"
+          gh issue close "$ISSUE_NUMBER" --reason completed
+          gh workflow run deploy.yml --ref "$GITHUB_REF_NAME"
+
+      - name: Report failure
+        if: failure()
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "❌ 처리 중에 실패했어요. 빌드에서 실패했다면 커밋하지 않았으니 master는 그대로예요.
+
+          로그:${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
