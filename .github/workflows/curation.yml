@@ -28,7 +28,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
-      COMMENT_FILE: ${{ runner.temp }}/curation-comment.md
+      # runner 컨텍스트는 job 단위 env에서 쓸 수 없어 고정 경로를 쓴다.
+      COMMENT_FILE: /tmp/curation-comment.md
     steps:
       - name: Checkout your repository using git
         uses: actions/checkout@v4
