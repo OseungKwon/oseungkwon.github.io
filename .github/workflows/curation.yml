@@ -1,33 +1,31 @@
 name: Add curation from issue
 
-# 큐레이션 이슈 폼(.github/ISSUE_TEMPLATE/curation.yml)으로 연 이슈를 항목 파일로 바꿔 커밋하고 배포한다.
-# URL이 잘못돼 이슈가 열린 채 남았다면, 본문을 고칠 때(edited) 다시 실행된다.
+# 큐레이션 이슈 폼(.github/ISSUE_TEMPLATE/curation.yml)으로 연 이슈를 항목 파일로 바꿔 Pull Request로 올린다.
+# 이슈는 누구나 열 수 있지만, master에 반영하는 머지는 쓰기 권한이 있는 저장소 주인만 할 수 있다.
+# 머지하면 그 push로 deploy.yml이 돌아 배포된다. 이슈 본문을 고치거나(edited) 닫았다 다시 열면(reopened)
+# 같은 PR을 새 내용으로 갱신한다.
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, reopened]
 
 permissions:
   contents: write
   issues: write
-  actions: write
+  pull-requests: write
 
-# 이슈를 연달아 열어도 push가 서로 부딪히지 않도록 한 번에 하나씩 처리한다.
+# 같은 이슈를 연달아 고치면 마지막 내용만 반영되도록 앞선 실행을 취소한다.
 concurrency:
-  group: curation
-  cancel-in-progress: false
+  group: curation-${{ github.event.issue.number }}
+  cancel-in-progress: true
 
 jobs:
-  add:
-    # public 저장소라 누구나 이슈를 열 수 있다. 저장소 주인이 연 큐레이션 이슈만 처리한다.
-    if: >-
-      github.event.issue.state == 'open' &&
-      contains(github.event.issue.labels.*.name, 'curation') &&
-      github.event.issue.user.login == github.repository_owner &&
-      github.event.sender.login == github.repository_owner
+  propose:
+    if: github.event.issue.state == 'open' && contains(github.event.issue.labels.*.name, 'curation')
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ENTRY_BRANCH: curation/issue-${{ github.event.issue.number }}
       # runner 컨텍스트는 job 단위 env에서 쓸 수 없어 고정 경로를 쓴다.
       COMMENT_FILE: /tmp/curation-comment.md
     steps:
@@ -64,12 +62,13 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --body-file "$COMMENT_FILE"
           gh issue close "$ISSUE_NUMBER" --reason "not planned"
 
-      # 스키마에 맞지 않는 항목이 master에 들어가면 이후 배포가 모두 깨지므로, 커밋 전에 빌드해 본다.
+      # 스키마에 맞지 않는 항목은 PR로 올리기 전에 걸러 낸다.
       - name: Build to validate
         if: steps.entry.outputs.status == 'created'
         run: pnpm build
 
-      - name: Commit entry
+      # 이슈마다 브랜치 하나를 쓰고, 다시 실행되면 master 위에서 새로 만든 커밋으로 덮어쓴다.
+      - name: Open or update pull request
         if: steps.entry.outputs.status == 'created'
         env:
           ENTRY_FILE: ${{ steps.entry.outputs.file }}
@@ -77,22 +76,30 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$ENTRY_BRANCH"
           git add "$ENTRY_FILE"
-          git commit -m "feat: 큐레이션 추가 - $ENTRY_TITLE" -m "#$ISSUE_NUMBER 이슈로 추가했다."
-          git pull --rebase origin "$GITHUB_REF_NAME"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          git commit -m "feat: 큐레이션 추가 - $ENTRY_TITLE" -m "#$ISSUE_NUMBER 이슈로 제안된 항목이다."
+          git push --force origin "$ENTRY_BRANCH"
 
-      # GITHUB_TOKEN으로 한 push는 다른 워크플로를 깨우지 않는다. workflow_dispatch는 예외라 직접 호출한다.
-      - name: Comment, close and deploy
+          pr_url=$(gh pr list --head "$ENTRY_BRANCH" --state open --json url --jq '.[0].url // ""')
+          if [ -z "$pr_url" ]; then
+            pr_url=$(gh pr create --base "$GITHUB_REF_NAME" --head "$ENTRY_BRANCH" \
+              --title "feat: 큐레이션 추가 - $ENTRY_TITLE" \
+              --body "Closes #$ISSUE_NUMBER
+
+          이슈 폼으로 제안된 큐레이션 항목입니다. 파일을 확인하고 머지하면 배포됩니다.")
+          else
+            gh pr edit "$pr_url" --title "feat: 큐레이션 추가 - $ENTRY_TITLE"
+          fi
+          printf '\n\n확인 후 머지하면 반영돼요: %s\n' "$pr_url" >> "$COMMENT_FILE"
+
+      - name: Comment result
         if: steps.entry.outputs.status == 'created'
-        run: |
-          gh issue comment "$ISSUE_NUMBER" --body-file "$COMMENT_FILE"
-          gh issue close "$ISSUE_NUMBER" --reason completed
-          gh workflow run deploy.yml --ref "$GITHUB_REF_NAME"
+        run: gh issue comment "$ISSUE_NUMBER" --body-file "$COMMENT_FILE"
 
       - name: Report failure
         if: failure()
         run: |
-          gh issue comment "$ISSUE_NUMBER" --body "❌ 처리 중에 실패했어요. 빌드에서 실패했다면 커밋하지 않았으니 master는 그대로예요.
+          gh issue comment "$ISSUE_NUMBER" --body "❌ 처리 중에 실패했어요. master에는 아무것도 반영되지 않았어요.
 
-          로그:${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          로그: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

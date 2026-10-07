@@ -29,6 +29,7 @@ const {
   GITHUB_SERVER_URL = 'https://github.com',
   GITHUB_REPOSITORY = '',
   GITHUB_REF_NAME = 'master',
+  ENTRY_BRANCH = GITHUB_REF_NAME,
 } = process.env;
 
 const form = parseIssueForm(ISSUE_BODY);
@@ -45,17 +46,18 @@ const result = await createEntry(
   { savedAt: ISSUE_CREATED_AT, id: ISSUE_NUMBER },
 );
 
-const fileLink = (file) =>
-  `[\`${file}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/${file})`;
+// 이미 있는 항목은 master에, 새 항목은 아직 PR 브랜치에만 있다.
+const fileLink = (file, ref) =>
+  `[\`${file}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${ref}/${file})`;
 
 function describe(result) {
   switch (result.status) {
     case 'invalid':
       return `❌ 추가하지 못했어요. ${result.reason}\n\n이슈 본문의 URL을 고치면 다시 실행돼요.`;
     case 'duplicate':
-      return `이미 추가한 글이에요: ${fileLink(result.file)}`;
+      return `이미 추가한 글이에요: ${fileLink(result.file, GITHUB_REF_NAME)}`;
     case 'created':
-      return `✅ 추가했어요: ${fileLink(result.file)}\n\n${originTable(result)}\n\n배포가 끝나면 https://oseungkwon.github.io/curation/ 에 보여요.`;
+      return `✅ 항목을 만들었어요: ${fileLink(result.file, ENTRY_BRANCH)}\n\n${originTable(result)}`;
   }
 }
 

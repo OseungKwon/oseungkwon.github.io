@@ -65,11 +65,13 @@ Blog posts are written in Markdown and stored in `src/content/blog/`. Each post 
 javascript:(()=>{const u=new URL('https://github.com/OseungKwon/oseungkwon.github.io/issues/new');u.searchParams.set('template','curation.yml');u.searchParams.set('title','[큐레이션] '+document.title);u.searchParams.set('article_url',location.href);window.open(u,'_blank')})();
 ```
 
-폼에서 종류(아티클/블로그)와 코멘트를 고르고 제출하면 `.github/workflows/curation.yml`이 항목 파일을 만들고, 빌드로 검증한 뒤 master에 커밋하고 배포한다. 어떤 값이 어디서 왔는지는 이슈 댓글로 남는다.
+폼에서 종류(아티클/블로그)와 코멘트를 고르고 제출하면 `.github/workflows/curation.yml`이 항목 파일을 만들고, 빌드로 검증한 뒤 Pull Request를 연다. 어떤 값이 어디서 왔는지와 PR 링크는 이슈 댓글로 남는다. PR을 머지하면 이슈가 닫히고 배포된다.
 
-- 저장소 주인이 연 `curation` 라벨 이슈만 처리한다. 라벨은 폼이 자동으로 붙인다.
-- 이미 있는 URL이면 추가하지 않고 이슈를 닫는다.
-- Action이 master에 커밋하므로, 로컬에서 작업하기 전에 `git pull`을 먼저 한다.
+- 이슈는 어느 계정으로든 열 수 있다. master 반영은 PR 머지로만 되므로, 쓰기 권한이 있는 저장소 주인만 할 수 있다.
+- 라벨(`curation`)은 폼이 자동으로 붙인다. 이 라벨이 있는 열린 이슈만 처리한다.
+- 이슈 본문을 고치거나 닫았다 다시 열면 같은 PR을 새 내용으로 갱신한다. 값을 조금 고치는 정도는 PR에서 파일을 직접 고쳐도 된다.
+- 이미 있는 URL이면 PR을 만들지 않고 이슈를 닫는다.
+- 머지는 master에 커밋을 남기므로, 로컬에서 작업하기 전에 `git pull`을 먼저 한다.
 - GitHub처럼 보안 정책(CSP)으로 북마클릿을 막는 사이트에서는 이슈 폼을 직접 열어 URL을 붙여 넣는다.
 
 ### 터미널에서
