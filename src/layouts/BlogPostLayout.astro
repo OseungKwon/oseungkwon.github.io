@@ -12,7 +12,7 @@ interface Props {
 }
 
 const { post } = Astro.props;
-const categoryLabels = { book: 'Book', tech: 'Tech' } as const;
+const categoryLabels = { book: 'Book', tech: 'Tech', essay: 'Essay' } as const;
 const category = categoryLabels[post.data.category];
 const dateLabel = post.data.pubDate.toLocaleDateString('en-us', {
   year: 'numeric',

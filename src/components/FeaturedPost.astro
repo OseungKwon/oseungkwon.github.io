@@ -4,13 +4,13 @@ interface Props {
   description: string;
   date: string;
   href: string;
-  category: 'book' | 'tech';
+  category: 'book' | 'tech' | 'essay';
   tags: string[];
 }
 
 const { title, description, date, href, category, tags } = Astro.props;
 
-const categoryLabels = { book: 'Book', tech: 'Tech' };
+const categoryLabels = { book: 'Book', tech: 'Tech', essay: 'Essay' };
 ---
 
 <!-- 시그니처: 사이트에서 유일하게 '유리(glass)' 질감을 쓰는 카드 -->
