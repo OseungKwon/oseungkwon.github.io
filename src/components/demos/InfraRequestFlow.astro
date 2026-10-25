@@ -1,0 +1,178 @@
+---
+import InfraDiagram from './InfraDiagram.astro';
+const nodes = [
+  { name: '브라우저', lines: ['GET /products/42', 'HTML 수신'] },
+  { name: 'CDN', lines: ['WAF 검사', '응답 캐시 조회'] },
+  { name: '로드 밸런서', lines: ['연결 분산', 'HTTP 라우터 → 상품 앱'] },
+  { name: '상품 SSR 앱', lines: ['상품 API 조회', 'HTML 생성'] },
+];
+---
+
+<InfraDiagram hint="MISS와 HIT를 바꿔 오리진까지 전달되는 요청을 비교합니다.">
+  <Fragment slot="controls">
+    <div class="demo-seg" role="group" aria-label="CDN 캐시 상태">
+      <button type="button" class="demo-seg__opt" data-mode="miss" aria-pressed="true">MISS</button>
+      <button type="button" class="demo-seg__opt" data-mode="hit" aria-pressed="false">HIT</button>
+    </div>
+    <span class="demo-label">GET /products/42</span>
+  </Fragment>
+  <div class="irf" data-demo="infra-request" data-mode="miss">
+    <div class="irf-dns"><span>연결 준비</span><span>DNS → TCP/QUIC · TLS → HTTP</span></div>
+    <div class="irf-path">
+      {
+        nodes.map((node, i) => (
+          <>
+            {i > 0 && (
+              <div class="irf-wire" data-upstream={i > 1 ? 'true' : 'false'} aria-hidden="true">
+                →
+              </div>
+            )}
+            <div class="irf-node" data-upstream={i > 1 ? 'true' : 'false'}>
+              <strong>{node.name}</strong>
+              {node.lines.map((line) => (
+                <span class="irf-detail">{line}</span>
+              ))}
+              {i === 1 && (
+                <span class="irf-badge" data-el="cache">
+                  MISS · 오리진 요청
+                </span>
+              )}
+              {i > 1 && <span class="irf-skip">미방문</span>}
+            </div>
+          </>
+        ))
+      }
+    </div>
+    <div class="irf-return" aria-live="polite"><span aria-hidden="true">←</span><span data-el="response">SSR이 만든 HTML이 CDN을 거쳐 돌아옵니다.</span></div>
+  </div>
+</InfraDiagram>
+<style>
+  .irf {
+    font-size: var(--infra-body);
+  }
+  .irf-dns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+    color: var(--color-text-secondary);
+  }
+  .irf-dns > :first-child {
+    font-family: var(--font-sans);
+    color: var(--demo-a);
+  }
+  .irf-path {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr) 22px minmax(0, 1fr) 22px minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .irf-node {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px 10px;
+    border: 1px solid var(--infra-border);
+    border-radius: var(--infra-radius);
+    background: var(--surface-bg);
+  }
+  .irf-node strong {
+    font-size: var(--infra-title);
+  }
+  .irf-detail {
+    color: var(--color-text-secondary);
+    font-size: var(--infra-note);
+    line-height: 1.6;
+  }
+  .irf-wire {
+    display: grid;
+    place-items: center;
+    color: var(--demo-a);
+    font-size: 20px;
+  }
+  .irf-node:has(.irf-badge) {
+    border-color: var(--demo-a);
+    background: var(--demo-a-soft);
+  }
+  .irf-badge {
+    font-size: var(--infra-note);
+    color: var(--demo-a);
+    margin-top: auto;
+    padding-top: 5px;
+  }
+  .irf-skip {
+    display: none;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .irf-return {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px dashed var(--demo-a);
+    margin-top: 20px;
+    padding-top: 12px;
+    color: var(--demo-a);
+    line-height: 1.6;
+  }
+  .irf-return > :first-child {
+    font-size: 22px;
+  }
+  .irf[data-mode='hit'] [data-upstream='true'] {
+    color: var(--color-text-secondary);
+  }
+  .irf[data-mode='hit'] .irf-node[data-upstream='true'] {
+    border-color: var(--infra-border);
+    border-style: dashed;
+    background: transparent;
+  }
+  .irf[data-mode='hit'] .irf-skip {
+    display: block;
+  }
+  @media (max-width: 600px) {
+    .irf-path {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .irf-node {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+      align-items: center;
+      gap: 5px 12px;
+    }
+    .irf-node strong {
+      grid-column: 1;
+      grid-row: 1 / 3;
+    }
+    .irf-detail {
+      grid-column: 2;
+    }
+    .irf-detail:nth-of-type(1) {
+      grid-row: 1;
+    }
+    .irf-detail:nth-of-type(2) {
+      grid-row: 2;
+    }
+    .irf-badge,
+    .irf-skip {
+      grid-column: 1 / -1;
+    }
+    .irf-wire {
+      height: 28px;
+      transform: rotate(90deg);
+    }
+  }
+</style>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-demo="infra-request"]').forEach((root) => {
+    const frame = root.closest('.demo')!;
+    frame.querySelectorAll<HTMLButtonElement>('button[data-mode]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.mode!;
+        root.dataset.mode = mode;
+        frame.querySelectorAll<HTMLButtonElement>('button[data-mode]').forEach((option) => option.setAttribute('aria-pressed', String(option === button)));
+        root.querySelector('[data-el="cache"]')!.textContent = mode === 'hit' ? 'HIT · 여기서 응답' : 'MISS · 오리진 요청';
+        root.querySelector('[data-el="response"]')!.textContent = mode === 'hit' ? 'CDN에 저장된 HTML이 돌아옵니다.' : 'SSR이 만든 HTML이 CDN을 거쳐 돌아옵니다.';
+      });
+    });
+  });
+</script>

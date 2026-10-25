@@ -26,9 +26,11 @@ interface Props {
   controlsBottom?: boolean;
   /** 무대 기본 여백을 없앤다 (캔버스처럼 가장자리까지 채우는 경우) */
   bare?: boolean;
+  /** 본문에 삽입하는 구조도처럼 바깥 테두리 없이 표시한다. */
+  frameless?: boolean;
 }
 
-const { title, hint, caption, controlsBottom = false, bare = false } = Astro.props;
+const { title, hint, caption, controlsBottom = false, bare = false, frameless = false } = Astro.props;
 const hasControls = Astro.slots.has('controls');
 ---
 
@@ -42,7 +44,7 @@ const hasControls = Astro.slots.has('controls');
     )
   }
 
-  <div class="demo__body">
+  <div class:list={['demo__body', frameless && 'demo__body--frameless']}>
     {
       hasControls && !controlsBottom && (
         <div class="demo__controls">
@@ -70,5 +72,11 @@ const hasControls = Astro.slots.has('controls');
 <style>
   .demo__stage--bare {
     padding: 0;
+  }
+  .demo__body--frameless {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
   }
 </style>

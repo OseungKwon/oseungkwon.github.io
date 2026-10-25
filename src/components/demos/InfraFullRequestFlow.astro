@@ -1,0 +1,455 @@
+---
+import InfraDiagram from './InfraDiagram.astro';
+const routing = [
+  ['로드 밸런서', '정상 대상에 연결'],
+  ['HTTP 라우터', 'Ingress / Gateway 구현체'],
+  ['Service', '준비된 Pod를 요청 대상으로 연결'],
+];
+---
+
+<InfraDiagram>
+  <div class="iff" role="group" aria-label="URL 입력부터 상품 페이지 표시까지의 전체 요청 흐름">
+    <div class="iff-start"><strong>브라우저</strong><span>https://my.example.com/products/42</span></div>
+    <div class="iff-preparation">
+      <div><strong>DNS 조회</strong><span>CNAME → A·AAAA</span><small>캐시가 있으면 재사용</small></div>
+      <span class="iff-inline-arrow" aria-hidden="true">→</span>
+      <div><strong>CDN과 연결 준비</strong><span>TCP + TLS / QUIC</span><small>서버 신원 확인 · 암호화 키 협상</small></div>
+    </div>
+    <div class="iff-wire"><span>HTTP 요청 · GET /products/42</span><i aria-hidden="true"></i></div>
+    <div class="iff-edge">
+      <div class="iff-label">CDN 엣지</div>
+      <div class="iff-edge-path">
+        <div><strong>WAF</strong><span>허용할 요청 검사</span></div><span class="iff-inline-arrow" aria-hidden="true">→</span><div>
+          <strong>캐시 조회</strong><span>저장된 응답 재사용 여부</span>
+        </div>
+      </div>
+    </div>
+    <div class="iff-branches">
+      <div class="iff-miss">
+        <div class="iff-wire"><strong>MISS</strong><span>CDN ↔ 오리진 · 별도 TLS 연결</span><i aria-hidden="true"></i></div>
+        <div class="iff-origin">
+          <div class="iff-label">오리진 요청 경로 · Kubernetes 예시</div>
+          <div class="iff-routing">
+            {
+              routing.map(([name, note]) => (
+                <>
+                  <div class="iff-route">
+                    <>
+                      <strong>{name}</strong>
+                      <span>{note}</span>
+                    </>
+                  </div>
+                  <i class="iff-down" aria-hidden="true" />
+                </>
+              ))
+            }
+            <div class="iff-app">
+              <div class="iff-pod"><span class="iff-ready">Ready Pod</span><strong>상품 SSR 앱</strong><span>상품 데이터로 HTML 생성</span></div>
+              <div class="iff-api-branch">
+                <div class="iff-api-link"><span>조회 / JSON</span><i aria-hidden="true"></i></div>
+                <div class="iff-api"><strong>상품 API</strong><span>데이터 응답</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="iff-return"><i aria-hidden="true"></i><span>HTML 응답이 같은 경로를 거슬러 CDN으로 돌아옴</span></div>
+      </div>
+      <div class="iff-hit"><strong>HIT</strong><span>저장된<br />응답</span><i aria-hidden="true"></i></div>
+    </div>
+    <div class="iff-delivery"><span>CDN → 브라우저 · HTML 응답</span><i aria-hidden="true"></i></div>
+    <div class="iff-browser">
+      <strong>브라우저에서 화면 표시</strong>
+      <div class="iff-render"><span>HTML 파싱하며<br />CSS·JS·이미지 요청</span><span class="iff-inline-arrow" aria-hidden="true">→</span><span>스타일·코드 적용<br />렌더링·하이드레이션</span></div>
+    </div>
+  </div>
+</InfraDiagram>
+
+<style>
+  .iff {
+    --iff-hit-width: 74px;
+    --iff-branch-gap: 20px;
+    --iff-reserved: calc(var(--iff-hit-width) + var(--iff-branch-gap));
+    --iff-main-width: calc(100% - var(--iff-reserved));
+    width: 100%;
+    margin-inline: auto;
+    font-size: var(--infra-body);
+    line-height: 1.5;
+  }
+  .iff-start {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--infra-border);
+  }
+  .iff-start > strong {
+    font-size: var(--infra-title);
+    font-weight: 650;
+  }
+  .iff-start > span {
+    font-size: var(--infra-note);
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+  }
+  .iff-preparation {
+    width: var(--iff-main-width);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 18px 0 0;
+  }
+  .iff-preparation > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+  .iff-preparation strong {
+    font-size: var(--infra-note);
+    font-weight: 600;
+  }
+  .iff-preparation div > span,
+  .iff-preparation small {
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .iff-inline-arrow {
+    color: var(--demo-a);
+    text-align: center;
+    font-size: 20px;
+  }
+  .iff > .iff-wire {
+    width: var(--iff-main-width);
+  }
+  .iff-wire {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding-block: 12px;
+    text-align: center;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .iff-wire > strong {
+    color: var(--demo-a);
+    font-size: var(--infra-note);
+    font-weight: 650;
+  }
+  .iff-wire > i,
+  .iff-return > i,
+  .iff-delivery > i,
+  .iff-down {
+    position: relative;
+    display: block;
+    height: 16px;
+    width: 2px;
+    background: var(--demo-a);
+  }
+  .iff-wire > i::after,
+  .iff-return > i::after,
+  .iff-delivery > i::after,
+  .iff-down::after {
+    content: '';
+    position: absolute;
+    left: -2.5px;
+    bottom: 0;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--demo-a);
+    border-bottom: 2px solid var(--demo-a);
+    transform: rotate(45deg);
+  }
+  .iff-label {
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .iff-edge {
+    padding: 14px calc(18px + var(--iff-reserved)) 14px 18px;
+    border: 1px solid var(--demo-a);
+    border-radius: var(--infra-radius);
+    background: var(--demo-a-soft);
+  }
+  .iff-edge-path {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .iff-edge-path > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+  .iff-edge-path strong {
+    font-size: var(--infra-title);
+    font-weight: 650;
+  }
+  .iff-edge-path div > span {
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .iff-branches {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--iff-hit-width);
+    gap: var(--iff-branch-gap);
+  }
+  .iff-miss {
+    min-width: 0;
+  }
+  .iff-origin {
+    padding: 14px 18px;
+    border: 1px dashed var(--infra-border);
+    border-radius: var(--infra-radius);
+  }
+  .iff-routing {
+    margin-top: 12px;
+  }
+  .iff-route {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 0;
+    text-align: center;
+  }
+  .iff-route strong {
+    font-size: var(--infra-title);
+    font-weight: 600;
+  }
+  .iff-route > span {
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .iff-down {
+    margin: 8px auto;
+  }
+  .iff-app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    margin-top: 9px;
+  }
+  .iff-pod {
+    grid-column: 2;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 12px;
+    border: 1px solid var(--demo-a);
+    border-radius: 8px;
+    background: var(--demo-a-soft);
+  }
+  .iff-ready {
+    color: var(--demo-a);
+    font-size: var(--infra-note);
+  }
+  .iff-pod strong,
+  .iff-api strong {
+    font-size: var(--infra-title);
+    font-weight: 650;
+  }
+  .iff-pod > :last-child,
+  .iff-api > span {
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .iff-api-branch {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .iff-api-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    font-size: var(--infra-note);
+    color: var(--demo-a);
+  }
+  .iff-api-link > span {
+    white-space: nowrap;
+  }
+  .iff-api-link > i {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--demo-a);
+  }
+  .iff-api-link > i::before,
+  .iff-api-link > i::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    width: 8px;
+    height: 10px;
+    background: var(--demo-a);
+    clip-path: polygon(0 0, 100% 50%, 0 100%, 0 76%, 65% 50%, 0 24%);
+  }
+  .iff-api-link > i::before {
+    left: 0;
+    transform: rotate(180deg);
+  }
+  .iff-api-link > i::after {
+    right: 0;
+  }
+  .iff-api {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
+  }
+  .iff-hit {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+    text-align: center;
+    color: var(--demo-a);
+  }
+  .iff-hit > strong {
+    font-size: var(--infra-note);
+    font-weight: 650;
+  }
+  .iff-hit > span {
+    font-size: var(--infra-note);
+    margin-top: 5px;
+  }
+  .iff-hit > i {
+    position: relative;
+    flex: 1;
+    width: 2px;
+    margin-top: 12px;
+    background: var(--demo-a);
+  }
+  .iff-hit > i::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -3px;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--demo-a);
+    border-bottom: 2px solid var(--demo-a);
+    transform: rotate(45deg);
+  }
+  .iff-return {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+    text-align: center;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .iff-delivery {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 12px var(--iff-reserved) 0 0;
+    color: var(--demo-a);
+    font-size: var(--infra-note);
+  }
+  .iff-delivery::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: calc(var(--iff-main-width) / 2);
+    right: calc(var(--iff-hit-width) / 2);
+    height: 2px;
+    background: var(--demo-a);
+  }
+  .iff-browser {
+    margin-top: 14px;
+    padding: 16px calc(16px + var(--iff-reserved)) 16px 16px;
+    border: 1px solid var(--demo-a);
+    border-radius: var(--infra-radius);
+    background: var(--demo-a-soft);
+    text-align: center;
+  }
+  .iff-browser > strong {
+    font-size: var(--infra-title);
+    font-weight: 650;
+  }
+  .iff-render {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    font-size: var(--infra-note);
+  }
+  @media (max-width: 520px) {
+    .iff {
+      --iff-hit-width: 42px;
+      --iff-branch-gap: 12px;
+    }
+    .iff-origin {
+      padding: 12px;
+    }
+    .iff-app {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .iff-pod {
+      grid-column: 1;
+    }
+    .iff-api-branch {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .iff-api-link {
+      position: relative;
+      min-height: 32px;
+      justify-content: center;
+    }
+    .iff-api-link > span {
+      position: absolute;
+      left: calc(50% + 12px);
+    }
+    .iff-api-link > i {
+      width: 2px;
+      height: 32px;
+    }
+    .iff-api-link > i::before,
+    .iff-api-link > i::after {
+      left: -3px;
+      right: auto;
+    }
+    .iff-api-link > i::before {
+      top: -1px;
+      transform: rotate(-90deg);
+    }
+    .iff-api-link > i::after {
+      top: auto;
+      bottom: -1px;
+      transform: rotate(90deg);
+    }
+    .iff-pod {
+      padding: 10px;
+    }
+    .iff-preparation {
+      gap: 6px;
+    }
+    .iff-render {
+      gap: 6px;
+      font-size: var(--infra-note);
+    }
+  }
+</style>

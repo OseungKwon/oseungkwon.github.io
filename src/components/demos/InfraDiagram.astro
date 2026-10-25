@@ -1,0 +1,71 @@
+---
+import Demo from './Demo.astro';
+
+interface Props {
+  title?: string;
+  hint?: string;
+  caption?: string;
+}
+
+const { title, hint, caption } = Astro.props;
+const hasControls = Astro.slots.has('controls');
+---
+
+<div class="infra-diagram">
+  {
+    hasControls ? (
+      <Demo {title} {hint} {caption} frameless bare>
+        <Fragment slot="controls">
+          <slot name="controls" />
+        </Fragment>
+        <slot />
+      </Demo>
+    ) : (
+      <Demo {title} {hint} {caption} frameless bare>
+        <slot />
+      </Demo>
+    )
+  }
+</div>
+
+<style>
+  .infra-diagram {
+    --infra-title: 16px;
+    --infra-body: 14px;
+    --infra-note: 13px;
+    --infra-radius: 8px;
+    --infra-border: color-mix(in srgb, var(--color-text-secondary) 65%, var(--surface-bg));
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+  .infra-diagram :global(.demo__title) {
+    font-size: var(--infra-title);
+  }
+  .infra-diagram :global(.demo__hint),
+  .infra-diagram :global(.demo__caption),
+  .infra-diagram :global(.demo-label) {
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    letter-spacing: 0;
+  }
+  .infra-diagram :global(.demo__caption) {
+    text-align: left;
+    margin-top: 16px;
+  }
+  .infra-diagram :global(.demo__stage) {
+    padding: 16px 0;
+  }
+  .infra-diagram :global(.demo__controls) {
+    border: 1px solid var(--infra-border);
+    border-radius: var(--infra-radius);
+    padding: 8px 12px;
+  }
+  .infra-diagram :global(.demo-seg__opt) {
+    min-height: 40px;
+    padding: 8px 16px;
+    font-size: var(--infra-note);
+  }
+</style>

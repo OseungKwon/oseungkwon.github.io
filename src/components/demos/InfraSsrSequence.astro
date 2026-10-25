@@ -1,0 +1,114 @@
+---
+import InfraDiagram from './InfraDiagram.astro';
+const exchanges = [
+  { from: 'browser', to: 'ssr', label: 'GET /products/42', response: false },
+  { from: 'ssr', to: 'api', label: '상품 데이터 조회', response: false },
+  { from: 'api', to: 'ssr', label: '상품 JSON', response: true },
+  { from: 'ssr', to: 'browser', label: '상품을 담은 HTML', response: true },
+];
+---
+
+<InfraDiagram caption="SSR 서버가 상품 API 응답을 받은 뒤, 브라우저에 HTML을 반환합니다.">
+  <div class="iss">
+    <div class="iss-head"><strong>브라우저</strong><strong>SSR 서버</strong><strong>상품 API</strong></div>
+    <div class="iss-events">
+      {
+        exchanges.map((event, i) => (
+          <div class="iss-row" data-from={event.from} data-to={event.to} data-response={String(event.response)}>
+            <span class="iss-line">
+              <>
+                <span class="iss-number">{i + 1}</span>
+                <span class="iss-message">{event.label}</span>
+                <span class="iss-tip" aria-hidden="true" />
+              </>
+            </span>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</InfraDiagram>
+<style>
+  .iss {
+    padding: 0 2px;
+    font-size: var(--infra-body);
+  }
+  .iss-head {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    text-align: center;
+  }
+  .iss-head strong {
+    margin-inline: 5px;
+    border: 1px solid var(--infra-border);
+    background: var(--color-bg-tertiary);
+    border-radius: 8px;
+    padding: 10px 3px;
+    font-size: var(--infra-title);
+  }
+  .iss-events {
+    position: relative;
+    margin: 0 calc(100% / 6);
+    padding: 12px 0;
+    background-image: linear-gradient(var(--infra-border), var(--infra-border)), linear-gradient(var(--infra-border), var(--infra-border)), linear-gradient(var(--infra-border), var(--infra-border));
+    background-size: 1px 100%;
+    background-position: left, center, right;
+    background-repeat: no-repeat;
+  }
+  .iss-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 12px 0;
+  }
+  .iss-line {
+    position: relative;
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 8px 9px;
+    border-bottom: 2px solid var(--demo-a);
+  }
+  .iss-row[data-from='ssr'][data-to='api'] .iss-line,
+  .iss-row[data-from='api'] .iss-line {
+    grid-column: 2;
+  }
+  .iss-row[data-response='true'] .iss-line {
+    border-bottom-style: dashed;
+  }
+  .iss-number {
+    font: var(--infra-note) var(--font-sans);
+    color: var(--demo-a);
+  }
+  .iss-message {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: var(--infra-note);
+    line-height: 1.6;
+    background: var(--surface-bg);
+  }
+  .iss-tip {
+    position: absolute;
+    bottom: -6px;
+    right: 0;
+    width: 8px;
+    height: 10px;
+    background: var(--demo-a);
+    clip-path: polygon(0 0, 100% 50%, 0 100%, 0 76%, 65% 50%, 0 24%);
+  }
+  .iss-row[data-response='true'] .iss-tip {
+    right: auto;
+    left: 0;
+    transform: rotate(180deg);
+  }
+  @media (max-width: 460px) {
+    .iss-message {
+      font-size: var(--infra-note);
+    }
+    .iss-line {
+      gap: 4px;
+      padding-inline: 4px;
+    }
+  }
+</style>

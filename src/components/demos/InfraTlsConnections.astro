@@ -1,0 +1,120 @@
+---
+import InfraDiagram from './InfraDiagram.astro';
+const connections = [
+  { name: '연결 A', client: '브라우저', server: 'CDN', cert: 'my.example.com 인증서', role: 'CDN이 TLS 서버', note: 'CDN에서 HTTP 요청 해석' },
+  { name: '연결 B', client: 'CDN', server: '오리진', cert: '오리진 호스트의 인증서', role: 'CDN이 TLS 클라이언트', note: '별도 키로 다시 암호화' },
+];
+---
+
+<InfraDiagram title="CDN에서 끝나는 TLS와 오리진으로 향하는 TLS" caption="CDN은 연결 A를 복호화하고, 연결 B를 새로 맺어 요청을 전달합니다.">
+  <div class="itc">
+    {
+      connections.map((connection) => (
+        <div class="itc-session">
+          <div class="itc-header">
+            <>
+              <span>{connection.name}</span>
+              <span>{connection.role}</span>
+            </>
+          </div>
+          <div class="itc-peers">
+            <>
+              <strong>{connection.client}</strong>
+              <span class="itc-channel" aria-label="암호화된 양방향 연결">
+                ↔<span>TLS</span>
+              </span>
+              <strong>{connection.server}</strong>
+            </>
+          </div>
+          <div class="itc-cert">
+            <>
+              <span>서버 신원 확인</span>
+              <strong>{connection.cert}</strong>
+            </>
+          </div>
+          <div class="itc-note">{connection.note}</div>
+        </div>
+      ))
+    }
+  </div>
+</InfraDiagram>
+<style>
+  .itc {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    font-size: var(--infra-body);
+  }
+  .itc-session {
+    min-width: 0;
+    border: 1px solid var(--infra-border);
+    border-radius: var(--infra-radius);
+    padding: 14px;
+  }
+  .itc-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .itc-header > :first-child {
+    color: var(--demo-a);
+    font-weight: 600;
+  }
+  .itc-peers {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    margin-block: 22px;
+  }
+  .itc-peers > strong {
+    padding: 12px 4px;
+    text-align: center;
+    background: var(--demo-a-soft);
+    border: 1px solid var(--demo-a);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: var(--infra-title);
+  }
+  .itc-channel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--demo-a);
+    font-size: 26px;
+    line-height: 1;
+  }
+  .itc-channel > span {
+    font: var(--infra-note) var(--font-sans);
+    margin-top: 5px;
+  }
+  .itc-cert {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid var(--infra-border);
+    padding-top: 12px;
+    overflow-wrap: anywhere;
+  }
+  .itc-cert > span {
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .itc-cert strong {
+    font-size: var(--infra-body);
+    font-weight: 600;
+  }
+  .itc-note {
+    color: var(--color-text-secondary);
+    margin-top: 12px;
+    font-size: var(--infra-note);
+  }
+  @media (max-width: 600px) {
+    .itc {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

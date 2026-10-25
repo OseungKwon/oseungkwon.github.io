@@ -1,0 +1,232 @@
+---
+import InfraDiagram from './InfraDiagram.astro';
+const groups = [
+  {
+    encrypted: false,
+    label: '공개 전달',
+    steps: [
+      { number: 1, direction: 'down', messages: ['ClientHello'], detail: '지원 조건 · 키 교환 정보' },
+      { number: 2, direction: 'up', messages: ['ServerHello'], detail: '조건 선택 · 키 교환 정보' },
+    ],
+  },
+  {
+    encrypted: true,
+    label: '핸드셰이크 키로 암호화',
+    steps: [
+      { number: 3, direction: 'up', messages: ['EncryptedExtensions', 'Certificate', 'CertificateVerify', 'Finished'], detail: '' },
+      { number: 4, direction: 'down', messages: ['Finished'], detail: '클라이언트의 협상 확인' },
+    ],
+  },
+];
+---
+
+<InfraDiagram caption="가로 방향은 진행 순서, 세로 화살표는 메시지의 전송 방향입니다.">
+  <div
+    class="ith"
+    role="img"
+    aria-label="TLS 1.3 핸드셰이크의 네 단계. 1 브라우저에서 서버로 ClientHello, 2 서버에서 브라우저로 ServerHello, 3 서버에서 브라우저로 암호화한 인증서와 CertificateVerify 및 Finished, 4 브라우저에서 서버로 암호화한 Finished를 전송합니다."
+  >
+    {
+      groups.map((group) => (
+        <div class="ith-group" data-encrypted={String(group.encrypted)}>
+          <div class="ith-label">{group.label}</div>
+          <div class="ith-lanes">
+            <div class="ith-peers">
+              <>
+                <span>브라우저</span>
+                <span>서버</span>
+              </>
+            </div>
+            <div class="ith-steps">
+              {group.steps.map((step) => (
+                <div class="ith-step" data-direction={step.direction}>
+                  <div class="ith-terminal">
+                    <span class="ith-number">{step.number}</span>
+                  </div>
+                  <div class="ith-transfer">
+                    <span class="ith-arrow" aria-hidden="true" />
+                    <div class="ith-message">
+                      {step.messages.map((message) => (
+                        <span>{message}</span>
+                      ))}
+                      {step.detail && <small>{step.detail}</small>}
+                    </div>
+                  </div>
+                  <div class="ith-terminal">
+                    <i aria-hidden="true" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</InfraDiagram>
+
+<style>
+  .ith {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    font-size: var(--infra-body);
+    line-height: 1.5;
+  }
+  .ith-group {
+    --ith-paper: var(--surface-bg);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-width: 0;
+    padding: 12px 8px 16px;
+    border-radius: var(--infra-radius);
+    background: var(--ith-paper);
+  }
+  .ith-group[data-encrypted='true'] {
+    --ith-paper: color-mix(in srgb, var(--surface-bg) 92%, var(--demo-a) 8%);
+  }
+  .ith-label {
+    margin: 0 0 16px 56px;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .ith-group[data-encrypted='true'] .ith-label {
+    color: var(--demo-a);
+  }
+  .ith-lanes {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+  .ith-peers {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-block: 3px;
+    font-size: var(--infra-note);
+    font-weight: 600;
+  }
+  .ith-steps {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ith-steps::before,
+  .ith-steps::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 2px solid var(--infra-border);
+  }
+  .ith-steps::before {
+    top: 12px;
+  }
+  .ith-steps::after {
+    bottom: 12px;
+  }
+  .ith-step {
+    display: grid;
+    grid-template-rows: 24px 1fr 24px;
+    min-width: 0;
+  }
+  .ith-terminal {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+  .ith-number {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--infra-border);
+    border-radius: 50%;
+    background: var(--ith-paper);
+    font-size: var(--infra-note);
+  }
+  .ith-terminal > i {
+    position: relative;
+    z-index: 1;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-text-secondary);
+  }
+  .ith-transfer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-block: 24px;
+  }
+  .ith-arrow {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--demo-b);
+    color: var(--demo-b);
+  }
+  .ith-arrow::after {
+    content: '';
+    position: absolute;
+    left: -3px;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+  }
+  .ith-step[data-direction='down'] .ith-arrow::after {
+    bottom: 1px;
+    transform: rotate(45deg);
+  }
+  .ith-step[data-direction='up'] .ith-arrow::after {
+    top: 1px;
+    transform: rotate(225deg);
+  }
+  .ith-message {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 3px;
+    background: var(--ith-paper);
+    text-align: center;
+    min-width: 0;
+  }
+  .ith-message > span {
+    font-family: var(--font-sans);
+    font-size: var(--infra-note);
+    overflow-wrap: anywhere;
+  }
+  .ith-message > small {
+    max-width: 140px;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .ith-group[data-encrypted='true'] .ith-arrow,
+  .ith-group[data-encrypted='true'] .ith-terminal > i {
+    background: var(--demo-a);
+    color: var(--demo-a);
+  }
+  .ith-group[data-encrypted='true'] .ith-number {
+    border-color: var(--demo-a);
+    color: var(--demo-a);
+  }
+  @media (max-width: 620px) {
+    .ith {
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+    .ith-transfer {
+      padding-block: 22px;
+    }
+    .ith-message > span {
+      font-size: var(--infra-note);
+    }
+  }
+</style>

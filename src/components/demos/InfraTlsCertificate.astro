@@ -1,0 +1,190 @@
+---
+import InfraDiagram from './InfraDiagram.astro';
+---
+
+<InfraDiagram>
+  <div
+    class="itcert"
+    role="img"
+    aria-label="브라우저가 이미 신뢰하는 루트 CA의 공개 키로 중간 CA 인증서의 서명을 검증하고, 중간 CA의 공개 키로 서버 인증서의 서명을 검증합니다. 서버 인증서에는 my.example.com이라는 호스트 이름과 서버 공개 키가 담겨 있습니다."
+  >
+    <div class="itcert-root">
+      <span class="itcert-location">브라우저의 신뢰 저장소</span>
+      <strong>루트 CA</strong>
+      <span class="itcert-key">공개 키</span>
+    </div>
+    <div class="itcert-link"><span>서명 검증</span><i aria-hidden="true"></i></div>
+    <div class="itcert-presented">
+      <div class="itcert-location">서버가 보내는 인증서 체인</div>
+      <div class="itcert-chain">
+        <div class="itcert-intermediate"><strong>중간 CA</strong><span class="itcert-key">공개 키</span></div>
+        <div class="itcert-link"><span>서명 검증</span><i aria-hidden="true"></i></div>
+        <div class="itcert-leaf">
+          <strong>서버 인증서</strong>
+          <div class="itcert-field"><span>SAN</span><span>my.example.com</span></div>
+          <div class="itcert-field"><span>공개 키</span><span>서버 공개 키</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</InfraDiagram>
+
+<style>
+  .itcert {
+    display: grid;
+    grid-template-columns: 1fr 64px 2.8fr;
+    align-items: center;
+    gap: 10px;
+    font-size: var(--infra-body);
+    line-height: 1.55;
+  }
+  .itcert-location {
+    display: block;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .itcert-root {
+    min-width: 0;
+    text-align: center;
+  }
+  .itcert-root strong {
+    display: block;
+    margin-block: 12px 6px;
+    color: var(--demo-a);
+    font-size: var(--infra-title);
+    font-weight: 650;
+  }
+  .itcert-key {
+    display: block;
+    font-size: var(--infra-note);
+    color: var(--color-text-secondary);
+  }
+  .itcert-presented {
+    min-width: 0;
+    padding: 14px;
+    border: 1px dashed var(--infra-border);
+    border-radius: var(--infra-radius);
+  }
+  .itcert-chain {
+    display: grid;
+    grid-template-columns: 1fr 64px 1.7fr;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .itcert-intermediate {
+    text-align: center;
+  }
+  .itcert-intermediate strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: var(--infra-title);
+    font-weight: 650;
+  }
+  .itcert-leaf {
+    min-width: 0;
+    border: 1px solid var(--demo-a);
+    border-radius: var(--infra-radius);
+    padding: 12px;
+    background: var(--demo-a-soft);
+  }
+  .itcert-leaf > strong {
+    display: block;
+    margin-bottom: 12px;
+    font-size: var(--infra-title);
+    font-weight: 650;
+  }
+  .itcert-field {
+    display: flex;
+    flex-direction: column;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid var(--infra-border);
+  }
+  .itcert-field > :first-child {
+    color: var(--color-text-secondary);
+    font-size: var(--infra-note);
+  }
+  .itcert-field > :last-child {
+    font-size: var(--infra-note);
+    overflow-wrap: anywhere;
+  }
+  .itcert-link {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+    color: var(--demo-a);
+  }
+  .itcert-link > span {
+    font-size: var(--infra-note);
+    white-space: nowrap;
+  }
+  .itcert-link > i {
+    position: relative;
+    display: block;
+    height: 2px;
+    background: var(--demo-a);
+  }
+  .itcert-link > i::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    right: 0;
+    width: 7px;
+    height: 7px;
+    border-top: 2px solid var(--demo-a);
+    border-right: 2px solid var(--demo-a);
+    transform: rotate(45deg);
+  }
+  @media (max-width: 580px) {
+    .itcert {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .itcert-root strong {
+      margin-block: 6px 2px;
+    }
+    .itcert > .itcert-link {
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      min-height: 26px;
+    }
+    .itcert > .itcert-link > i {
+      width: 26px;
+      transform: rotate(90deg);
+    }
+    .itcert-chain {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .itcert-chain .itcert-link {
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 26px;
+    }
+    .itcert-chain .itcert-link > i {
+      width: 26px;
+      transform: rotate(90deg);
+    }
+    .itcert-presented {
+      padding: 12px;
+    }
+    .itcert-leaf {
+      width: min(100%, 240px);
+      margin-inline: auto;
+      padding: 12px;
+    }
+    .itcert-leaf > strong {
+      font-size: var(--infra-title);
+    }
+    .itcert-field > :last-child {
+      font-size: var(--infra-note);
+    }
+  }
+</style>
