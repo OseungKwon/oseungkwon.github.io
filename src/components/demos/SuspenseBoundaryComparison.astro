@@ -1,0 +1,127 @@
+---
+import Demo from './Demo.astro';
+---
+
+<Demo title="같은 데이터 상태, 다른 경계" hint="추천 상품은 준비되었고, 리뷰는 아직 기다리는 시점입니다." caption="최초 표시 기준 · 점선 영역은 fallback, 파란 테두리는 Suspense 경계입니다.">
+  <div class="sbc" data-demo="suspense-boundaries">
+    <div class="sbc-panel">
+      <div class="sbc-title">하나로 묶은 경계</div>
+      <div class="sbc-product">무선 키보드 <span>89,000원</span></div>
+      <div class="sbc-boundary">
+        <span class="sbc-tag">Suspense · 추천 상품 + 리뷰</span>
+        <div class="sbc-loading sbc-loading--tall">
+          <div class="sbc-bars" aria-hidden="true"><span></span><span></span></div>
+          <span>추천 상품과 리뷰를 불러오는 중</span>
+        </div>
+      </div>
+    </div>
+    <div class="sbc-panel">
+      <div class="sbc-title">각각 나눈 경계</div>
+      <div class="sbc-product">무선 키보드 <span>89,000원</span></div>
+      <div class="sbc-boundary">
+        <span class="sbc-tag">Suspense · 추천 상품</span>
+        <div class="sbc-content"><span>추천 상품</span><strong>손목 받침대</strong></div>
+      </div>
+      <div class="sbc-boundary">
+        <span class="sbc-tag">Suspense · 리뷰</span>
+        <div class="sbc-loading">
+          <div class="sbc-bars" aria-hidden="true"><span></span></div>
+          <span>리뷰를 불러오는 중</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .sbc {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .sbc-panel {
+    min-width: 0;
+  }
+  .sbc-title {
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  .sbc-product {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem 0.75rem;
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-primary);
+    background: var(--color-bg-tertiary);
+    border-radius: 0.625rem;
+  }
+  .sbc-product span {
+    color: var(--color-text-secondary);
+  }
+  .sbc-boundary {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--demo-a);
+    border-radius: 0.75rem;
+  }
+  .sbc-tag {
+    display: block;
+    margin-bottom: 0.625rem;
+    font-size: 0.6875rem;
+    color: var(--demo-a);
+  }
+  .sbc-loading {
+    display: grid;
+    align-content: center;
+    gap: 0.75rem;
+    min-height: 5rem;
+    padding: 0.75rem;
+    border: 1px dashed var(--color-border-secondary);
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+  .sbc-loading--tall {
+    min-height: 14rem;
+  }
+  .sbc-bars {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .sbc-bars span {
+    width: 80%;
+    height: 0.5rem;
+    background: var(--color-border-secondary);
+    border-radius: 1rem;
+  }
+  .sbc-bars span + span {
+    width: 55%;
+  }
+  .sbc-content {
+    display: grid;
+    align-content: center;
+    gap: 0.375rem;
+    min-height: 5rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--demo-a-soft);
+    color: var(--color-text-primary);
+    font-size: 0.8125rem;
+  }
+  .sbc-content > span {
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+  @media (max-width: 34rem) {
+    .sbc {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.5rem;
+    }
+    .sbc-loading--tall {
+      min-height: 8rem;
+    }
+  }
+</style>
