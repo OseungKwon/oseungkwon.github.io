@@ -1,0 +1,191 @@
+---
+import Demo from './Demo.astro';
+const nodes = [
+  ['page-ui', 'pages/cart', 'ui', 'CartPage'],
+  ['page-model', 'pages/cart', 'model', 'useCheckout'],
+  ['feature-ui', 'features/add-to-cart', 'ui', 'AddToCartButton'],
+  ['feature-model', 'features/add-to-cart', 'model', 'addToCart'],
+  ['cart-model', 'entities/cart', 'model', 'cartStore · needsStoreReplacement'],
+  ['order-api', 'entities/order', 'api', 'createOrder'],
+  ['order-model', 'entities/order', 'model', 'Order · CreateOrderInput'],
+  ['shared-api', 'shared', 'api', 'HTTP client'],
+];
+const edges = [
+  ['page-ui', 'page-model', '결제 훅', false],
+  ['feature-ui', 'feature-model', '담기 함수', false],
+  ['page-model', 'cart-model', '장바구니 조회 · 비우기', true],
+  ['feature-model', 'cart-model', '조건 확인 · 담기', true],
+  ['page-model', 'order-api', '주문 생성', true],
+  ['order-api', 'order-model', '요청 · 응답 타입', false],
+  ['order-api', 'shared-api', 'HTTP 요청', true],
+];
+const layouts = [
+  {
+    name: 'wide',
+    width: 740,
+    height: 690,
+    boxWidth: 292,
+    positions: [
+      [16, 12],
+      [16, 158],
+      [432, 12],
+      [432, 158],
+      [432, 340],
+      [16, 340],
+      [432, 548],
+      [16, 548],
+    ],
+    paths: ['M162 94 V158', 'M578 94 V158', 'M308 199 H370 V381 H432', 'M578 240 V340', 'M162 240 V340', 'M308 381 H340 V589 H432', 'M162 422 V548'],
+    labels: [
+      [175, 130],
+      [591, 130],
+      [370, 282],
+      [578, 293],
+      [162, 293],
+      [345, 490],
+      [162, 490],
+    ],
+  },
+  {
+    name: 'narrow',
+    width: 350,
+    height: 1090,
+    boxWidth: 318,
+    positions: [
+      [16, 12],
+      [16, 140],
+      [16, 700],
+      [16, 828],
+      [16, 968],
+      [16, 348],
+      [16, 488],
+      [16, 628],
+    ],
+    paths: ['M175 94 V140', 'M175 782 V828', 'M16 181 H5 V1009 H16', 'M175 910 V968', 'M175 222 V348', 'M175 430 V488', 'M334 389 H345 V669 H334'],
+    labels: [
+      [175, 120],
+      [175, 809],
+      [68, 932],
+      [175, 946],
+      [175, 289],
+      [175, 467],
+      [278, 602],
+    ],
+  },
+];
+---
+
+<Demo title="주문 화면의 세그먼트 의존성" caption="화살표는 import하는 세그먼트에서 참조되는 세그먼트로 향합니다. 외부 참조는 각 슬라이스의 index.ts를 거칩니다." frameless>
+  <div class="fcd-graph">
+    {
+      layouts.map((layout) => (
+        <svg
+          class={`fcd-svg fcd-svg--${layout.name}`}
+          viewBox={`0 0 ${layout.width} ${layout.height}`}
+          role="img"
+          aria-label="장바구니 화면과 담기 피처가 장바구니 모델을 공유하고, 결제 모델은 주문 API를 통해 HTTP 클라이언트를 참조하는 세그먼트 의존 그래프"
+        >
+          <defs>
+            <marker id={`fcd-arrow-${layout.name}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          {edges.map((edge, i) => (
+            <g class:list={['fcd-edge', edge[3] && 'fcd-edge--public']}>
+              <path d={layout.paths[i]} marker-end={`url(#fcd-arrow-${layout.name})`} />
+              <text x={layout.labels[i][0]} y={layout.labels[i][1]} text-anchor="middle">
+                {edge[2]}
+              </text>
+            </g>
+          ))}
+          {nodes.map((node, i) => (
+            <g transform={`translate(${layout.positions[i][0]} ${layout.positions[i][1]})`} class:list={['fcd-node', node[0] === 'cart-model' && 'fcd-node--active']}>
+              <rect width={layout.boxWidth} height="82" rx="10" />
+              <text x="14" y="23" class="fcd-path">
+                {node[1]}
+              </text>
+              <text x="14" y="46" class="fcd-segment">
+                {node[2]}
+              </text>
+              <text x="14" y="67" class="fcd-symbol">
+                {node[3]}
+              </text>
+            </g>
+          ))}
+        </svg>
+      ))
+    }
+    <div class="fcd-legend"><span>실선: 같은 슬라이스 내부</span><span>파선: 외부 공개 API 경유</span></div>
+  </div>
+</Demo>
+<style>
+  .fcd-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .fcd-svg--narrow {
+    display: none;
+  }
+  .fcd-node rect {
+    fill: var(--surface-bg);
+    stroke: var(--color-border-primary);
+    stroke-width: 1;
+  }
+  .fcd-node--active rect {
+    fill: var(--demo-a-soft);
+    stroke: var(--demo-a);
+  }
+  .fcd-node text {
+    font-family: var(--font-sans);
+    fill: var(--color-text-primary);
+  }
+  .fcd-path {
+    font-size: 12px;
+  }
+  .fcd-segment {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .fcd-symbol {
+    font-size: 11px;
+    fill: var(--color-text-secondary) !important;
+  }
+  .fcd-edge {
+    color: var(--demo-a);
+  }
+  .fcd-edge > path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
+  .fcd-edge--public > path {
+    stroke-dasharray: 5 4;
+  }
+  .fcd-edge text {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    fill: var(--color-text-secondary);
+    paint-order: stroke;
+    stroke: var(--color-bg-primary);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+  }
+  .fcd-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-top: 1rem;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+  @media (max-width: 34rem) {
+    .fcd-svg--wide {
+      display: none;
+    }
+    .fcd-svg--narrow {
+      display: block;
+    }
+  }
+</style>
