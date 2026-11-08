@@ -1,0 +1,252 @@
+---
+title: 'React에서 class는 언제 사용할까'
+description: '클래스 컴포넌트와 UI 밖의 상태를 관리하는 클래스의 용도를 구분하고, 인스턴스의 생성·유지와 React 화면에 변경을 반영하는 방법을 살펴봅니다.'
+pubDate: '2026-11-08'
+category: 'tech'
+tags: ['React', 'TypeScript', '클래스', '상태 관리']
+draft: true
+---
+
+함수 컴포넌트를 사용하는 React 코드에서도 `new QueryClient()` 같은 클래스 인스턴스를 만납니다. Error Boundary를 직접 구현할 때는 `React.Component`를 상속하기도 합니다. 전자는 화면 밖의 데이터를 관리하는 객체이고, 후자는 React가 렌더링하는 컴포넌트입니다.
+
+이 글에서는 클래스 컴포넌트와 일반 JavaScript 클래스를 구분하고, 일반 클래스가 가진 상태를 React 화면에 연결하는 방법을 살펴보겠습니다. 매장 비교 화면의 선택 상태를 예제로 사용하며, 인스턴스를 유지하는 위치와 변경 구독, 자원을 정리하는 시점까지 이어서 다룹니다.
+
+## 클래스 컴포넌트와 일반 클래스
+
+클래스 컴포넌트는 `React.Component`를 상속해 `render`를 구현하고, 필요에 따라 생명주기 메서드를 추가합니다. React가 인스턴스를 관리하며 `this.setState`를 통한 상태 업데이트도 처리합니다. React는 새 컴포넌트를 함수로 작성하도록 권장하며, 기존 클래스 컴포넌트도 계속 지원합니다. [Component](https://react.dev/reference/react/Component)
+
+일반 클래스의 인스턴스는 React가 컴포넌트로 관리하는 대상이 아닙니다. 캐시 클라이언트, 에디터, 지도 인스턴스처럼 자신만의 상태와 메서드를 제공할 수 있지만, 속성을 바꿨다고 React가 자동으로 다시 렌더링하지는 않습니다. 화면에 변경을 반영해야 한다면 객체가 제공하는 이벤트나 구독 기능을 React에 연결해야 합니다.
+
+| 구분           | 클래스 컴포넌트                               | 일반 클래스                             |
+| -------------- | --------------------------------------------- | --------------------------------------- |
+| 예             | 직접 구현한 Error Boundary                    | 캐시 클라이언트, 선택 상태 저장소       |
+| React와의 관계 | React가 컴포넌트로 생성하고 관리              | 애플리케이션이 인스턴스를 생성하고 전달 |
+| 화면 업데이트  | `this.setState` 등 React의 업데이트 경로 사용 | 속성 변경만으로는 React가 알 수 없음    |
+
+## Error Boundary를 직접 구현할 때
+
+매장 비교 패널의 렌더링이 실패했을 때 그 영역만 오류 안내로 바꾸려면 Error Boundary를 둘 수 있습니다. `getDerivedStateFromError`는 오류를 표시할 상태를 반환하고, `componentDidCatch`는 오류 기록 같은 처리를 담당합니다. 현재 함수 컴포넌트에는 이 경계를 직접 정의하는 Hook이 없으므로, 직접 구현할 때는 클래스 컴포넌트 API를 사용합니다. 아래의 `fallback`은 실패한 자식 대신 보여줄 화면입니다. [렌더링 오류 처리](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary)
+
+```tsx
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+
+type Props = {
+  children: ReactNode;
+  fallback: ReactNode;
+};
+
+export class StoreErrorBoundary extends Component<Props, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    // 실패한 자식 대신 fallback을 렌더링하도록 상태를 바꿉니다.
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('매장 패널 렌더링 실패', error, info.componentStack);
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+```
+
+오류 화면을 어디까지 대체할지는 경계를 배치하는 위치로 정합니다. 비교 패널을 감싸면 바깥의 매장 목록과 검색 영역은 유지할 수 있습니다.
+
+```tsx
+<StoreErrorBoundary fallback={<p>매장 비교 정보를 표시하지 못했습니다.</p>}>
+  <StoreComparison />
+</StoreErrorBoundary>
+```
+
+저장 버튼의 `async` 핸들러에서 요청이 실패하는 경우는 이 경계로 처리하지 않습니다. Error Boundary는 자식의 렌더링 오류 등을 처리하며, 이벤트 핸들러나 임의의 비동기 콜백에서 발생한 오류는 별도로 처리해야 합니다. 오류 화면에 다시 시도 버튼을 제공하려면 `failed` 상태를 해제하고 자식을 다시 렌더링하는 동작도 필요합니다.
+
+## React 밖에서 관리하는 선택 상태
+
+일반 클래스는 인스턴스별로 상태를 보관하면서 조회·변경 동작을 함께 제공할 때 사용할 수 있습니다. 다만 매장 체크박스와 선택 개수처럼 한 React 화면 안에서 끝나는 상태라면 `useState`와 props로도 관리할 수 있습니다. 여기서는 React 밖에서 관리하는 선택 객체가 있고, 화면이 그 객체의 값을 읽고 변경해야 하는 경우를 다루겠습니다.
+
+선택 객체는 매장 ID 목록과 그 변경을 알릴 구독자를 보관합니다. 컴포넌트가 읽는 현재 목록을 snapshot이라고 부르고, `getSnapshot`으로 제공합니다. `toggle`은 목록을 새 배열로 교체한 뒤 등록된 구독자에게 알립니다.
+
+```ts
+// StoreSelection.ts
+type Listener = () => void;
+
+export class StoreSelection {
+  private readonly initialSnapshot: readonly string[] = [];
+  private snapshot: readonly string[] = this.initialSnapshot;
+  private listeners = new Set<Listener>();
+
+  // 변경이 없으면 같은 배열 참조를 반환합니다.
+  getSnapshot = () => this.snapshot;
+  getServerSnapshot = () => this.initialSnapshot;
+
+  subscribe = (listener: Listener) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  toggle(id: string) {
+    this.snapshot = this.snapshot.includes(id)
+      ? this.snapshot.filter((selectedId) => selectedId !== id)
+      : [...this.snapshot, id];
+
+    this.listeners.forEach((listener) => listener());
+  }
+}
+```
+
+`subscribe`와 `getSnapshot`을 화살표 함수로 정의한 것은 이 메서드들을 콜백으로 전달해도 `this`가 인스턴스를 가리키게 하기 위해서입니다. 클래스 문법이 있어야 구독 기능을 만들 수 있는 것은 아니며, 클로저를 사용하는 `createStoreSelection()` 팩토리 함수로도 같은 인터페이스를 제공할 수 있습니다. 상태를 보관하지 않는 금액 계산이나 데이터 변환이라면 인스턴스를 만들지 않고 함수로 둘 수 있습니다.
+
+## 인스턴스 유지와 변경 구독
+
+이 객체를 컴포넌트 함수 안에서 만들고 값을 읽기만 하면, 클릭해도 선택 개수가 갱신되지 않습니다.
+
+```tsx
+function SelectionCount() {
+  const selection = new StoreSelection();
+
+  return (
+    <button onClick={() => selection.toggle('store-42')}>
+      {selection.getSnapshot().length}개 선택
+    </button>
+  );
+}
+```
+
+버튼을 누르면 객체 안의 배열은 바뀌지만, React에 변경을 알리는 구독이 없어 화면은 `0개 선택`으로 남습니다. 부모의 업데이트 등 다른 이유로 다시 렌더링되면 선택 목록이 비어 있는 새 인스턴스를 만들기 때문에 이전 선택도 잃습니다. 이 두 문제를 해결하려면 인스턴스를 렌더링 사이에 유지하고, 그 인스턴스의 변경을 React가 구독하게 해야 합니다.
+
+### 초기화 함수에서 인스턴스 생성
+
+`useState`에 초기화 함수를 전달하면 React가 그 반환값을 상태로 보관합니다. 이 방식으로 선택 객체를 만들면 이후 렌더링에서도 같은 인스턴스를 자식에게 전달할 수 있고, 부모가 제거된 뒤 새로 마운트되면 새로운 선택 상태로 시작합니다. [useState의 초기화](https://react.dev/reference/react/useState#avoiding-recreating-the-initial-state)
+
+```tsx
+import { useState } from 'react';
+import { StoreSelection } from './StoreSelection';
+
+export function StoreComparison() {
+  const [selection] = useState(() => new StoreSelection());
+
+  return (
+    <>
+      <SelectionCount selection={selection} />
+      <StoreOption selection={selection} id="store-42" name="강남점" />
+      <StoreOption selection={selection} id="store-7" name="성수점" />
+    </>
+  );
+}
+```
+
+`useState(new StoreSelection())`로 작성해도 React가 보관한 인스턴스는 유지되지만, 인자를 계산하는 생성식은 렌더링할 때마다 실행됩니다. 초기화 함수를 전달하면 이 불필요한 생성을 피할 수 있습니다. 다만 개발 모드의 Strict Mode에서는 초기화 함수를 두 번 호출할 수 있으므로, 객체를 만드는 과정에서 네트워크 연결이나 외부 이벤트 등록을 시작하면 안 됩니다. 위 객체는 메모리 안의 값만 초기화하므로 버려지는 인스턴스가 외부 자원을 남기지 않습니다.
+
+### useSyncExternalStore로 변경 구독
+
+같은 인스턴스를 유지하더라도 그 안의 값이 바뀌었다는 사실을 React에 알려야 합니다. `useSyncExternalStore`는 `subscribe`로 알림을 등록하고 `getSnapshot`으로 값을 읽습니다. 알림을 받은 뒤 다시 읽은 snapshot을 이전 값과 `Object.is`로 비교해 달라졌으면 컴포넌트를 다시 렌더링합니다. [useSyncExternalStore](https://react.dev/reference/react/useSyncExternalStore)
+
+```tsx
+import { useSyncExternalStore } from 'react';
+import { StoreSelection } from './StoreSelection';
+
+function useSelectedStores(selection: StoreSelection) {
+  return useSyncExternalStore(
+    selection.subscribe,
+    selection.getSnapshot,
+    selection.getServerSnapshot,
+  );
+}
+
+function SelectionCount({ selection }: { selection: StoreSelection }) {
+  const ids = useSelectedStores(selection);
+  return <p>{ids.length}개 매장 선택</p>;
+}
+
+function StoreOption({
+  selection,
+  id,
+  name,
+}: {
+  selection: StoreSelection;
+  id: string;
+  name: string;
+}) {
+  const ids = useSelectedStores(selection);
+
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={ids.includes(id)}
+        onChange={() => selection.toggle(id)}
+      />
+      {name}
+    </label>
+  );
+}
+```
+
+강남점 체크박스를 누르면 선택 목록이 `['store-42']`로 바뀌고, 체크박스와 요약이 함께 갱신됩니다. 체크박스는 선택 여부를, 요약은 선택 개수를 같은 snapshot에서 읽으므로 두 값을 별도의 React 상태로 복사할 필요가 없습니다. 각 컴포넌트가 마운트 해제되면 React는 `subscribe`가 반환한 정리 함수를 호출해 해당 구독을 해제합니다.
+
+`getSnapshot`에서 매번 `[...this.snapshot]`을 반환하면 변경이 없어도 새 값으로 인식되어 불필요한 렌더링이나 무한 루프로 이어질 수 있습니다. 읽을 때는 같은 참조를 유지하고, `toggle`처럼 실제 변경이 있을 때 새 배열로 교체해야 합니다. 반대로 같은 배열을 직접 수정하고 그대로 반환하면 `Object.is` 비교에서 같은 값으로 판단하므로, 변경 알림을 보내도 화면이 갱신되지 않을 수 있습니다.
+
+세 번째 인자인 `getServerSnapshot`은 서버 렌더링과 브라우저의 hydration에 사용할 초기값입니다. 예제는 양쪽 모두 선택이 없는 빈 목록으로 시작합니다. 서버가 선택된 매장을 미리 알고 있다면 그 초기값도 브라우저에 전달해 같은 데이터로 시작해야 합니다. [외부 저장소의 서버 렌더링](https://react.dev/reference/react/useSyncExternalStore#adding-support-for-server-rendering)
+
+## 화면·앱·서버 요청별 공유 범위
+
+선택 객체를 `StoreComparison`의 `useState`에 두면 그 화면의 자식들끼리 공유하고, 화면을 떠나 컴포넌트가 제거되면 다음 진입에서는 새 객체로 시작합니다. 다른 화면으로 이동해도 선택을 유지해야 한다면 생성 위치를 이동 중에도 유지되는 상위 Provider로 올리고, 같은 인스턴스를 Context로 전달할 수 있습니다.
+
+같은 컴포넌트의 props만 바뀌면 `useState`의 초기화 함수는 다시 실행되지 않습니다. 예를 들어 비교할 매장 그룹이 바뀌었을 때 선택 목록도 비워야 한다면, 그룹을 구분하는 값을 `StoreComparison`의 `key`로 지정해 새 인스턴스로 시작할 수 있습니다. 생성 위치는 공유 범위를, 컴포넌트의 마운트 여부와 `key`는 초기화 시점을 결정합니다. [key로 상태 초기화하기](https://react.dev/reference/react/useState#resetting-state-with-a-key)
+
+모듈 최상위에 `export const selection = new StoreSelection()`을 두면 그 모듈 인스턴스를 사용하는 곳들이 같은 객체를 공유합니다. 브라우저에서 앱 전체가 공유할 상태라면 사용할 수 있지만, SSR 서버에서 사용자별 선택 상태를 보관하면 여러 요청이 같은 객체를 사용할 수 있습니다. 요청별로 분리해야 하는 데이터는 각 요청에서 인스턴스를 만들고, 해당 화면을 렌더링하는 쪽에 전달해야 합니다.
+
+## 외부 연결의 시작과 정리
+
+선택 객체에는 메모리 안의 값과 구독자만 있었지만, 클래스가 WebSocket처럼 외부 자원을 관리한다면 연결의 수명도 정해야 합니다. 렌더링 중 생성자에서 연결을 열면 React가 그 렌더링을 버려도 연결이 남을 수 있으므로, 객체 생성과 연결 시작을 분리하겠습니다. 연결은 Effect에서 시작하고 그 Effect의 정리 함수에서 닫습니다. [렌더링 밖에서 실행하는 부수 효과](https://react.dev/reference/rules/components-and-hooks-must-be-pure#side-effects-must-run-outside-of-render)
+
+```ts
+class StoreFeed {
+  private socket: WebSocket | null = null;
+
+  constructor(private url: string) {}
+
+  connect() {
+    if (this.socket) return;
+    this.socket = new WebSocket(this.url);
+  }
+
+  disconnect() {
+    this.socket?.close();
+    this.socket = null;
+  }
+}
+```
+
+화면에서 이 인스턴스를 직접 읽을 필요가 없고 연결의 시작·종료만 관리한다면, Effect 안에서 인스턴스를 만들어도 됩니다. URL이 바뀌면 이전 연결을 닫고 새 연결을 시작하며, 컴포넌트가 제거될 때도 같은 정리 함수를 사용합니다.
+
+```tsx
+import { useEffect } from 'react';
+
+function StoreFeedConnection({ url }: { url: string }) {
+  useEffect(() => {
+    const feed = new StoreFeed(url);
+    feed.connect();
+
+    // URL 변경과 마운트 해제 모두 이전 연결을 닫습니다.
+    return () => feed.disconnect();
+  }, [url]);
+
+  return null;
+}
+```
+
+개발 모드의 Strict Mode에서는 Effect가 연결 → 해제 → 연결 순서로 추가 실행될 수 있습니다. 위 코드는 해제할 때 기존 소켓을 닫으므로 다시 연결한 뒤에도 사용 중인 연결 하나만 남습니다. 한 번만 실행하게 막는 플래그보다, URL 변경이나 마운트 해제 때 이전 자원을 정리하는 동작이 필요합니다. [외부 시스템과 Effect](https://react.dev/reference/react/useEffect#connecting-to-an-external-system)
+
+## 참고 자료
+
+- [React 공식 문서: Component](https://react.dev/reference/react/Component)
+- [React 공식 문서: useState](https://react.dev/reference/react/useState)
+- [React 공식 문서: useSyncExternalStore](https://react.dev/reference/react/useSyncExternalStore)
+- [React 공식 문서: useEffect](https://react.dev/reference/react/useEffect)
+- [React 공식 문서: Components and Hooks must be pure](https://react.dev/reference/rules/components-and-hooks-must-be-pure)
