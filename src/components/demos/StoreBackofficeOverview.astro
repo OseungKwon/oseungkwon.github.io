@@ -1,0 +1,215 @@
+---
+import Demo from './Demo.astro';
+---
+
+<Demo title="예제에서 사용할 매장 관리 백오피스" bare>
+  <div class="sbo">
+    <div class="sbo-page sbo-stores">
+      <div class="sbo-page__title">매장 관리</div>
+      <div class="sbo-panes">
+        <div class="sbo-list">
+          <div class="sbo-section">매장 목록 <span class="sbo-filter">영업 중</span></div>
+          <div class="sbo-row sbo-row--selected">
+            <span>강남점</span><span class="sbo-status">영업 중</span>
+          </div>
+          <div class="sbo-row"><span>성수점</span><span class="sbo-status">영업 중</span></div>
+          <div class="sbo-row"><span>판교점</span><span class="sbo-status">영업 중</span></div>
+        </div>
+        <div class="sbo-detail">
+          <div class="sbo-section">강남점 상세</div>
+          <div class="sbo-field">담당 매니저</div>
+          <div class="sbo-change">
+            <span class="sbo-before">미배정</span>
+            <svg class="sbo-change__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-label="배정 후"><path d="M4 12h15m-5-5 5 5-5 5"></path></svg>
+            <strong class="sbo-after">홍길동</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sbo-travel" aria-label="매장 관리에서 메뉴 관리로 이동한 뒤 복귀">
+      <span>이동</span>
+      <svg viewBox="0 0 48 28" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M3 7h40m-5-5 5 5-5 5M45 21H5m5-5-5 5 5 5"></path>
+      </svg>
+      <span>복귀</span>
+    </div>
+
+    <div class="sbo-page sbo-menus">
+      <div class="sbo-page__title">메뉴 관리 <span class="sbo-store-name">강남점</span></div>
+      <div class="sbo-menu-list">
+        <div class="sbo-menu"><span>아메리카노</span><span class="sbo-status">판매 중</span></div>
+        <div class="sbo-menu"><span>카페라테</span><span class="sbo-status">판매 중</span></div>
+        <div class="sbo-menu sbo-menu--soldout">
+          <div><span>시즌 한정 에이드</span><span class="sbo-ingredient">재료 소진</span></div>
+          <strong class="sbo-soldout">품절</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .sbo {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) 3.5rem minmax(0, 1fr);
+    align-items: center;
+    padding: 1.5rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .sbo-page {
+    min-width: 0;
+    align-self: stretch;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: var(--surface-bg);
+  }
+  .sbo-page__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border-secondary);
+    background: var(--color-bg-tertiary);
+    font-weight: 700;
+  }
+  .sbo-store-name,
+  .sbo-field,
+  .sbo-before,
+  .sbo-status,
+  .sbo-ingredient {
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  .sbo-panes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .sbo-list,
+  .sbo-detail {
+    min-width: 0;
+    padding: 0.875rem 0.625rem;
+  }
+  .sbo-list {
+    border-right: 1px solid var(--color-border-secondary);
+  }
+  .sbo-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    min-height: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 650;
+  }
+  .sbo-filter {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.375rem;
+    background: var(--demo-a-soft);
+    color: var(--color-link);
+    font-size: 0.625rem;
+  }
+  .sbo-row,
+  .sbo-menu {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.375rem;
+    padding: 0.625rem 0.375rem;
+  }
+  .sbo-row {
+    font-size: 0.75rem;
+  }
+  .sbo-row--selected {
+    border-radius: 0.375rem;
+    background: var(--demo-a-soft);
+    color: var(--color-link);
+    font-weight: 650;
+  }
+  .sbo-status {
+    white-space: nowrap;
+  }
+  .sbo-field {
+    margin-top: 1rem;
+  }
+  .sbo-change {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+  }
+  .sbo-change__arrow {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-text-secondary);
+  }
+  .sbo-after {
+    font-weight: 650;
+    color: var(--color-link);
+  }
+  .sbo-travel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.625rem;
+    color: var(--color-text-secondary);
+  }
+  .sbo-travel svg {
+    width: 2.5rem;
+    height: 1.5rem;
+  }
+  .sbo-menu-list {
+    padding: 0.5rem;
+  }
+  .sbo-menu {
+    min-height: 2.625rem;
+    font-size: 0.75rem;
+  }
+  .sbo-menu + .sbo-menu {
+    border-top: 1px solid var(--color-border-tertiary);
+  }
+  .sbo-menu--soldout {
+    align-items: center;
+  }
+  .sbo-ingredient {
+    display: block;
+    margin-top: 0.25rem;
+  }
+  .sbo-soldout {
+    flex: none;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 0.375rem;
+    background: var(--color-bg-tertiary);
+    font-size: 0.6875rem;
+    font-weight: 650;
+  }
+  @media (max-width: 42rem) {
+    .sbo {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 1rem;
+    }
+    .sbo-travel {
+      flex-direction: row;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+    }
+    .sbo-travel svg {
+      transform: rotate(90deg);
+      width: 1.75rem;
+      height: 2.5rem;
+    }
+    .sbo-list,
+    .sbo-detail {
+      padding: 0.875rem 0.625rem;
+    }
+  }
+</style>
