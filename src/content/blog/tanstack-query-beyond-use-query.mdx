@@ -13,6 +13,9 @@ import ManagerAssignSync from '@components/demos/ManagerAssignSync.astro';
 import MutationScopeOrder from '@components/demos/MutationScopeOrder.astro';
 import OptimisticSoldOut from '@components/demos/OptimisticSoldOut.astro';
 import StoreBackofficeOverview from '@components/demos/StoreBackofficeOverview.astro';
+import StoreComparisonScene from '@components/demos/StoreComparisonScene.astro';
+import MenuSoldOutScene from '@components/demos/MenuSoldOutScene.astro';
+import OpenStoreCountScene from '@components/demos/OpenStoreCountScene.astro';
 
 React Query 시절부터 TanStack Query를 사용해 왔지만, 주로 `useQuery`와 `useMutation`의 기본적인 기능만 활용했습니다. 특히 `staleTime`과 `gcTime`은 설정해 본 적이 있어도 데이터가 언제 stale이 되고 언제 캐시에서 제거되는지 명확히 설명하기 어려웠습니다. 이 글에서는 두 개념을 다시 정리하고, 그동안 자주 쓰지 않았던 기능들이 어떤 상황에서 필요한지도 살펴보려고 합니다.
 
@@ -253,6 +256,8 @@ const regionStores = useQuery({
 
 서로 독립적인 조회는 여러 `useQuery`를 나란히 호출하면 병렬로 시작됩니다. 운영자가 목록에서 비교할 매장을 여러 개 선택하고 선택 개수도 바뀐다면, 고정된 개수의 훅을 직접 쓰기 어렵습니다. `useQueries`는 선택한 ID마다 상세 query를 만들어 매장별 로딩과 오류를 따로 확인할 수 있게 합니다.
 
+<StoreComparisonScene />
+
 ```tsx
 const selectedStores = useQueries({
   queries: selectedIds.map((id) => ({
@@ -429,7 +434,11 @@ const pendingMenuIds = useMutationState<string>({
 
 > **낙관적 업데이트:** 서버의 저장 응답을 기다리지 않고 화면을 먼저 바꿉니다. 저장에 실패하면 원래 값으로 되돌리고, 요청이 끝나면 서버 데이터를 다시 확인합니다.
 
-점심 피크에 재료가 떨어지면 관리자는 메뉴 관리 화면에서 품절 스위치를 여러 개 연달아 누릅니다. 스위치마다 서버 응답을 기다리면 누른 스위치가 한참 뒤에야 움직여, 제대로 눌렸는지 몰라 한 번 더 누르게 됩니다. 품절 여부는 참·거짓 하나이고 실패하면 이전 값으로 되돌릴 수 있어 이 방식이 잘 맞습니다. 아래 코드는 한 매장의 메뉴 목록에서 품절 스위치 하나를 누르는 경우입니다.
+점심 피크에 재료가 떨어지면 관리자는 메뉴 관리 화면에서 품절 스위치를 여러 개 연달아 누릅니다. 스위치마다 서버 응답을 기다리면 누른 스위치가 한참 뒤에야 움직여, 제대로 눌렸는지 몰라 한 번 더 누르게 됩니다. 품절 여부는 참·거짓 하나이고 실패하면 이전 값으로 되돌릴 수 있어 이 방식이 잘 맞습니다.
+
+<MenuSoldOutScene />
+
+아래 코드는 한 매장의 메뉴 목록에서 품절 스위치 하나를 누르는 경우입니다.
 
 ```tsx
 type Menu = { id: string; name: string; soldOut: boolean };
@@ -548,7 +557,11 @@ hover 시점과 클릭 사이가 길어 stale이 됐다면 화면에서 다시 �
 
 > **`select`:** 조회한 데이터에서 이 컴포넌트에 필요한 값만 골라 `data`로 받습니다. 예를 들어 매장 목록 응답에서 `total`만 고를 수 있습니다. 캐시에 저장된 목록과 다른 컴포넌트가 받는 데이터는 그대로입니다.
 
-헤더에 영업 중인 매장 수만 표시하는데 매장 이름이나 담당 매니저가 바뀔 때마다 헤더를 다시 그릴 필요는 없습니다. 아래의 `selectTotal`은 `StorePage`를 받아 `total`만 반환하므로, 헤더의 `data`에는 숫자가 들어갑니다.
+헤더에 영업 중인 매장 수만 표시하는데 매장 이름이나 담당 매니저가 바뀔 때마다 헤더를 다시 그릴 필요는 없습니다.
+
+<OpenStoreCountScene />
+
+아래의 `selectTotal`은 `StorePage`를 받아 `total`만 반환하므로, 헤더의 `data`에는 숫자가 들어갑니다.
 
 ```tsx
 const selectTotal = (page: StorePage) => page.total;

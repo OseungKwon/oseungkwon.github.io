@@ -1,0 +1,157 @@
+---
+import Demo from './Demo.astro';
+
+const stores = ['강남점', '성수점', '판교점'];
+const rows = [
+  ['영업 상태', '영업 중', '영업 중', '휴점'],
+  ['담당 매니저', '홍길동', '전우치', '임꺽정'],
+  ['품절 메뉴', '2개', '0개', '1개'],
+];
+---
+
+<Demo bare>
+  <div class="scs" data-scene="store-comparison">
+    <div class="scs-header">
+      <div class="scs-title">매장 비교</div>
+      <span class="scs-count">3개 선택</span>
+    </div>
+    <div class="scs-selection" aria-label="비교할 매장으로 선택한 강남점, 성수점, 판교점">
+      {
+        stores.map((name) => (
+          <span class="scs-selected">
+            <span class="scs-check" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="m4 8 3 3 5-6" />
+              </svg>
+            </span>
+            {name}
+          </span>
+        ))
+      }
+    </div>
+    <div class="scs-comparison">
+      <table aria-label="선택한 세 매장의 영업 상태, 담당 매니저, 품절 메뉴 비교">
+        <thead>
+          <tr><th scope="col"><span class="scs-muted">매장 정보</span></th>{stores.map((name) => <th scope="col">{name}</th>)}</tr>
+        </thead>
+        <tbody>
+          {
+            rows.map(([label, ...values]) => (
+              <tr>
+                <th scope="row">{label}</th>
+                {values.map((value) => (
+                  <td>{value}</td>
+                ))}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .scs {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .scs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border-secondary);
+    background: var(--color-bg-tertiary);
+  }
+  .scs-title {
+    font-weight: 700;
+  }
+  .scs-count,
+  .scs-muted {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  .scs-selection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    padding: 1rem 1.25rem;
+  }
+  .scs-selected {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+  }
+  .scs-check {
+    display: grid;
+    place-items: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+    background: var(--demo-a);
+    color: var(--color-white);
+  }
+  .scs-check svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  .scs-comparison {
+    padding: 0 1.25rem 1rem;
+  }
+  .scs table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+  .scs th,
+  .scs td {
+    padding: 0.875rem 0.5rem;
+    text-align: left;
+    vertical-align: middle;
+  }
+  .scs thead th {
+    background: var(--demo-a-soft);
+    font-weight: 650;
+    color: var(--color-link);
+  }
+  .scs thead th:first-child {
+    border-radius: 0.5rem 0 0 0.5rem;
+  }
+  .scs thead th:last-child {
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+  .scs tbody th {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  .scs tbody tr + tr {
+    border-top: 1px solid var(--color-border-tertiary);
+  }
+  @media (max-width: 34rem) {
+    .scs-header {
+      padding: 0.875rem 1rem;
+    }
+    .scs-selection {
+      padding: 0.875rem 1rem;
+      gap: 1rem;
+    }
+    .scs-comparison {
+      padding: 0 0.75rem 0.75rem;
+    }
+    .scs th,
+    .scs td {
+      padding: 0.75rem 0.25rem;
+      font-size: 0.75rem;
+    }
+    .scs tbody th,
+    .scs-muted {
+      font-size: 0.6875rem;
+    }
+  }
+</style>

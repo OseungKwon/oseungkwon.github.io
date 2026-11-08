@@ -1,0 +1,116 @@
+---
+import Demo from './Demo.astro';
+
+const stores = [
+  { name: '강남점', manager: '홍길동' },
+  { name: '성수점', manager: '전우치' },
+  { name: '판교점', manager: '임꺽정' },
+];
+---
+
+<Demo bare>
+  <div class="ocs" data-scene="open-store-count">
+    <div class="ocs-header">
+      <div class="ocs-title">매장 관리</div>
+      <div class="ocs-summary">영업 중 <strong>3</strong>곳</div>
+    </div>
+    <div class="ocs-content">
+      <div class="ocs-section">영업 중인 매장</div>
+      <table aria-label="영업 중인 매장과 담당 매니저">
+        <thead><tr><th scope="col">매장명</th><th scope="col">영업 상태</th><th scope="col">담당 매니저</th></tr></thead>
+        <tbody>
+          {
+            stores.map(({ name, manager }) => (
+              <tr>
+                <>
+                  <th scope="row">{name}</th>
+                  <td>영업 중</td>
+                  <td>{manager}</td>
+                </>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</Demo>
+
+<style>
+  .ocs {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .ocs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border-secondary);
+    background: var(--color-bg-tertiary);
+  }
+  .ocs-title {
+    font-weight: 700;
+  }
+  .ocs-summary {
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.375rem;
+    background: var(--demo-a-soft);
+    font-size: 0.75rem;
+    color: var(--color-link);
+  }
+  .ocs-summary strong {
+    margin-left: 0.125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .ocs-content {
+    padding: 1rem 1.25rem 0.5rem;
+  }
+  .ocs-section {
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 650;
+  }
+  .ocs table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+  .ocs th,
+  .ocs td {
+    padding: 0.875rem 0.5rem;
+    text-align: left;
+  }
+  .ocs thead th {
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--color-border-secondary);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  .ocs tbody th {
+    font-weight: 550;
+  }
+  .ocs tbody td:nth-child(2) {
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+  }
+  .ocs tbody tr + tr {
+    border-top: 1px solid var(--color-border-tertiary);
+  }
+  @media (max-width: 34rem) {
+    .ocs-header {
+      padding: 0.875rem 1rem;
+    }
+    .ocs-content {
+      padding: 0.875rem 1rem 0.5rem;
+    }
+    .ocs th,
+    .ocs td {
+      padding-inline: 0.25rem;
+    }
+  }
+</style>

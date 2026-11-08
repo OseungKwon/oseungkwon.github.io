@@ -1,0 +1,167 @@
+---
+import Demo from './Demo.astro';
+
+const menus = [
+  { name: '아메리카노', soldOut: false },
+  { name: '카페라테', soldOut: true },
+  { name: '시즌 한정 에이드', soldOut: true },
+  { name: '얼그레이 티', soldOut: false },
+];
+---
+
+<Demo bare>
+  <div class="mss" data-scene="menu-sold-out">
+    <div class="mss-header">
+      <div class="mss-title">메뉴 관리 <span class="mss-store">강남점</span></div>
+      <span class="mss-saving">변경 사항 저장 중</span>
+    </div>
+    <div class="mss-columns" aria-hidden="true"><span>메뉴</span><span>품절</span></div>
+    <ul class="mss-list" aria-label="강남점 메뉴 판매 상태">
+      {
+        menus.map(({ name, soldOut }) => (
+          <li class="mss-row">
+            <div class="mss-menu">
+              <span class="mss-name">{name}</span>
+              <span class="mss-detail">{soldOut ? '재료 소진' : '판매 중'}</span>
+            </div>
+            <div class="mss-state">
+              {soldOut && <span class="mss-pending">저장 중</span>}
+              <span class="mss-switch" data-on={soldOut || undefined} aria-hidden="true">
+                <span />
+              </span>
+              <span class="mss-accessible">{soldOut ? '품절 켜짐' : '품절 꺼짐'}</span>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Demo>
+
+<style>
+  .mss {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .mss-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--color-bg-tertiary);
+    border-bottom: 1px solid var(--color-border-secondary);
+  }
+  .mss-title {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-weight: 700;
+  }
+  .mss-store,
+  .mss-saving {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  .mss-columns {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem 0.375rem;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+  .mss-columns span:last-child {
+    width: 2.5rem;
+    text-align: center;
+  }
+  .mss-list {
+    margin: 0;
+    padding: 0 1.25rem 0.5rem;
+    list-style: none;
+  }
+  .mss-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem 0;
+  }
+  .mss-row + .mss-row {
+    border-top: 1px solid var(--color-border-tertiary);
+  }
+  .mss-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    min-width: 0;
+  }
+  .mss-name {
+    font-weight: 550;
+  }
+  .mss-detail {
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+  .mss-state {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .mss-pending {
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+  .mss-switch {
+    display: flex;
+    flex: none;
+    align-items: center;
+    width: 2.5rem;
+    height: 1.5rem;
+    padding: 0.1875rem;
+    border-radius: 999px;
+    background: var(--color-border-hover);
+  }
+  .mss-switch > span {
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 50%;
+    background: var(--color-white);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.16);
+  }
+  .mss-switch[data-on] {
+    justify-content: flex-end;
+    background: var(--demo-a);
+  }
+  .mss-accessible {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  @media (max-width: 34rem) {
+    .mss-header {
+      padding: 0.875rem 1rem;
+    }
+    .mss-columns {
+      padding-inline: 1rem;
+    }
+    .mss-list {
+      padding-inline: 1rem;
+    }
+    .mss-row {
+      gap: 0.5rem;
+    }
+    .mss-state {
+      gap: 0.5rem;
+    }
+    .mss-saving {
+      font-size: 0.6875rem;
+    }
+  }
+</style>
