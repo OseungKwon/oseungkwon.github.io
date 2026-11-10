@@ -1,9 +1,8 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import ArchivePostItem from '../components/ArchivePostItem.astro';
-import FeaturedPost from '../components/FeaturedPost.astro';
 import { getPublishedPosts } from '../utils/posts';
-import { getTagGroups, MIN_POSTS_PER_TAG, normalizeTag } from '../utils/tags';
+import { getTagGroups } from '../utils/tags';
 
 const BASE = import.meta.env.BASE_URL;
 const posts = (await getPublishedPosts()).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -14,129 +13,81 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 });
 const formatDate = (date: Date) => dateFormatter.format(date).replaceAll('-', '.');
-const [featured, ...rest] = posts;
 const groups = await getTagGroups();
-const topics = groups.filter((group) => group.posts.length >= MIN_POSTS_PER_TAG).slice(0, 5);
-const moreTopics = groups.filter((group) => !topics.includes(group));
 ---
 
 <SiteLayout>
   <div class="home-archive">
     <h1 class="sr-only">오승의 기술블로그 글 목록</h1>
-    {
-      featured && (
-        <FeaturedPost
-          title={featured.data.title}
-          description={featured.data.description}
-          date={formatDate(featured.data.pubDate)}
-          datetime={featured.data.pubDate.toISOString()}
-          href={`${BASE}post/${featured.id}/`}
-        />
-      )
-    }
-
     <nav id="topics" class="topic-nav" aria-label="글 주제">
-      <div class="primary-topics">
-        <a href={BASE} aria-current="page">전체</a>
-        {
-          topics.map((group) => (
-            <a href={`${BASE}tags/${group.slug}/`} data-astro-prefetch="tap">
-              {group.name}
-            </a>
-          ))
-        }
-      </div>
-      {
-        moreTopics.length > 0 && (
-          <details class="more-topics">
-            <summary>주제 더 보기</summary>
-            <div class="topic-directory">
-              {moreTopics.map((group) => (
-                <a href={`${BASE}tags/${group.slug}/`} data-astro-prefetch="tap">
-                  {group.name}
-                  <span>{group.posts.length}</span>
-                </a>
-              ))}
-            </div>
-          </details>
-        )
-      }
+      <span class="archive-count">전체 글 <span>{posts.length}</span></span>
+      <details>
+        <summary>주제별로 보기</summary>
+        <div class="topic-directory">
+          {
+            groups.map((group) => (
+              <a href={`${BASE}tags/${group.slug}/`} data-astro-prefetch="tap">
+                {group.name}
+                <span>{group.posts.length}</span>
+              </a>
+            ))
+          }
+        </div>
+      </details>
     </nav>
-
-    <section aria-labelledby="archive-heading" class="post-archive">
-      <div class="archive-heading">
-        <h2 id="archive-heading">지난 글</h2>
-        <span>{rest.length}편</span>
-      </div>
-      <div class="post-list">
-        {
-          rest.map((post) => (
-            <ArchivePostItem
-              title={post.data.title}
-              description={post.data.description}
-              date={formatDate(post.data.pubDate)}
-              datetime={post.data.pubDate.toISOString()}
-              href={`${BASE}post/${post.id}/`}
-              topic={post.data.tags[0] && normalizeTag(post.data.tags[0])}
-            />
-          ))
-        }
-      </div>
-    </section>
+    <div class="post-list">
+      {
+        posts.map((post) => (
+          <ArchivePostItem
+            title={post.data.title}
+            description={post.data.description}
+            date={formatDate(post.data.pubDate)}
+            datetime={post.data.pubDate.toISOString()}
+            href={`${BASE}post/${post.id}/`}
+          />
+        ))
+      }
+    </div>
   </div>
 </SiteLayout>
 
 <style>
   .home-archive {
-    max-width: 800px;
+    max-width: 840px;
     margin-inline: auto;
-    padding-bottom: 40px;
+    padding-block: 28px 48px;
   }
   .topic-nav {
-    border-block: 1px solid var(--color-border-primary);
-    padding-block: 10px;
+    position: relative;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--color-border-primary);
     scroll-margin-top: 100px;
-  }
-  .primary-topics {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 2px 8px;
-    margin-inline: -10px;
-  }
-  .primary-topics a {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    padding-inline: 10px;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--color-text-secondary);
-    border-radius: 6px;
   }
-  .primary-topics a[aria-current='page'] {
-    color: var(--color-link);
-    font-weight: 700;
+  .archive-count {
+    position: absolute;
+    top: 13px;
+    left: 0;
+    font-weight: 600;
   }
-  .topic-nav a:hover {
-    color: var(--color-link);
-  }
-  .topic-nav a:focus-visible,
-  summary:focus-visible {
-    outline: 2px solid var(--color-link);
-    outline-offset: 3px;
+  .archive-count span {
+    margin-left: 8px;
+    color: var(--color-text-date);
+    font-weight: 400;
   }
   summary {
     width: fit-content;
+    min-height: 44px;
+    margin-left: auto;
     padding-block: 12px;
-    font-size: 13px;
-    color: var(--color-text-secondary);
     cursor: pointer;
   }
   .topic-directory {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 20px;
-    padding-block: 6px 16px;
+    gap: 2px 20px;
+    padding-block: 12px 20px;
   }
   .topic-directory a {
     display: inline-flex;
@@ -144,27 +95,26 @@ const moreTopics = groups.filter((group) => !topics.includes(group));
     gap: 8px;
     min-height: 44px;
     font-size: 14px;
-    color: var(--color-text-secondary);
   }
   .topic-directory span {
     font-size: 12px;
     color: var(--color-text-date);
   }
-  .post-archive {
-    padding-top: 28px;
+  .topic-directory a:hover {
+    color: var(--color-link);
   }
-  .archive-heading {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--color-text-date);
+  .topic-directory a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 3px;
+    border-radius: 3px;
   }
-  .archive-heading h2 {
-    color: var(--color-text-secondary);
-    font-weight: 600;
-  }
-  .post-list > :global(article + article) {
-    border-top: 1px solid var(--color-border-primary);
+  @media (max-width: 639px) {
+    .home-archive {
+      padding-top: 20px;
+    }
+    .topic-nav {
+      margin-bottom: 8px;
+    }
   }
 </style>

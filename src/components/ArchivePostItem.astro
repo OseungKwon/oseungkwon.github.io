@@ -5,31 +5,38 @@ interface Props {
   date: string;
   datetime: string;
   href: string;
-  topic?: string;
 }
 
-const { title, description, date, datetime, href, topic } = Astro.props;
+const { title, description, date, datetime, href } = Astro.props;
 ---
 
 <article>
   <a href={href} class="archive-link">
-    <h3>{title}</h3>
-    <p>{description}</p>
-    <div class="post-meta">
-      <time datetime={datetime}>{date}</time>
-      {topic && <span>{topic}</span>}
+    <time datetime={datetime}>{date}</time>
+    <div class="post-copy">
+      <h2>{title}</h2>
+      <p>{description}</p>
     </div>
   </a>
 </article>
 
 <style>
   .archive-link {
-    display: block;
-    padding-block: 28px;
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 28px;
+    padding-block: 22px;
     border-radius: 4px;
   }
-  h3 {
-    font-size: 22px;
+  time {
+    font-size: 12px;
+    color: var(--color-text-date);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  h2 {
+    font-size: 20px;
     font-weight: 600;
     line-height: 1.55;
     letter-spacing: -0.025em;
@@ -37,27 +44,15 @@ const { title, description, date, datetime, href, topic } = Astro.props;
     overflow-wrap: anywhere;
   }
   p {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
     overflow: hidden;
-    margin-top: 8px;
-    font-size: 15px;
+    margin-top: 6px;
+    font-size: 14px;
     line-height: 1.8;
     color: var(--color-text-secondary);
-    word-break: keep-all;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
-  .post-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-top: 14px;
-    font-size: 13px;
-    color: var(--color-text-date);
-    font-variant-numeric: tabular-nums;
-  }
-  .archive-link:hover h3 {
+  .archive-link:hover h2 {
     color: var(--color-link);
   }
   .archive-link:focus-visible {
@@ -66,10 +61,12 @@ const { title, description, date, datetime, href, topic } = Astro.props;
   }
   @media (max-width: 639px) {
     .archive-link {
-      padding-block: 24px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
+      padding-block: 18px;
     }
-    h3 {
-      font-size: 20px;
+    h2 {
+      font-size: 18px;
     }
   }
 </style>
