@@ -1,103 +1,170 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
-import PostListItem from '../components/PostListItem.astro';
+import ArchivePostItem from '../components/ArchivePostItem.astro';
 import FeaturedPost from '../components/FeaturedPost.astro';
 import { getPublishedPosts } from '../utils/posts';
-import { getTagGroups, MIN_POSTS_PER_TAG } from '../utils/tags';
+import { getTagGroups, MIN_POSTS_PER_TAG, normalizeTag } from '../utils/tags';
 
+const BASE = import.meta.env.BASE_URL;
 const posts = (await getPublishedPosts()).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-
-const formatDate = (d: Date) => d.toLocaleDateString('en-us', { year: 'numeric', month: 'short', day: 'numeric' });
-
+const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Seoul',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+const formatDate = (date: Date) => dateFormatter.format(date).replaceAll('-', '.');
 const [featured, ...rest] = posts;
-
 const groups = await getTagGroups();
-const topics = groups.filter((group) => group.posts.length >= MIN_POSTS_PER_TAG);
-const otherTags = groups.filter((group) => group.posts.length < MIN_POSTS_PER_TAG);
+const topics = groups.filter((group) => group.posts.length >= MIN_POSTS_PER_TAG).slice(0, 5);
+const moreTopics = groups.filter((group) => !topics.includes(group));
 ---
 
 <SiteLayout>
-  <!-- 섹션 라벨이 페이지 성격을 말하므로 보이는 소개 문장은 두지 않는다.
-       제목 계층은 스크린리더와 검색엔진을 위해 숨긴 h1으로 유지한다. -->
-  <h1 class="sr-only">오승의 기술블로그 글 목록</h1>
+  <div class="home-archive">
+    <h1 class="sr-only">오승의 기술블로그 글 목록</h1>
+    {
+      featured && (
+        <FeaturedPost
+          title={featured.data.title}
+          description={featured.data.description}
+          date={formatDate(featured.data.pubDate)}
+          datetime={featured.data.pubDate.toISOString()}
+          href={`${BASE}post/${featured.id}/`}
+        />
+      )
+    }
 
-  <!-- 최신 글: 카드형 featured. '지난 글'과 짝을 이루는 라벨을 달아
-       카드가 시퀀스의 첫 항목으로 읽히게 한다. -->
-  {
-    featured && (
-      <div class="pt-7 sm:pt-11">
-        <h2 class="mb-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">최신 글</h2>
-        <div class="featured-halo">
-          <FeaturedPost
-            title={featured.data.title}
-            description={featured.data.description}
-            date={formatDate(featured.data.pubDate)}
-            href={`${import.meta.env.BASE_URL}post/${featured.id}/`}
-            category={featured.data.category}
-            tags={featured.data.tags}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  <div class="mt-10 border-t-[0.5px] border-token-primary pt-6 sm:mt-14">
-    <div class="flex items-baseline gap-3">
-      <h2 class="font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">지난 글</h2>
-      <span class="font-mono text-xs font-bold text-token-accent">{rest.length}</span>
-    </div>
-    <div class="mt-4 flex flex-col gap-3">
-      {
-        rest.map((post) => (
-          <PostListItem
-            title={post.data.title}
-            description={post.data.description}
-            date={formatDate(post.data.pubDate)}
-            image={post.data.heroImage}
-            href={`${import.meta.env.BASE_URL}post/${post.id}/`}
-            category={post.data.category}
-            tags={post.data.tags}
-          />
-        ))
-      }
-    </div>
-  </div>
-
-  <div id="topics" class="mt-10 scroll-mt-24 border-t-[0.5px] border-token-primary pt-6 sm:mt-14">
-    <h2 class="mb-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">주제</h2>
-    <div class="flex flex-wrap gap-2">
-      {
-        topics.map((group) => (
-          <a
-            href={`/tags/${group.slug}/`}
-            data-astro-prefetch="tap"
-            class="press surface flex items-center gap-2 rounded-full py-2 pr-3 pl-4 text-sm font-semibold text-token-primary"
-          >
-            {group.name}
-            <span class="font-mono text-xs font-bold text-token-accent">{group.posts.length}</span>
-          </a>
-        ))
-      }
-    </div>
-  </div>
-
-  {
-    otherTags.length > 0 && (
-      <div class="mt-10 border-t-[0.5px] border-token-primary pt-6 sm:mt-14">
-        {/* 글이 한 편뿐인 태그. 눌러서 볼 수는 있지만 색인에서는 빠진다. */}
-        <h2 class="mb-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-token-secondary">그 외 태그</h2>
-        <div class="flex flex-wrap gap-1.5">
-          {otherTags.map((group) => (
-            <a
-              href={`/tags/${group.slug}/`}
-              data-astro-prefetch="tap"
-              class="press rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary transition-colors hover:border-token-accent hover:text-token-link"
-            >
-              #{group.name}
+    <nav id="topics" class="topic-nav" aria-label="글 주제">
+      <div class="primary-topics">
+        <a href={BASE} aria-current="page">전체</a>
+        {
+          topics.map((group) => (
+            <a href={`${BASE}tags/${group.slug}/`} data-astro-prefetch="tap">
+              {group.name}
             </a>
-          ))}
-        </div>
+          ))
+        }
       </div>
-    )
-  }
+      {
+        moreTopics.length > 0 && (
+          <details class="more-topics">
+            <summary>주제 더 보기</summary>
+            <div class="topic-directory">
+              {moreTopics.map((group) => (
+                <a href={`${BASE}tags/${group.slug}/`} data-astro-prefetch="tap">
+                  {group.name}
+                  <span>{group.posts.length}</span>
+                </a>
+              ))}
+            </div>
+          </details>
+        )
+      }
+    </nav>
+
+    <section aria-labelledby="archive-heading" class="post-archive">
+      <div class="archive-heading">
+        <h2 id="archive-heading">지난 글</h2>
+        <span>{rest.length}편</span>
+      </div>
+      <div class="post-list">
+        {
+          rest.map((post) => (
+            <ArchivePostItem
+              title={post.data.title}
+              description={post.data.description}
+              date={formatDate(post.data.pubDate)}
+              datetime={post.data.pubDate.toISOString()}
+              href={`${BASE}post/${post.id}/`}
+              topic={post.data.tags[0] && normalizeTag(post.data.tags[0])}
+            />
+          ))
+        }
+      </div>
+    </section>
+  </div>
 </SiteLayout>
+
+<style>
+  .home-archive {
+    max-width: 800px;
+    margin-inline: auto;
+    padding-bottom: 40px;
+  }
+  .topic-nav {
+    border-block: 1px solid var(--color-border-primary);
+    padding-block: 10px;
+    scroll-margin-top: 100px;
+  }
+  .primary-topics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+    margin-inline: -10px;
+  }
+  .primary-topics a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    padding-inline: 10px;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    border-radius: 6px;
+  }
+  .primary-topics a[aria-current='page'] {
+    color: var(--color-link);
+    font-weight: 700;
+  }
+  .topic-nav a:hover {
+    color: var(--color-link);
+  }
+  .topic-nav a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 3px;
+  }
+  summary {
+    width: fit-content;
+    padding-block: 12px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+  .topic-directory {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    padding-block: 6px 16px;
+  }
+  .topic-directory a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+  }
+  .topic-directory span {
+    font-size: 12px;
+    color: var(--color-text-date);
+  }
+  .post-archive {
+    padding-top: 28px;
+  }
+  .archive-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--color-text-date);
+  }
+  .archive-heading h2 {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+  }
+  .post-list > :global(article + article) {
+    border-top: 1px solid var(--color-border-primary);
+  }
+</style>

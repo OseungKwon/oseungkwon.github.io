@@ -3,51 +3,88 @@ interface Props {
   title: string;
   description: string;
   date: string;
+  datetime: string;
   href: string;
-  category: 'book' | 'tech' | 'essay';
-  tags: string[];
 }
 
-const { title, description, date, href, category, tags } = Astro.props;
-
-const categoryLabels = { book: 'Book', tech: 'Tech', essay: 'Essay' };
+const { title, description, date, datetime, href } = Astro.props;
 ---
 
-<!-- 시그니처: 사이트에서 유일하게 '유리(glass)' 질감을 쓰는 카드 -->
-<a
-  href={href}
-  class="press glass flex flex-col rounded-3xl p-7 sm:p-8"
->
-  <span
-    class="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-token-accent-soft px-3 py-1.5 font-mono text-[11px] font-medium tracking-wide text-token-link"
-  >
-    <span aria-hidden="true">◆</span> Latest · {date}
-  </span>
-
-  <h2
-    class="text-2xl font-bold leading-[1.25] tracking-tight text-token-primary break-keep sm:text-3xl"
-  >
-    {title}
-  </h2>
-
-  <p
-    class="mt-3 text-[15px] leading-relaxed text-token-aside break-keep line-clamp-3"
-  >
-    {description}
-  </p>
-
-  <div class="mt-5 flex flex-wrap items-center gap-1.5">
-    <span
-      class="rounded-full bg-token-category px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-token-category"
-    >
-      {categoryLabels[category]}
-    </span>
-    {
-      tags.slice(0, 4).map((tag) => (
-        <span class="rounded-full border border-token-primary px-2.5 py-1 font-mono text-[11px] text-token-secondary">
-          #{tag}
-        </span>
-      ))
-    }
+<article class="featured-post">
+  <div class="featured-meta">
+    <span>최신 글</span>
+    <time datetime={datetime}>{date}</time>
   </div>
-</a>
+  <a href={href} class="featured-link">
+    <h2>{title}</h2>
+    <p>{description}</p>
+  </a>
+</article>
+
+<style>
+  .featured-post {
+    padding-block: 48px 52px;
+  }
+  .featured-meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+  .featured-meta > span {
+    font-weight: 600;
+  }
+  time {
+    color: var(--color-text-date);
+    font-variant-numeric: tabular-nums;
+  }
+  .featured-link {
+    display: block;
+    border-radius: 4px;
+  }
+  h2 {
+    max-width: 720px;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.035em;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+  p {
+    max-width: 660px;
+    margin-top: 18px;
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--color-text-secondary);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  .featured-link:hover h2 {
+    color: var(--color-link);
+  }
+  .featured-link:focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 8px;
+  }
+  @media (max-width: 639px) {
+    .featured-post {
+      padding-block: 32px 36px;
+    }
+    .featured-meta {
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-size: 28px;
+      line-height: 1.45;
+    }
+    p {
+      margin-top: 14px;
+      font-size: 15px;
+    }
+  }
+</style>

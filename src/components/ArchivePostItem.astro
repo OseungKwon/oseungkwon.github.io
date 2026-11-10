@@ -1,0 +1,75 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  date: string;
+  datetime: string;
+  href: string;
+  topic?: string;
+}
+
+const { title, description, date, datetime, href, topic } = Astro.props;
+---
+
+<article>
+  <a href={href} class="archive-link">
+    <h3>{title}</h3>
+    <p>{description}</p>
+    <div class="post-meta">
+      <time datetime={datetime}>{date}</time>
+      {topic && <span>{topic}</span>}
+    </div>
+  </a>
+</article>
+
+<style>
+  .archive-link {
+    display: block;
+    padding-block: 28px;
+    border-radius: 4px;
+  }
+  h3 {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.55;
+    letter-spacing: -0.025em;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--color-text-secondary);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  .post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--color-text-date);
+    font-variant-numeric: tabular-nums;
+  }
+  .archive-link:hover h3 {
+    color: var(--color-link);
+  }
+  .archive-link:focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 6px;
+  }
+  @media (max-width: 639px) {
+    .archive-link {
+      padding-block: 24px;
+    }
+    h3 {
+      font-size: 20px;
+    }
+  }
+</style>
