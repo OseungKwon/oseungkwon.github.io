@@ -101,4 +101,19 @@ const isAbout = path === `${base}/about`;
   :global(html[data-header-brand-hidden='true']) .header-brand {
     visibility: hidden;
   }
+
+  @media (max-width: 360px) {
+    nav {
+      gap: 4px;
+      padding-left: 8px;
+    }
+    nav a:not(.header-brand) {
+      padding-inline: 6px;
+      font-size: 12px;
+    }
+    nav :global([data-theme-toggle]) {
+      width: 32px;
+      height: 32px;
+    }
+  }
 </style>
