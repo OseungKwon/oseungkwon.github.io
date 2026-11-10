@@ -19,10 +19,40 @@ const { title, description, date, datetime, href } = Astro.props;
 </article>
 
 <style>
+  article + article {
+    border-top: 1px solid var(--color-border-primary);
+  }
   .archive-link {
+    position: relative;
+    isolation: isolate;
     display: block;
-    padding-block: 22px;
+    padding-block: 20px;
     border-radius: 4px;
+  }
+  .archive-link::before {
+    content: '';
+    position: absolute;
+    inset: 5px -12px;
+    z-index: -1;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+      0 4px 18px rgba(25, 45, 80, 0.07);
+    opacity: 0;
+  }
+  :global(.dark) .archive-link::before {
+    border-color: rgba(255, 255, 255, 0.13);
+    background: rgba(255, 255, 255, 0.045);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+      0 6px 22px rgba(0, 0, 0, 0.18);
   }
   time {
     display: block;
@@ -49,12 +79,22 @@ const { title, description, date, datetime, href } = Astro.props;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  .archive-link:hover h2 {
-    color: var(--color-link);
+  @media (hover: hover) and (pointer: fine) {
+    .archive-link:hover::before {
+      opacity: 1;
+    }
+  }
+  .archive-link:focus-visible::before {
+    opacity: 1;
   }
   .archive-link:focus-visible {
     outline: 2px solid var(--color-link);
     outline-offset: 6px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .archive-link::before {
+      transition: opacity 160ms ease;
+    }
   }
   @media (max-width: 639px) {
     .archive-link {
