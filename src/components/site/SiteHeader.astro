@@ -16,9 +16,17 @@ const isCuration = path === `${base}/curation`;
 const isAbout = path === `${base}/about`;
 ---
 
+<script is:inline>
+  try {
+    document.documentElement.dataset.headerBrandHidden = localStorage.getItem('header-brand-hidden') === 'true' ? 'true' : 'false';
+  } catch {
+    // 저장소를 사용할 수 없어도 기본 헤더는 표시한다.
+  }
+</script>
+
 <header class:list={['sticky z-50 mx-auto w-full px-4 sm:px-6 lg:px-8 top-3 sm:top-4', container === 'wide' ? 'max-w-6xl' : 'max-w-5xl']}>
   <nav class="surface vt-navbar flex items-center justify-between gap-2 rounded-full py-2 pr-2 pl-3.5 sm:gap-3 sm:pl-6">
-    <a href={BASE} class="flex items-center gap-2 text-token-primary" aria-label="오승의 기술블로그 홈">
+    <a href={BASE} class="header-brand flex items-center gap-2 text-token-primary" aria-label="오승의 기술블로그 홈">
       <svg class="h-[22px] w-[22px] shrink-0" viewBox="0 0 128 128" aria-hidden="true">
         <defs>
           <linearGradient id="hdr-mark" x1="0" y1="0" x2="0" y2="1">
@@ -88,3 +96,9 @@ const isAbout = path === `${base}/about`;
     </div>
   </nav>
 </header>
+
+<style>
+  :global(html[data-header-brand-hidden='true']) .header-brand {
+    visibility: hidden;
+  }
+</style>
