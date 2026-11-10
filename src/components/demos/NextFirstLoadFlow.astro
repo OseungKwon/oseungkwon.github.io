@@ -1,0 +1,239 @@
+---
+import Demo from './Demo.astro';
+---
+
+<Demo frameless>
+  <div class="nfl" data-demo="next-first-load">
+    <div class="nfl-location nfl-server">서버</div>
+    <div class="nfl-location nfl-browser">브라우저</div>
+    <div class="nfl-step">
+      <div class="nfl-step-title"><span>①</span> RSC Payload</div>
+      <div class="nfl-payload">
+        <div class="nfl-file">StorePage의 결과</div>
+        <div class="nfl-payload-title">제목 <strong>강남점</strong></div>
+        <div class="nfl-reference"><code>Counter</code><span>Client Component 참조</span><code class="nfl-props">initialCount: 0</code></div>
+      </div>
+      <div class="nfl-note">화면 구성과 props</div>
+    </div>
+    <div class="nfl-step">
+      <div class="nfl-step-title"><span>②</span> 초기 HTML</div>
+      <div class="nfl-page">
+        <div class="nfl-file">HTML로 만든 화면</div>
+        <div class="nfl-store">강남점</div>
+        <div class="nfl-button-wrap"><span class="nfl-button" aria-hidden="true">증가 0</span></div>
+      </div>
+      <div class="nfl-note">버튼까지 먼저 표시</div>
+    </div>
+    <div class="nfl-step nfl-hydrated">
+      <div class="nfl-step-title"><span>③</span> Counter 수화</div>
+      <div class="nfl-page">
+        <div class="nfl-file">브라우저의 같은 화면</div>
+        <div class="nfl-store">강남점</div>
+        <div class="nfl-button-wrap"><span class="nfl-button" aria-hidden="true">증가 0</span><span class="nfl-code-link" aria-hidden="true"></span></div>
+        <div class="nfl-code"><code>Counter</code> 코드 실행</div>
+      </div>
+      <div class="nfl-note">같은 버튼에 클릭 연결</div>
+    </div>
+    <div class="nfl-delivery">브라우저에 전달: <span>HTML</span> + <span>RSC Payload</span> + <span>Client Component 코드</span></div>
+  </div>
+</Demo>
+
+<style>
+  .nfl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 1.75rem;
+    row-gap: 0.875rem;
+  }
+  .nfl-location {
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--color-border-hover);
+    font-size: 0.75rem;
+    font-weight: 650;
+    color: var(--color-text-secondary);
+  }
+  .nfl-server {
+    grid-column: 1 / 3;
+  }
+  .nfl-browser {
+    grid-column: 3;
+    color: var(--color-link);
+    border-color: var(--demo-a);
+  }
+  .nfl-step {
+    position: relative;
+    min-width: 0;
+  }
+  .nfl-step:not(.nfl-hydrated)::after {
+    content: '→';
+    position: absolute;
+    right: -1.375rem;
+    top: 6.75rem;
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+  }
+  .nfl-step-title {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 650;
+  }
+  .nfl-step-title > span {
+    color: var(--color-text-secondary);
+  }
+  .nfl-payload,
+  .nfl-page {
+    height: 12.25rem;
+    border: 1px solid var(--color-border-hover);
+    border-radius: 0.625rem;
+    overflow: hidden;
+  }
+  .nfl-payload {
+    background: var(--color-bg-tertiary);
+  }
+  .nfl-file {
+    padding: 0.5rem 0.625rem;
+    border-bottom: 1px solid var(--color-border-secondary);
+    font-size: 0.625rem;
+    color: var(--color-text-secondary);
+  }
+  .nfl-payload-title {
+    display: flex;
+    gap: 0.625rem;
+    align-items: baseline;
+    margin: 0.875rem 0.75rem 0.75rem;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+  .nfl-payload-title strong {
+    font-size: 0.875rem;
+    font-weight: 650;
+    color: var(--color-text-primary);
+  }
+  .nfl-reference {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0 0.75rem;
+    padding: 0.625rem;
+    border: 1px dashed var(--color-border-hover);
+    border-radius: 0.375rem;
+  }
+  .nfl-reference code {
+    font: 0.75rem var(--font-mono);
+  }
+  .nfl-reference > span {
+    font-size: 0.625rem;
+    color: var(--color-text-secondary);
+  }
+  .nfl-reference .nfl-props {
+    margin-top: 0.375rem;
+    font-size: 0.6875rem;
+  }
+  .nfl-store {
+    margin: 1.125rem 0.875rem 0.875rem;
+    font-size: 1.125rem;
+    font-weight: 650;
+  }
+  .nfl-button-wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+  .nfl-button {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-border-hover);
+    border-radius: 0.375rem;
+    background: var(--color-bg-tertiary);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .nfl-hydrated .nfl-button {
+    outline: 1px solid var(--demo-a);
+    outline-offset: 3px;
+  }
+  .nfl-code-link {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    height: 1rem;
+    border-left: 1px solid var(--demo-a);
+  }
+  .nfl-code {
+    display: table;
+    margin: 1rem auto 0;
+    padding: 0.25rem 0.375rem;
+    border-radius: 0.25rem;
+    background: var(--demo-a-soft);
+    color: var(--color-link);
+    font-size: 0.625rem;
+  }
+  .nfl-code code {
+    font: 0.6875rem var(--font-mono);
+  }
+  .nfl-note {
+    margin-top: 0.625rem;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  .nfl-hydrated .nfl-note {
+    color: var(--color-link);
+  }
+  .nfl-delivery {
+    grid-column: 1 / -1;
+    margin-top: 0.375rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border-secondary);
+    font-size: 0.6875rem;
+    line-height: 1.8;
+    color: var(--color-text-secondary);
+  }
+  .nfl-delivery > span {
+    white-space: nowrap;
+    color: var(--color-text-primary);
+  }
+  @media (max-width: 40rem) {
+    .nfl {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    .nfl-location {
+      display: none;
+    }
+    .nfl-step-title::after {
+      content: '서버';
+      margin-left: auto;
+      font-size: 0.6875rem;
+      font-weight: 400;
+      color: var(--color-text-secondary);
+    }
+    .nfl-hydrated .nfl-step-title::after {
+      content: '브라우저';
+      color: var(--color-link);
+    }
+    .nfl-step:not(.nfl-hydrated)::after {
+      content: '↓';
+      top: auto;
+      bottom: -1.375rem;
+      right: calc(50% - 0.5rem);
+    }
+    .nfl-payload,
+    .nfl-page {
+      height: auto;
+      min-height: 10.5rem;
+    }
+    .nfl-payload {
+      padding-bottom: 0.875rem;
+    }
+    .nfl-page {
+      padding-bottom: 0.875rem;
+    }
+    .nfl-delivery {
+      grid-column: 1;
+      margin-top: 0;
+    }
+  }
+</style>
